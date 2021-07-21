@@ -2,7 +2,7 @@ mod sat;
 
 use nalgebra::{Point2, Point3};
 use std::collections::{HashMap, HashSet};
-use tuber_common::transform::{IntoMatrix4, Transform2D};
+use tuber_core::transform::{IntoMatrix4, Transform2D};
 use tuber_core::DeltaTime;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::query::accessors::{R, W};
@@ -218,8 +218,8 @@ impl Default for Collidable {
     fn default() -> Self {
         Self {
             shapes: vec![],
-            bit: 0,
-            mask: 0,
+            bit: 1,
+            mask: 1,
         }
     }
 }

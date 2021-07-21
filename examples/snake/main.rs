@@ -1,14 +1,20 @@
 use rand::{thread_rng, Rng};
 use std::collections::VecDeque;
+use tuber::core::input::keyboard::Key;
+use tuber::core::input::Input::KeyDown;
+use tuber::core::input::InputState;
+use tuber::core::transform::Transform2D;
+use tuber::ecs::ecs::Ecs;
+use tuber::ecs::query::accessors::{R, W};
+use tuber::ecs::system::SystemBundle;
+use tuber::ecs::EntityIndex;
+use tuber::engine::state::{State, StateContext};
+use tuber::engine::{Engine, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
-use tuber::graphics::{sprite::*, Graphics};
+use tuber::graphics::sprite::Sprite;
+use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
-use tuber::keyboard::Key;
-use tuber::Input::KeyDown;
-use tuber::*;
-use tuber::{ecs::ecs::Ecs, ecs::query::accessors::*, ecs::system::*, Result};
-use tuber_common::transform::Transform2D;
-use tuber_core::ecs::EntityIndex;
+use tuber::WinitTuberRunner;
 
 const WINDOW_WIDTH: u32 = 800;
 const WINDOW_HEIGHT: u32 = 600;
@@ -42,40 +48,50 @@ struct Score(u32);
 
 fn main() -> Result<()> {
     let mut engine = Engine::new();
+    let graphics = Graphics::new(Box::new(GraphicsWGPU::new()));
 
-    engine.ecs().insert((
-        OrthographicCamera {
-            left: 0.0,
-            right: 800.0,
-            top: 0.0,
-            bottom: 600.0,
-            near: -100.0,
-            far: 100.0,
-        },
-        Transform2D {
-            translation: (0.0, 0.0),
-            ..Default::default()
-        },
-        Active,
-    ));
+    engine.state_stack_mut().push_state(Box::new(MainState));
 
-    engine
-        .ecs()
-        .insert_shared_resource(PivotList(VecDeque::new()));
-    engine.ecs().insert_shared_resource(Score(0));
-
-    spawn_snake(engine.ecs());
-    spawn_apple(engine.ecs());
-
-    let mut graphics = Graphics::new(Box::new(GraphicsWGPU::new()));
-    let mut bundle = SystemBundle::new();
-    bundle.add_system(move_head_system);
-    bundle.add_system(move_body_parts_system);
-    bundle.add_system(eat_apple_system);
-    bundle.add_system(check_collision_with_body_system);
-    engine.add_system_bundle(bundle);
-    engine.add_system_bundle(Graphics::default_system_bundle());
     WinitTuberRunner.run(engine, graphics)
+}
+
+struct MainState;
+impl State for MainState {
+    fn initialize(&mut self, state_context: &mut StateContext) {
+        state_context.ecs.insert((
+            OrthographicCamera {
+                left: 0.0,
+                right: 800.0,
+                top: 0.0,
+                bottom: 600.0,
+                near: -100.0,
+                far: 100.0,
+            },
+            Transform2D {
+                translation: (0.0, 0.0),
+                ..Default::default()
+            },
+            Active,
+        ));
+
+        state_context
+            .ecs
+            .insert_shared_resource(PivotList(VecDeque::new()));
+        state_context.ecs.insert_shared_resource(Score(0));
+
+        spawn_snake(&mut state_context.ecs);
+        spawn_apple(&mut state_context.ecs);
+
+        let mut bundle = SystemBundle::new();
+        bundle.add_system(move_head_system);
+        bundle.add_system(move_body_parts_system);
+        bundle.add_system(eat_apple_system);
+        bundle.add_system(check_collision_with_body_system);
+        state_context.system_bundles.push(bundle);
+        state_context
+            .system_bundles
+            .push(Graphics::default_system_bundle());
+    }
 }
 
 fn check_collision_with_body_system(ecs: &mut Ecs) {

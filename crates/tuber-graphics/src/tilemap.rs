@@ -1,4 +1,4 @@
-use tuber_common::tilemap::Tile;
+use tuber_core::tilemap::Tile;
 
 pub struct TilemapRender {
     pub identifier: String,

@@ -3,8 +3,8 @@ use std::time::Instant;
 use tuber_core::input::keyboard::Key;
 use tuber_core::input::mouse::Button;
 use tuber_core::input::Input;
-use tuber_core::{Engine, Result as TuberResult, TuberRunner};
-use tuber_graphics::{render, Graphics, Window};
+use tuber_engine::{Engine, Result as TuberResult, TuberRunner};
+use tuber_graphics::{Graphics, Window};
 use winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
 use winit::{
     event::{Event, WindowEvent},
@@ -40,7 +40,8 @@ impl TuberRunner for WinitTuberRunner {
             )),
             (window.inner_size().width, window.inner_size().height),
         );
-        engine.ecs().insert_shared_resource(graphics);
+
+        engine.set_graphics(graphics);
 
         event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Poll;
@@ -94,7 +95,7 @@ impl TuberRunner for WinitTuberRunner {
                 }
                 Event::RedrawRequested(_) => {
                     let current_render_time = Instant::now();
-                    render(engine.ecs());
+                    engine.render();
                     last_render_time = current_render_time;
                 }
                 _ => (),

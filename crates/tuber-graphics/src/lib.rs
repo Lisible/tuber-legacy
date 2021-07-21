@@ -1,20 +1,17 @@
 use crate::bitmap_font::BitmapFont;
-use crate::camera::{Active, OrthographicCamera};
+use crate::camera::OrthographicCamera;
 use crate::low_level::*;
 use crate::shape::RectangleShape;
 use crate::sprite::{sprite_animation_step_system, AnimatedSprite, Sprite};
 use crate::texture::{TextureAtlas, TextureData, TextureMetadata, TextureRegion, TextureSource};
 use crate::tilemap::TilemapRender;
-use crate::ui::{Frame, Image, NoViewTransform, Text};
 use image::ImageError;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
-use tuber_common::tilemap::Tilemap;
-use tuber_common::transform::Transform2D;
-use tuber_ecs::ecs::Ecs;
-use tuber_ecs::query::accessors::{R, W};
+use tuber_core::tilemap::Tilemap;
+use tuber_core::transform::Transform2D;
 use tuber_ecs::system::SystemBundle;
 use tuber_ecs::EntityIndex;
 
@@ -68,7 +65,7 @@ impl Graphics {
         self.graphics_impl.initialize(window, window_size);
     }
 
-    fn render(&mut self) {
+    pub fn render(&mut self) {
         self.graphics_impl.render();
     }
 
@@ -123,7 +120,7 @@ impl Graphics {
         }
     }
 
-    fn prepare_animated_sprite(
+    pub fn prepare_animated_sprite(
         &mut self,
         animated_sprite: &AnimatedSprite,
         transform: &Transform2D,
@@ -222,7 +219,7 @@ impl Graphics {
         Ok(())
     }
 
-    fn prepare_tilemap(
+    pub fn prepare_tilemap(
         &mut self,
         tilemap: &Tilemap,
         tilemap_render: &TilemapRender,
@@ -320,6 +317,16 @@ impl Graphics {
         }
     }
 
+    pub fn update_camera(
+        &mut self,
+        camera_id: EntityIndex,
+        camera: &OrthographicCamera,
+        transform: &Transform2D,
+    ) {
+        self.graphics_impl
+            .update_camera(camera_id, camera, transform);
+    }
+
     fn load_font(&mut self, font_path: &str) -> Result<(), GraphicsError> {
         let font = BitmapFont::from_file(font_path)?;
         self.fonts.insert(font_path.into(), font);
@@ -343,68 +350,4 @@ impl Graphics {
     pub fn on_window_resized(&mut self, width: u32, height: u32) {
         self.graphics_impl.on_window_resized((width, height));
     }
-}
-
-pub fn render(ecs: &mut Ecs) {
-    let mut graphics = ecs.shared_resource_mut::<Graphics>().unwrap();
-
-    let (camera_id, (camera, _, camera_transform)) = ecs
-        .query_one::<(R<OrthographicCamera>, R<Active>, R<Transform2D>)>()
-        .expect("There is no camera");
-    graphics
-        .graphics_impl
-        .update_camera(camera_id, &camera, &camera_transform);
-
-    for (_, (tilemap, tilemap_render, transform)) in
-        ecs.query::<(R<Tilemap>, R<TilemapRender>, R<Transform2D>)>()
-    {
-        graphics.prepare_tilemap(&tilemap, &tilemap_render, &transform);
-    }
-
-    for (_, (rectangle_shape, transform)) in ecs.query::<(R<RectangleShape>, R<Transform2D>)>() {
-        graphics.prepare_rectangle(&rectangle_shape, &transform, true);
-    }
-    for (_, (sprite, transform)) in ecs.query::<(R<Sprite>, R<Transform2D>)>() {
-        graphics.prepare_sprite(&sprite, &transform, true).unwrap();
-    }
-    for (_, (animated_sprite, transform)) in ecs.query::<(R<AnimatedSprite>, R<Transform2D>)>() {
-        graphics
-            .prepare_animated_sprite(&animated_sprite, &transform, true)
-            .unwrap();
-    }
-
-    for (_, (mut tilemap_render,)) in ecs.query::<(W<TilemapRender>,)>() {
-        tilemap_render.dirty = false;
-    }
-
-    for (id, (frame, transform)) in ecs.query::<(R<Frame>, R<Transform2D>)>() {
-        let apply_view_transform = !ecs.query_one_by_id::<(R<NoViewTransform>,)>(id).is_some();
-        graphics.prepare_rectangle(
-            &RectangleShape {
-                width: frame.width,
-                height: frame.height,
-                color: frame.color,
-            },
-            &transform,
-            apply_view_transform,
-        );
-    }
-
-    for (id, (text, transform)) in ecs.query::<(R<Text>, R<Transform2D>)>() {
-        let apply_view_transform = !ecs.query_one_by_id::<(R<NoViewTransform>,)>(id).is_some();
-        graphics.prepare_text(text.text(), text.font(), &transform, apply_view_transform);
-    }
-
-    for (id, (image, transform)) in ecs.query::<(R<Image>, R<Transform2D>)>() {
-        let apply_view_transform = !ecs.query_one_by_id::<(R<NoViewTransform>,)>(id).is_some();
-        let sprite = Sprite {
-            width: image.width,
-            height: image.height,
-            texture: image.texture.clone(),
-        };
-
-        graphics.prepare_sprite(&sprite, &transform, apply_view_transform);
-    }
-
-    graphics.render();
 }

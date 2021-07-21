@@ -1,12 +1,5 @@
-use crate::shape::RectangleShape;
-use crate::sprite::Sprite;
 use crate::texture::TextureSource;
-use crate::{Color, Graphics};
-use std::collections::HashSet;
-use tuber_common::transform::Transform2D;
-use tuber_ecs::ecs::Ecs;
-use tuber_ecs::query::accessors::R;
-use tuber_ecs::system::SystemBundle;
+use crate::Color;
 
 pub struct Image {
     pub width: f32,

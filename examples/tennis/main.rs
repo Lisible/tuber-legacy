@@ -1,12 +1,16 @@
+use tuber::core::input::keyboard::Key;
+use tuber::core::input::{Input, InputState};
+use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::SystemBundle;
+use tuber::engine::state::{State, StateContext};
+use tuber::engine::{Engine, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
-use tuber::graphics::{shape::*, Graphics};
+use tuber::graphics::shape::RectangleShape;
+use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
-use tuber::keyboard::Key;
-use tuber::*;
-use tuber_common::transform::Transform2D;
+use tuber::WinitTuberRunner;
 
 const BALL_COUNT: usize = 20;
 const PADDLE_WIDTH: f32 = 20.0;
@@ -25,89 +29,96 @@ struct Velocity {
     y: f32,
 }
 
-fn main() -> tuber::Result<()> {
+fn main() -> Result<()> {
     let mut engine = Engine::new();
+    let graphics = Graphics::new(Box::new(GraphicsWGPU::new()));
 
-    engine.ecs().insert((
-        OrthographicCamera {
-            left: 0.0,
-            right: 800.0,
-            top: 0.0,
-            bottom: 600.0,
-            near: -100.0,
-            far: 100.0,
-        },
-        Transform2D {
-            translation: (0.0, 0.0),
-            ..Default::default()
-        },
-        Active,
-    ));
+    engine.state_stack_mut().push_state(Box::new(MainState));
 
-    let _left_paddle = engine.ecs().insert((
-        RectangleShape {
-            width: PADDLE_WIDTH,
-            height: PADDLE_HEIGHT,
-            color: (1.0, 1.0, 1.0),
-        },
-        Transform2D {
-            translation: LEFT_PADDLE_INITIAL_POSITION,
-            ..Default::default()
-        },
-        Paddle,
-        Player,
-    ));
+    WinitTuberRunner.run(engine, graphics)
+}
 
-    let _right_paddle = engine.ecs().insert((
-        RectangleShape {
-            width: PADDLE_WIDTH,
-            height: PADDLE_HEIGHT,
-            color: (1.0, 1.0, 1.0),
-        },
-        Transform2D {
-            translation: RIGHT_PADDLE_INITIAL_POSITION,
-            ..Default::default()
-        },
-        Paddle,
-    ));
-
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    for _ in 0..BALL_COUNT {
-        let _ball = engine.ecs().insert((
-            RectangleShape {
-                width: BALL_SIZE,
-                height: BALL_SIZE,
-                color: (
-                    rng.gen_range(0.0..=1.0),
-                    rng.gen_range(0.0..=1.0),
-                    rng.gen_range(0.0..=1.0),
-                ),
-            },
-            Velocity {
-                x: rng.gen_range(-10.0..=-5.0),
-                y: rng.gen_range(-10.0..=5.0),
+struct MainState;
+impl State for MainState {
+    fn initialize(&mut self, state_context: &mut StateContext) {
+        state_context.ecs.insert((
+            OrthographicCamera {
+                left: 0.0,
+                right: 800.0,
+                top: 0.0,
+                bottom: 600.0,
+                near: -100.0,
+                far: 100.0,
             },
             Transform2D {
-                translation: BALL_INITIAL_POSITION,
-                rotation_center: (BALL_SIZE / 2.0, BALL_SIZE / 2.0),
+                translation: (0.0, 0.0),
                 ..Default::default()
             },
-            Ball,
+            Active,
         ));
+
+        let _left_paddle = state_context.ecs.insert((
+            RectangleShape {
+                width: PADDLE_WIDTH,
+                height: PADDLE_HEIGHT,
+                color: (1.0, 1.0, 1.0),
+            },
+            Transform2D {
+                translation: LEFT_PADDLE_INITIAL_POSITION,
+                ..Default::default()
+            },
+            Paddle,
+            Player,
+        ));
+
+        let _right_paddle = state_context.ecs.insert((
+            RectangleShape {
+                width: PADDLE_WIDTH,
+                height: PADDLE_HEIGHT,
+                color: (1.0, 1.0, 1.0),
+            },
+            Transform2D {
+                translation: RIGHT_PADDLE_INITIAL_POSITION,
+                ..Default::default()
+            },
+            Paddle,
+        ));
+
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        for _ in 0..BALL_COUNT {
+            let _ball = state_context.ecs.insert((
+                RectangleShape {
+                    width: BALL_SIZE,
+                    height: BALL_SIZE,
+                    color: (
+                        rng.gen_range(0.0..=1.0),
+                        rng.gen_range(0.0..=1.0),
+                        rng.gen_range(0.0..=1.0),
+                    ),
+                },
+                Velocity {
+                    x: rng.gen_range(-10.0..=-5.0),
+                    y: rng.gen_range(-10.0..=5.0),
+                },
+                Transform2D {
+                    translation: BALL_INITIAL_POSITION,
+                    rotation_center: (BALL_SIZE / 2.0, BALL_SIZE / 2.0),
+                    ..Default::default()
+                },
+                Ball,
+            ));
+        }
+
+        let mut bundle = SystemBundle::new();
+        bundle.add_system(move_ball_system);
+        bundle.add_system(move_paddle_system);
+        bundle.add_system(collision_system);
+        state_context
+            .system_bundles
+            .push(Graphics::default_system_bundle());
+        state_context.system_bundles.push(bundle);
     }
-
-    let mut runner = WinitTuberRunner;
-    let mut graphics = Graphics::new(Box::new(GraphicsWGPU::new()));
-
-    let mut bundle = SystemBundle::new();
-    bundle.add_system(move_ball_system);
-    bundle.add_system(move_paddle_system);
-    bundle.add_system(collision_system);
-    engine.add_system_bundle(Graphics::default_system_bundle());
-    engine.add_system_bundle(bundle);
-
-    runner.run(engine, graphics)
 }
 
 fn move_paddle_system(ecs: &mut Ecs) {

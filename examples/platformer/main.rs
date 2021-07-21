@@ -1,117 +1,129 @@
+use tuber::core::input::keyboard::Key;
+use tuber::core::input::{Input, InputState};
+use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::SystemBundle;
+use tuber::engine::state::{State, StateContext};
+use tuber::engine::{Engine, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::shape::RectangleShape;
 use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
-use tuber::keyboard::Key;
-use tuber::physics::Collidable;
-use tuber::*;
-use tuber_common::transform::Transform2D;
-use tuber_physics::{CollisionShape, Physics, RigidBody2D, StaticBody2D};
+use tuber::physics::{Collidable, CollisionShape, Physics, RigidBody2D, StaticBody2D};
+use tuber::WinitTuberRunner;
 
-fn main() -> tuber::Result<()> {
+fn main() -> Result<()> {
     let mut engine = Engine::new();
-
-    engine.ecs().insert((
-        OrthographicCamera {
-            left: 0.0,
-            right: 800.0,
-            top: 0.0,
-            bottom: 600.0,
-            near: -100.0,
-            far: 100.0,
-        },
-        Transform2D {
-            translation: (0.0, 0.0),
-            ..Default::default()
-        },
-        Active,
-    ));
-
-    engine.ecs().insert((
-        RectangleShape {
-            width: 50.0,
-            height: 100.0,
-            color: (1.0, 0.0, 0.0),
-        },
-        Transform2D {
-            translation: (100.0, 100.0),
-            ..Default::default()
-        },
-        RigidBody2D::default(),
-        Collidable {
-            shapes: vec![CollisionShape::from_rectangle(0.0, 0.0, 50.0, 100.0)],
-            ..Default::default()
-        },
-    ));
-
-    engine.ecs().insert((
-        RectangleShape {
-            width: 800.0,
-            height: 50.0,
-            color: (0.0, 1.0, 0.0),
-        },
-        Transform2D {
-            translation: (0.0, 550.0),
-            ..Default::default()
-        },
-        StaticBody2D,
-        Collidable {
-            shapes: vec![CollisionShape::from_rectangle(0.0, 0.0, 800.0, 50.0)],
-            ..Default::default()
-        },
-    ));
-    engine.ecs().insert((
-        RectangleShape {
-            width: 100.0,
-            height: 50.0,
-            color: (0.0, 1.0, 0.0),
-        },
-        Transform2D {
-            translation: (350.0, 499.0),
-            ..Default::default()
-        },
-        StaticBody2D,
-        Collidable {
-            shapes: vec![CollisionShape::from_rectangle(0.0, 0.0, 100.0, 50.0)],
-            ..Default::default()
-        },
-    ));
-
-    engine.ecs().insert((
-        RectangleShape {
-            width: 300.0,
-            height: 50.0,
-            color: (0.0, 1.0, 0.0),
-        },
-        Transform2D {
-            translation: (200.0, 200.0),
-            angle: 15.0,
-            ..Default::default()
-        },
-        StaticBody2D,
-        Collidable {
-            shapes: vec![CollisionShape::from_rectangle(0.0, 0.0, 300.0, 50.0)],
-            ..Default::default()
-        },
-    ));
-
-    let mut runner = WinitTuberRunner;
     let graphics = Graphics::new(Box::new(GraphicsWGPU::new()));
-    engine
-        .ecs()
-        .insert_shared_resource(Physics::new((0.0, 1.0)));
 
-    engine.add_system_bundle(Physics::default_system_bundle());
-    engine.add_system_bundle(Graphics::default_system_bundle());
-    let mut bundle = SystemBundle::new();
-    bundle.add_system(jump_system);
-    bundle.add_system(move_system);
-    engine.add_system_bundle(bundle);
+    engine.state_stack_mut().push_state(Box::new(MainState));
 
-    runner.run(engine, graphics)
+    WinitTuberRunner.run(engine, graphics)
+}
+
+pub struct MainState;
+impl State for MainState {
+    fn initialize(&mut self, state_context: &mut StateContext) {
+        state_context.ecs.insert((
+            OrthographicCamera {
+                left: 0.0,
+                right: 800.0,
+                top: 0.0,
+                bottom: 600.0,
+                near: -100.0,
+                far: 100.0,
+            },
+            Transform2D {
+                translation: (0.0, 0.0),
+                ..Default::default()
+            },
+            Active,
+        ));
+
+        state_context.ecs.insert((
+            RectangleShape {
+                width: 50.0,
+                height: 100.0,
+                color: (1.0, 0.0, 0.0),
+            },
+            Transform2D {
+                translation: (100.0, 100.0),
+                ..Default::default()
+            },
+            RigidBody2D::default(),
+            Collidable {
+                shapes: vec![CollisionShape::from_rectangle(0.0, 0.0, 50.0, 100.0)],
+                ..Default::default()
+            },
+        ));
+
+        state_context.ecs.insert((
+            RectangleShape {
+                width: 800.0,
+                height: 50.0,
+                color: (0.0, 1.0, 0.0),
+            },
+            Transform2D {
+                translation: (0.0, 550.0),
+                ..Default::default()
+            },
+            StaticBody2D,
+            Collidable {
+                shapes: vec![CollisionShape::from_rectangle(0.0, 0.0, 800.0, 50.0)],
+                ..Default::default()
+            },
+        ));
+        state_context.ecs.insert((
+            RectangleShape {
+                width: 100.0,
+                height: 50.0,
+                color: (0.0, 1.0, 0.0),
+            },
+            Transform2D {
+                translation: (350.0, 499.0),
+                ..Default::default()
+            },
+            StaticBody2D,
+            Collidable {
+                shapes: vec![CollisionShape::from_rectangle(0.0, 0.0, 100.0, 50.0)],
+                ..Default::default()
+            },
+        ));
+
+        state_context.ecs.insert((
+            RectangleShape {
+                width: 300.0,
+                height: 50.0,
+                color: (0.0, 1.0, 0.0),
+            },
+            Transform2D {
+                translation: (200.0, 200.0),
+                angle: 15.0,
+                ..Default::default()
+            },
+            StaticBody2D,
+            Collidable {
+                shapes: vec![CollisionShape::from_rectangle(0.0, 0.0, 300.0, 50.0)],
+                ..Default::default()
+            },
+        ));
+
+        state_context
+            .ecs
+            .insert_shared_resource(Physics::new((0.0, 1.0)));
+
+        state_context
+            .system_bundles
+            .push(Physics::default_system_bundle());
+        state_context
+            .system_bundles
+            .push(Graphics::default_system_bundle());
+        let mut bundle = SystemBundle::new();
+        bundle.add_system(jump_system);
+        bundle.add_system(move_system);
+        state_context.system_bundles.push(bundle);
+    }
 }
 
 fn move_system(ecs: &mut Ecs) {

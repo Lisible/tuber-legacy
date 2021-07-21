@@ -1,6 +1,6 @@
 use crate::Vertex;
 use nalgebra::{Matrix4, Point3};
-use tuber_common::transform::{IntoMatrix4, Transform2D};
+use tuber_core::transform::{IntoMatrix4, Transform2D};
 use tuber_graphics::camera::OrthographicCamera;
 use wgpu::util::DeviceExt;
 use wgpu::{

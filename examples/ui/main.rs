@@ -1,87 +1,102 @@
+use tuber::core::input::keyboard::Key;
+use tuber::core::input::Input::{KeyDown, KeyUp};
+use tuber::core::input::InputState;
+use tuber::core::transform::Transform2D;
+use tuber::ecs::ecs::Ecs;
+use tuber::ecs::query::accessors::{R, W};
+use tuber::ecs::system::SystemBundle;
+use tuber::engine::state::{State, StateContext};
+use tuber::engine::{Engine, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::shape::RectangleShape;
 use tuber::graphics::ui::{Frame, NoViewTransform, Text};
 use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
-use tuber::keyboard::Key;
-use tuber::Input::{KeyDown, KeyUp};
-use tuber::*;
-use tuber::{ecs::ecs::Ecs, ecs::query::accessors::*, ecs::system::*, Result};
-use tuber_common::transform::Transform2D;
+use tuber::WinitTuberRunner;
 
 fn main() -> Result<()> {
     let mut engine = Engine::new();
-
-    engine.ecs().insert((
-        OrthographicCamera {
-            left: 0.0,
-            right: 800.0,
-            top: 0.0,
-            bottom: 600.0,
-            near: -100.0,
-            far: 100.0,
-        },
-        Transform2D {
-            translation: (0.0, 0.0),
-            ..Default::default()
-        },
-        Active,
-    ));
-
-    engine.ecs().insert((
-        RectangleShape {
-            width: 100.0,
-            height: 100.0,
-            color: (0.0, 0.0, 1.0),
-        },
-        Transform2D {
-            translation: (100.0, 100.0),
-            ..Default::default()
-        },
-    ));
-
-    engine.ecs().insert((
-        RectangleShape {
-            width: 100.0,
-            height: 100.0,
-            color: (0.0, 1.0, 1.0),
-        },
-        Transform2D {
-            translation: (200.0, 200.0),
-            ..Default::default()
-        },
-    ));
-
-    engine.ecs().insert((
-        Text::new("Health".into(), "examples/ui/font.json".into()),
-        Transform2D {
-            translation: (0.0, 35.0),
-            ..Default::default()
-        },
-        NoViewTransform,
-    ));
-
-    engine.ecs().insert((
-        Frame {
-            width: 200.0,
-            height: 50.0,
-            color: (1.0, 0.0, 0.0),
-        },
-        Transform2D {
-            translation: (75.0, 0.0),
-            ..Default::default()
-        },
-        NoViewTransform,
-    ));
-
     let mut graphics = Graphics::new(Box::new(GraphicsWGPU::new()));
     graphics.set_clear_color((1.0, 1.0, 1.0));
-    let mut bundle = SystemBundle::new();
-    bundle.add_system(move_camera_right_system);
-    bundle.add_system(lose_health_system);
-    engine.add_system_bundle(Graphics::default_system_bundle());
-    engine.add_system_bundle(bundle);
+
+    engine.state_stack_mut().push_state(Box::new(MainState));
+
     WinitTuberRunner.run(engine, graphics)
+}
+
+struct MainState;
+impl State for MainState {
+    fn initialize(&mut self, state_context: &mut StateContext) {
+        state_context.ecs.insert((
+            OrthographicCamera {
+                left: 0.0,
+                right: 800.0,
+                top: 0.0,
+                bottom: 600.0,
+                near: -100.0,
+                far: 100.0,
+            },
+            Transform2D {
+                translation: (0.0, 0.0),
+                ..Default::default()
+            },
+            Active,
+        ));
+
+        state_context.ecs.insert((
+            RectangleShape {
+                width: 100.0,
+                height: 100.0,
+                color: (0.0, 0.0, 1.0),
+            },
+            Transform2D {
+                translation: (100.0, 100.0),
+                ..Default::default()
+            },
+        ));
+
+        state_context.ecs.insert((
+            RectangleShape {
+                width: 100.0,
+                height: 100.0,
+                color: (0.0, 1.0, 1.0),
+            },
+            Transform2D {
+                translation: (200.0, 200.0),
+                ..Default::default()
+            },
+        ));
+
+        state_context.ecs.insert((
+            Text::new("Health".into(), "examples/ui/font.json".into()),
+            Transform2D {
+                translation: (0.0, 35.0),
+                ..Default::default()
+            },
+            NoViewTransform,
+        ));
+
+        state_context.ecs.insert((
+            Frame {
+                width: 200.0,
+                height: 50.0,
+                color: (1.0, 0.0, 0.0),
+            },
+            Transform2D {
+                translation: (75.0, 0.0),
+                ..Default::default()
+            },
+            NoViewTransform,
+        ));
+
+        let mut bundle = SystemBundle::new();
+        bundle.add_system(move_camera_right_system);
+        bundle.add_system(lose_health_system);
+        state_context
+            .system_bundles
+            .push(Graphics::default_system_bundle());
+        state_context.system_bundles.push(bundle);
+    }
 }
 
 fn lose_health_system(ecs: &mut Ecs) {
