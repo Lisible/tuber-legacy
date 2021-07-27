@@ -35,7 +35,7 @@ impl State for MainState {
                 far: 100.0,
             },
             Transform2D {
-                translation: (0.0, 0.0),
+                translation: (0.0, 0.0, 0),
                 ..Default::default()
             },
             Active,
@@ -48,7 +48,7 @@ impl State for MainState {
                 color: (1.0, 0.0, 0.0),
             },
             Transform2D {
-                translation: (100.0, 100.0),
+                translation: (100.0, 100.0, 0),
                 ..Default::default()
             },
             RigidBody2D::default(),
@@ -65,7 +65,7 @@ impl State for MainState {
                 color: (0.0, 1.0, 0.0),
             },
             Transform2D {
-                translation: (0.0, 550.0),
+                translation: (0.0, 550.0, 0),
                 ..Default::default()
             },
             StaticBody2D,
@@ -81,7 +81,7 @@ impl State for MainState {
                 color: (0.0, 1.0, 0.0),
             },
             Transform2D {
-                translation: (350.0, 499.0),
+                translation: (350.0, 499.0, 0),
                 ..Default::default()
             },
             StaticBody2D,
@@ -98,7 +98,7 @@ impl State for MainState {
                 color: (0.0, 1.0, 0.0),
             },
             Transform2D {
-                translation: (200.0, 200.0),
+                translation: (200.0, 200.0, 0),
                 angle: 15.0,
                 ..Default::default()
             },
@@ -136,6 +136,7 @@ fn move_system(ecs: &mut Ecs) {
     camera_transform.translation = (
         transform.translation.0 - 400.0,
         transform.translation.1 - 300.0,
+        0,
     );
     if input.is(Input::KeyDown(Key::Q)) {
         rigid_body.acceleration.x = -5.0;

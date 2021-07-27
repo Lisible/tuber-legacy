@@ -29,7 +29,7 @@ struct SnakeBodyPart {
 
 #[derive(Copy, Clone)]
 struct Pivot {
-    position: (f32, f32),
+    position: (f32, f32, i32),
     angle: f32,
 }
 
@@ -68,7 +68,7 @@ impl State for MainState {
                 far: 100.0,
             },
             Transform2D {
-                translation: (0.0, 0.0),
+                translation: (0.0, 0.0, 0),
                 ..Default::default()
             },
             Active,
@@ -192,6 +192,7 @@ fn spawn_apple(ecs: &mut Ecs) {
             translation: (
                 rng.gen_range(0.0..800.0 - 64.0),
                 rng.gen_range(0.0..600.0 - 64.0),
+                0,
             ),
             ..Default::default()
         },
@@ -207,7 +208,7 @@ fn spawn_apple(ecs: &mut Ecs) {
 fn spawn_snake(ecs: &mut Ecs) {
     let snake_tail = ecs.insert((
         Transform2D {
-            translation: (300.0, 300.0 + BODY_PART_SIZE),
+            translation: (300.0, 300.0 + BODY_PART_SIZE, 0),
             rotation_center: (32.0, BODY_PART_SIZE),
             ..Default::default()
         },
@@ -227,7 +228,7 @@ fn spawn_snake(ecs: &mut Ecs) {
     ));
     let _snake_head = ecs.insert((
         Transform2D {
-            translation: (300.0, 300.0),
+            translation: (300.0, 300.0, 0),
             rotation_center: (BODY_PART_SIZE / 2.0, BODY_PART_SIZE),
             ..Default::default()
         },
@@ -327,6 +328,7 @@ fn eat_apple_system(ecs: &mut Ecs) {
                     translation: (
                         tail_transform.translation.0 - BODY_PART_SIZE / 4.0 * tail_velocity.x,
                         tail_transform.translation.1 - BODY_PART_SIZE / 4.0 * tail_velocity.y,
+                        0,
                     ),
                     ..tail_transform
                 },
@@ -369,6 +371,7 @@ fn compute_new_segment_position(transform: Transform2D, velocity: &Velocity) -> 
         translation: (
             transform.translation.0 + velocity.x,
             transform.translation.1 + velocity.y,
+            0,
         ),
         ..transform
     }

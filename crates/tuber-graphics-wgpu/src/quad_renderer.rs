@@ -1,5 +1,5 @@
 use crate::texture::Texture;
-use crate::Vertex;
+use crate::{DrawCommand, DrawCommandData, DrawRange, QuadDrawCommand, Vertex};
 use nalgebra::{Matrix4, Vector2, Vector3, Vector4};
 use num_traits::identities::Zero;
 use std::collections::HashMap;
@@ -17,10 +17,6 @@ const MAX_INSTANCE_COUNT: u64 = 100_000;
 const VERTEX_COUNT_PER_INSTANCE: u32 = 6;
 const INSTANCE_BUFFER_SIZE: u64 = MAX_INSTANCE_COUNT * std::mem::size_of::<InstanceRaw>() as u64;
 
-pub struct QuadInstanceMetadata {
-    pub instance_bind_group: Option<String>,
-}
-
 pub(crate) struct QuadRenderer {
     colored_pipeline: wgpu::RenderPipeline,
     textured_pipeline: wgpu::RenderPipeline,
@@ -31,7 +27,6 @@ pub(crate) struct QuadRenderer {
     texture: Texture,
     vertex_buffer: wgpu::Buffer,
     instance_buffer: wgpu::Buffer,
-    instances_metadata: Vec<QuadInstanceMetadata>,
     instances: Vec<Instance>,
     texture_bind_groups: HashMap<String, wgpu::BindGroup>,
 }
@@ -192,7 +187,6 @@ impl QuadRenderer {
             vertex_buffer,
             texture_bind_groups: HashMap::new(),
             instance_buffer,
-            instances_metadata: vec![],
             instances: vec![],
         }
     }
@@ -305,11 +299,7 @@ impl QuadRenderer {
         transform_2d: &Transform2D,
         apply_view_transform: bool,
         textures: &HashMap<String, Texture>,
-    ) {
-        if self.instances.len() == 0 {
-            self.instances_metadata.clear();
-        }
-
+    ) -> DrawCommand {
         let instance = Instance {
             model: (*transform_2d).into_matrix4(),
             color: Vector3::new(quad.color.0, quad.color.1, quad.color.2),
@@ -327,7 +317,7 @@ impl QuadRenderer {
             bytemuck::cast_slice(&[instance.to_raw()]),
         );
 
-        let instance_metadata = if let Some(texture_path) = &quad.texture {
+        if let Some(texture_path) = &quad.texture {
             if !self
                 .texture_bind_groups
                 .contains_key(&texture_path.identifier)
@@ -353,40 +343,51 @@ impl QuadRenderer {
                     }),
                 );
             }
+        };
+        self.instances.push(instance);
 
-            QuadInstanceMetadata {
-                instance_bind_group: Some(texture_path.identifier.clone()),
-            }
+        let texture_identifier = if let Some(texture) = &quad.texture {
+            Some(texture.identifier.clone())
         } else {
-            QuadInstanceMetadata {
-                instance_bind_group: None,
-            }
+            None
         };
 
-        self.instances_metadata.push(instance_metadata);
-        self.instances.push(instance);
+        DrawCommand {
+            draw_command_data: DrawCommandData::QuadDrawCommand(QuadDrawCommand {
+                draw_range: DrawRange::InstanceIndexRange(
+                    self.instances.len() as u32 - 1..self.instances.len() as u32,
+                ),
+                texture: texture_identifier,
+            }),
+            z_order: transform_2d.translation.2,
+        }
     }
 
-    pub fn render<'rpass>(&'rpass mut self, render_pass: &mut RenderPass<'rpass>) {
-        for (i, instance_metadata) in self.instances_metadata.iter().enumerate() {
-            let instance_index = i as u32;
+    pub fn render<'rpass: 'pass, 'pass>(
+        &'rpass self,
+        render_pass: &mut RenderPass<'pass>,
+        draw_command: &QuadDrawCommand,
+    ) {
+        let instance_index_range = draw_command
+            .draw_range
+            .instance_index_range()
+            .expect("Instance index range expected");
 
-            if let Some(instance_bind_group) = &instance_metadata.instance_bind_group {
-                render_pass.set_pipeline(&self.textured_pipeline);
-                render_pass.set_bind_group(0, &self.texture_bind_groups[instance_bind_group], &[]);
-                render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
-            } else {
-                render_pass.set_pipeline(&self.colored_pipeline);
-                render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-            }
-
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-            render_pass.draw(
-                0..VERTEX_COUNT_PER_INSTANCE,
-                instance_index..instance_index + 1,
-            );
+        if let Some(texture_identifier) = &draw_command.texture {
+            render_pass.set_pipeline(&self.textured_pipeline);
+            render_pass.set_bind_group(0, &self.texture_bind_groups[texture_identifier], &[]);
+            render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+        } else {
+            render_pass.set_pipeline(&self.colored_pipeline);
+            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
         }
+
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        render_pass.draw(0..VERTEX_COUNT_PER_INSTANCE, instance_index_range.clone());
+    }
+
+    pub fn cleanup(&mut self) {
         self.instances.clear();
     }
 

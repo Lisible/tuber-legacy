@@ -35,7 +35,7 @@ impl State for MainState {
                 far: 100.0,
             },
             Transform2D {
-                translation: (0.0, 0.0),
+                translation: (0.0, 0.0, 0),
                 ..Default::default()
             },
             Active,
@@ -47,7 +47,7 @@ impl State for MainState {
                 "examples/bitmap-font/font.json",
             ),
             Transform2D {
-                translation: (100.0, 100.0),
+                translation: (100.0, 100.0, 0),
                 angle: 0.0,
                 ..Default::default()
             },

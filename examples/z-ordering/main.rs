@@ -1,15 +1,8 @@
-use tuber::core::input::keyboard::Key;
-use tuber::core::input::Input::{KeyDown, KeyUp};
-use tuber::core::input::InputState;
 use tuber::core::transform::Transform2D;
-use tuber::ecs::ecs::Ecs;
-use tuber::ecs::query::accessors::{R, W};
-use tuber::ecs::system::SystemBundle;
 use tuber::engine::state::{State, StateContext};
 use tuber::engine::{Engine, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::shape::RectangleShape;
-use tuber::graphics::ui::{Frame, NoViewTransform, Text};
 use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::WinitTuberRunner;
@@ -50,7 +43,7 @@ impl State for MainState {
                 color: (0.0, 0.0, 1.0),
             },
             Transform2D {
-                translation: (100.0, 100.0, 0),
+                translation: (100.0, 100.0, 4),
                 ..Default::default()
             },
         ));
@@ -59,69 +52,40 @@ impl State for MainState {
             RectangleShape {
                 width: 100.0,
                 height: 100.0,
-                color: (0.0, 1.0, 1.0),
+                color: (0.0, 1.0, 0.0),
             },
             Transform2D {
-                translation: (200.0, 200.0, 0),
+                translation: (75.0, 150.0, 1),
                 ..Default::default()
             },
         ));
 
         state_context.ecs.insert((
-            Text::new("Health".into(), "examples/ui/font.json".into()),
-            Transform2D {
-                translation: (0.0, 35.0, 0),
-                ..Default::default()
-            },
-            NoViewTransform,
-        ));
-
-        state_context.ecs.insert((
-            Frame {
-                width: 200.0,
-                height: 50.0,
+            RectangleShape {
+                width: 100.0,
+                height: 100.0,
                 color: (1.0, 0.0, 0.0),
             },
             Transform2D {
-                translation: (75.0, 0.0, 0),
+                translation: (150.0, 150.0, 2),
                 ..Default::default()
             },
-            NoViewTransform,
         ));
 
-        let mut bundle = SystemBundle::new();
-        bundle.add_system(move_camera_right_system);
-        bundle.add_system(lose_health_system);
+        state_context.ecs.insert((
+            RectangleShape {
+                width: 100.0,
+                height: 100.0,
+                color: (1.0, 1.0, 0.0),
+            },
+            Transform2D {
+                translation: (100.0, 200.0, 3),
+                ..Default::default()
+            },
+        ));
+
         state_context
             .system_bundles
             .push(Graphics::default_system_bundle());
-        state_context.system_bundles.push(bundle);
-    }
-}
-
-fn lose_health_system(ecs: &mut Ecs) {
-    for (_, (mut frame,)) in ecs.query::<(W<Frame>,)>() {
-        frame.width -= 1.0;
-        if frame.width < 0.0 {
-            frame.width = 200.0;
-        }
-    }
-}
-
-fn move_camera_right_system(ecs: &mut Ecs) {
-    let input_state = ecs.shared_resource::<InputState>().unwrap();
-    let (_, (_, mut transform)) = ecs
-        .query_one::<(R<OrthographicCamera>, W<Transform2D>)>()
-        .unwrap();
-
-    if input_state.is(KeyDown(Key::Z)) && input_state.is(KeyUp(Key::S)) {
-        transform.translation.1 -= 10.0;
-    } else if input_state.is(KeyDown(Key::S)) && input_state.is(KeyUp(Key::Z)) {
-        transform.translation.1 += 10.0;
-    }
-    if input_state.is(KeyDown(Key::Q)) && input_state.is(KeyUp(Key::D)) {
-        transform.translation.0 -= 10.0;
-    } else if input_state.is(KeyDown(Key::D)) && input_state.is(KeyUp(Key::Q)) {
-        transform.translation.0 += 10.0;
     }
 }

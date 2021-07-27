@@ -39,7 +39,7 @@ impl State for MainState {
                 far: 100.0,
             },
             Transform2D {
-                translation: (0.0, 0.0),
+                translation: (0.0, 0.0, 0),
                 ..Default::default()
             },
             Active,

@@ -1,5 +1,5 @@
 use crate::texture::Texture;
-use crate::Vertex;
+use crate::{DrawCommand, DrawCommandData, TilemapDrawCommand, Vertex};
 use nalgebra::{Matrix4, Point4};
 use std::collections::HashMap;
 use tuber_core::tilemap::Tilemap;
@@ -137,9 +137,9 @@ impl TilemapRenderer {
         texture_atlas: &TextureAtlas,
         transform: &Transform2D,
         textures: &HashMap<String, Texture>,
-    ) {
+    ) -> Option<DrawCommand> {
         if !tilemap_render.dirty {
-            return;
+            return None;
         }
 
         let buffer = device.create_buffer(&BufferDescriptor {
@@ -281,17 +281,26 @@ impl TilemapRenderer {
                 bind_group,
             },
         );
+
+        Some(DrawCommand {
+            draw_command_data: DrawCommandData::TilemapDrawCommand(TilemapDrawCommand {
+                tilemap_identifier: tilemap_render.identifier.to_owned(),
+            }),
+            z_order: transform.translation.2,
+        })
     }
 
-    pub fn render<'rpass>(&'rpass mut self, render_pass: &mut RenderPass<'rpass>) {
-        for tilemap_render_data in self.tilemap_data.values() {
-            render_pass.set_pipeline(&self.pipeline);
-
-            render_pass.set_bind_group(0, &tilemap_render_data.bind_group, &[]);
-            render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
-            render_pass.set_vertex_buffer(0, tilemap_render_data.vertex_data.slice(..));
-            render_pass.draw(0..tilemap_render_data.vertex_count as u32, 0..1);
-        }
+    pub fn render<'rpass: 'pass, 'pass>(
+        &'rpass self,
+        render_pass: &mut RenderPass<'pass>,
+        draw_command: &TilemapDrawCommand,
+    ) {
+        let tilemap_render_data = &self.tilemap_data[&draw_command.tilemap_identifier];
+        render_pass.set_pipeline(&self.pipeline);
+        render_pass.set_bind_group(0, &tilemap_render_data.bind_group, &[]);
+        render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, tilemap_render_data.vertex_data.slice(..));
+        render_pass.draw(0..tilemap_render_data.vertex_count as u32, 0..1);
     }
 
     pub fn set_camera(

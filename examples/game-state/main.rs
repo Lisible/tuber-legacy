@@ -51,7 +51,7 @@ impl State for GameState {
         state_context.ecs.insert((
             Text::new("Game state", "examples/game-state/font.json"),
             Transform2D {
-                translation: (100.0, 100.0),
+                translation: (100.0, 100.0, 0),
                 scale: (2.0, 2.0),
                 angle: -5.0,
                 ..Default::default()
@@ -110,7 +110,7 @@ impl State for Pause {
         state_context.ecs.insert((
             Text::new("Pause state", "examples/game-state/font.json"),
             Transform2D {
-                translation: (100.0, 100.0),
+                translation: (100.0, 100.0, 0),
                 angle: 5.0,
                 scale: (2.0, 2.0),
                 ..Default::default()

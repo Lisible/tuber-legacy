@@ -16,9 +16,9 @@ const BALL_COUNT: usize = 20;
 const PADDLE_WIDTH: f32 = 20.0;
 const PADDLE_HEIGHT: f32 = 100.0;
 const BALL_SIZE: f32 = 10.0;
-const LEFT_PADDLE_INITIAL_POSITION: (f32, f32) = (50.0, 250.0);
-const RIGHT_PADDLE_INITIAL_POSITION: (f32, f32) = (730.0, 250.0);
-const BALL_INITIAL_POSITION: (f32, f32) = (395.0, 295.0);
+const LEFT_PADDLE_INITIAL_POSITION: (f32, f32, i32) = (50.0, 250.0, 0);
+const RIGHT_PADDLE_INITIAL_POSITION: (f32, f32, i32) = (730.0, 250.0, 0);
+const BALL_INITIAL_POSITION: (f32, f32, i32) = (395.0, 295.0, 0);
 
 struct Ball;
 struct Paddle;
@@ -51,7 +51,7 @@ impl State for MainState {
                 far: 100.0,
             },
             Transform2D {
-                translation: (0.0, 0.0),
+                translation: (0.0, 0.0, 0),
                 ..Default::default()
             },
             Active,
@@ -206,9 +206,9 @@ fn collision_system(ecs: &mut Ecs) {
 }
 
 fn ball_is_close_to_paddle(
-    ball_position: (f32, f32),
+    ball_position: (f32, f32, i32),
     ball_size: f32,
-    paddle_position: (f32, f32),
+    paddle_position: (f32, f32, i32),
     paddle_width: f32,
     paddle_height: f32,
 ) -> bool {

@@ -32,7 +32,7 @@ impl State for MainState {
                 far: 100.0,
             },
             Transform2D {
-                translation: (0.0, 0.0),
+                translation: (0.0, 0.0, 0),
                 ..Default::default()
             },
             Active,
@@ -45,7 +45,7 @@ impl State for MainState {
                 color: (1.0, 0.0, 0.0),
             },
             Transform2D {
-                translation: (200.0, 200.0),
+                translation: (200.0, 200.0, 0),
                 ..Default::default()
             },
             StaticBody2D,
@@ -63,7 +63,7 @@ impl State for MainState {
                 color: (1.0, 0.0, 0.0),
             },
             Transform2D {
-                translation: (200.0, 0.0),
+                translation: (200.0, 0.0, 0),
                 ..Default::default()
             },
             RigidBody2D::default(),

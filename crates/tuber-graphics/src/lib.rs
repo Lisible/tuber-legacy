@@ -48,7 +48,6 @@ pub struct Graphics {
     texture_metadata: HashMap<String, TextureMetadata>,
     texture_atlases: HashMap<String, TextureAtlas>,
     fonts: HashMap<String, BitmapFont>,
-    bounding_box_rendering: bool,
 }
 
 impl Graphics {
@@ -58,7 +57,6 @@ impl Graphics {
             texture_metadata: HashMap::new(),
             texture_atlases: HashMap::new(),
             fonts: Default::default(),
-            bounding_box_rendering: false,
         }
     }
     pub fn initialize(&mut self, window: Window, window_size: (u32, u32)) {
@@ -84,7 +82,6 @@ impl Graphics {
             },
             transform,
             apply_view_transform,
-            self.bounding_box_rendering,
         );
     }
 
@@ -171,7 +168,6 @@ impl Graphics {
             },
             transform,
             apply_view_transform,
-            self.bounding_box_rendering,
         );
 
         Ok(())
@@ -214,7 +210,6 @@ impl Graphics {
             },
             transform,
             apply_view_transform,
-            self.bounding_box_rendering,
         );
         Ok(())
     }
@@ -310,7 +305,6 @@ impl Graphics {
                 },
                 &glyph_transform,
                 apply_view_transform,
-                false,
             );
 
             offset_x += glyph_region.width + font.letter_spacing() as f32;
@@ -341,10 +335,6 @@ impl Graphics {
 
     pub fn set_clear_color(&mut self, clear_color: Color) {
         self.graphics_impl.set_clear_color(clear_color);
-    }
-
-    pub fn set_bounding_box_rendering(&mut self, enabled: bool) {
-        self.bounding_box_rendering = enabled;
     }
 
     pub fn on_window_resized(&mut self, width: u32, height: u32) {

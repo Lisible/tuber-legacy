@@ -31,7 +31,7 @@ impl State for MainState {
                 far: 100.0,
             },
             Transform2D {
-                translation: (0.0, 0.0),
+                translation: (0.0, 0.0, 0),
                 ..Default::default()
             },
             Active,
@@ -39,7 +39,7 @@ impl State for MainState {
 
         state_context.ecs.insert((
             Transform2D {
-                translation: (375.0, 275.0),
+                translation: (375.0, 275.0, 0),
                 ..Default::default()
             },
             Sprite {
@@ -51,7 +51,7 @@ impl State for MainState {
 
         state_context.ecs.insert((
             Transform2D {
-                translation: (500.0, 275.0),
+                translation: (500.0, 275.0, 0),
                 ..Default::default()
             },
             Sprite {
@@ -63,7 +63,7 @@ impl State for MainState {
 
         state_context.ecs.insert((
             Transform2D {
-                translation: (250.0, 275.0),
+                translation: (250.0, 275.0, 0),
                 ..Default::default()
             },
             Sprite {
@@ -75,7 +75,7 @@ impl State for MainState {
 
         state_context.ecs.insert((
             Transform2D {
-                translation: (250.0, 350.0),
+                translation: (250.0, 350.0, 0),
                 ..Default::default()
             },
             Sprite {
@@ -90,7 +90,7 @@ impl State for MainState {
 
         state_context.ecs.insert((
             Transform2D {
-                translation: (375.0, 350.0),
+                translation: (375.0, 350.0, 0),
                 ..Default::default()
             },
             Sprite {
@@ -105,7 +105,7 @@ impl State for MainState {
 
         state_context.ecs.insert((
             Transform2D {
-                translation: (475.0, 400.0),
+                translation: (475.0, 400.0, 0),
                 ..Default::default()
             },
             Sprite {
@@ -120,7 +120,7 @@ impl State for MainState {
 
         state_context.ecs.insert((
             Transform2D {
-                translation: (0.0, 0.0),
+                translation: (0.0, 0.0, 0),
                 ..Default::default()
             },
             AnimatedSprite {

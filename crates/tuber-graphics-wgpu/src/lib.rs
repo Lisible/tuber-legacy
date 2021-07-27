@@ -1,9 +1,10 @@
-use crate::bounding_box_renderer::BoundingBoxRenderer;
 use crate::quad_renderer::QuadRenderer;
 use crate::texture::Texture;
 use crate::tilemap_renderer::TilemapRenderer;
 use futures;
+use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::ops::Range;
 use tuber_core::tilemap::Tilemap;
 use tuber_core::transform::Transform2D;
 use tuber_graphics::camera::OrthographicCamera;
@@ -14,7 +15,6 @@ use tuber_graphics::{
     Window, WindowSize,
 };
 
-mod bounding_box_renderer;
 mod quad_renderer;
 mod texture;
 mod tilemap_renderer;
@@ -24,6 +24,7 @@ pub enum TuberGraphicsWGPUError {}
 
 pub struct GraphicsWGPU {
     wgpu_state: Option<WGPUState>,
+    draw_commands: Vec<DrawCommand>,
     textures: HashMap<String, Texture>,
     camera_id: Option<usize>,
     clear_color: Color,
@@ -38,13 +39,13 @@ pub struct WGPUState {
     window_size: WindowSize,
     quad_renderer: QuadRenderer,
     tilemap_renderer: TilemapRenderer,
-    bounding_box_renderer: BoundingBoxRenderer,
 }
 
 impl GraphicsWGPU {
     pub fn new() -> Self {
         Self {
             wgpu_state: None,
+            draw_commands: vec![],
             textures: HashMap::new(),
             camera_id: None,
             clear_color: (0.0, 0.0, 0.0),
@@ -92,7 +93,6 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
         let quad_renderer = QuadRenderer::new(&device, &queue, &format);
         let tilemap_renderer = TilemapRenderer::new(&device, &format);
-        let bounding_box_renderer = BoundingBoxRenderer::new(&device, &format);
 
         self.wgpu_state = Some(WGPUState {
             surface,
@@ -103,7 +103,6 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
             window_size,
             quad_renderer,
             tilemap_renderer,
-            bounding_box_renderer,
         });
     }
 
@@ -115,6 +114,8 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
+
+        self.draw_commands.sort();
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -135,12 +136,40 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
                 depth_stencil_attachment: None,
             });
 
-            state.quad_renderer.render(&mut render_pass);
-            state.tilemap_renderer.render(&mut render_pass);
-            state.bounding_box_renderer.render(&mut render_pass);
+            for draw_command in &self.draw_commands {
+                {
+                    match draw_command {
+                        DrawCommand {
+                            draw_command_data, ..
+                        } if draw_command.draw_type() == DrawType::Quad => {
+                            if let DrawCommandData::QuadDrawCommand(draw_command_data) =
+                                draw_command_data
+                            {
+                                state
+                                    .quad_renderer
+                                    .render(&mut render_pass, draw_command_data);
+                            }
+                        }
+                        DrawCommand {
+                            draw_command_data, ..
+                        } if draw_command.draw_type() == DrawType::Tilemap => {
+                            if let DrawCommandData::TilemapDrawCommand(draw_command_data) =
+                                draw_command_data
+                            {
+                                state
+                                    .tilemap_renderer
+                                    .render(&mut render_pass, draw_command_data);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
         }
 
         state.queue.submit(std::iter::once(encoder.finish()));
+        state.quad_renderer.cleanup();
+        self.draw_commands.clear();
     }
 
     fn prepare_quad(
@@ -148,26 +177,16 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         quad_description: &QuadDescription,
         transform: &Transform2D,
         apply_view_transform: bool,
-        bounding_box_rendering: bool,
     ) {
         let state = self.wgpu_state.as_mut().expect("Graphics is uninitialized");
-        state.quad_renderer.prepare(
+        self.draw_commands.push(state.quad_renderer.prepare(
             &state.device,
             &state.queue,
             quad_description,
             transform,
             apply_view_transform,
             &self.textures,
-        );
-
-        if bounding_box_rendering {
-            state.bounding_box_renderer.prepare(
-                &state.queue,
-                quad_description.width,
-                quad_description.height,
-                transform,
-            );
-        }
+        ));
     }
 
     fn prepare_tilemap(
@@ -178,7 +197,7 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         transform: &Transform2D,
     ) {
         let state = self.wgpu_state.as_mut().expect("Graphics is uninitialized");
-        state.tilemap_renderer.prepare(
+        if let Some(draw_command) = state.tilemap_renderer.prepare(
             &state.device,
             &state.queue,
             tilemap,
@@ -186,7 +205,9 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
             texture_atlas,
             transform,
             &self.textures,
-        );
+        ) {
+            self.draw_commands.push(draw_command);
+        }
     }
 
     fn is_texture_in_memory(&self, texture_identifier: &str) -> bool {
@@ -215,9 +236,6 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         state
             .tilemap_renderer
             .set_camera(&state.queue, camera, transform);
-        state
-            .bounding_box_renderer
-            .set_camera(&state.queue, camera, transform);
     }
 
     fn set_clear_color(&mut self, color: (f32, f32, f32)) {
@@ -232,6 +250,102 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         state.swap_chain = state
             .device
             .create_swap_chain(&state.surface, &state.sc_desc);
+    }
+}
+
+#[derive(Eq, PartialEq)]
+pub struct DrawCommand {
+    pub draw_command_data: DrawCommandData,
+    pub z_order: i32,
+}
+
+#[derive(Eq, PartialEq, Ord, PartialOrd)]
+pub enum DrawCommandData {
+    QuadDrawCommand(QuadDrawCommand),
+    TilemapDrawCommand(TilemapDrawCommand),
+}
+
+impl DrawCommand {
+    pub fn draw_type(&self) -> DrawType {
+        match self.draw_command_data {
+            DrawCommandData::QuadDrawCommand(_) => DrawType::Quad,
+            DrawCommandData::TilemapDrawCommand(_) => DrawType::Tilemap,
+        }
+    }
+}
+
+#[derive(Eq, PartialEq)]
+pub struct QuadDrawCommand {
+    pub draw_range: DrawRange,
+    pub texture: Option<String>,
+}
+
+impl Ord for QuadDrawCommand {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.texture.cmp(&other.texture)
+    }
+}
+
+impl PartialOrd for QuadDrawCommand {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
+#[derive(Eq, PartialEq, PartialOrd)]
+pub struct TilemapDrawCommand {
+    pub tilemap_identifier: String,
+}
+
+impl Ord for TilemapDrawCommand {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.tilemap_identifier.cmp(&other.tilemap_identifier)
+    }
+}
+
+impl Ord for DrawCommand {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let mut sort = self.z_order.cmp(&other.z_order);
+
+        if sort == Ordering::Equal {
+            sort = self.draw_command_data.cmp(&other.draw_command_data);
+        }
+
+        sort
+    }
+}
+
+impl PartialOrd for DrawCommand {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
+pub enum DrawType {
+    Quad,
+    Tilemap,
+}
+
+#[derive(Eq, PartialEq)]
+pub enum DrawRange {
+    VertexIndexRange(Range<u32>),
+    InstanceIndexRange(Range<u32>),
+}
+
+impl DrawRange {
+    pub fn vertex_index_range(&self) -> Option<&Range<u32>> {
+        match self {
+            DrawRange::VertexIndexRange(range) => Some(range),
+            _ => None,
+        }
+    }
+
+    pub fn instance_index_range(&self) -> Option<&Range<u32>> {
+        match self {
+            DrawRange::InstanceIndexRange(range) => Some(range),
+            _ => None,
+        }
     }
 }
 
