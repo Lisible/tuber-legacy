@@ -73,7 +73,7 @@ impl StateStack {
         let state = self.states.last_mut().expect("Expected current state");
         state.update(state_context);
         for system_bundle in &mut state_context.system_bundles {
-            system_bundle.step(&mut state_context.ecs);
+            system_bundle.step(&mut state_context.ecs).unwrap();
         }
 
         let mut reqs = state.stack_requests();

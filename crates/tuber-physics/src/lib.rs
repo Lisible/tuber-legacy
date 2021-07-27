@@ -6,7 +6,7 @@ use tuber_core::transform::{IntoMatrix4, Transform2D};
 use tuber_core::DeltaTime;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::query::accessors::{R, W};
-use tuber_ecs::system::SystemBundle;
+use tuber_ecs::system::{SystemBundle, SystemResult};
 
 type Vector2 = nalgebra::Vector2<f32>;
 
@@ -42,7 +42,7 @@ impl Physics {
     }
 }
 
-pub fn physics_update_system(ecs: &mut Ecs) {
+pub fn physics_update_system(ecs: &mut Ecs) -> SystemResult {
     let DeltaTime(delta_time) = *ecs
         .shared_resource::<DeltaTime>()
         .expect("DeltaTime resource not found");
@@ -126,6 +126,8 @@ pub fn physics_update_system(ecs: &mut Ecs) {
             }
         }
     }
+
+    Ok(())
 }
 
 #[derive(Debug)]

@@ -6,7 +6,7 @@ use tuber::core::input::InputState;
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
-use tuber::ecs::system::SystemBundle;
+use tuber::ecs::system::{SystemBundle, SystemResult};
 use tuber::ecs::EntityIndex;
 use tuber::engine::state::{State, StateContext};
 use tuber::engine::{Engine, Result, TuberRunner};
@@ -94,7 +94,7 @@ impl State for MainState {
     }
 }
 
-fn check_collision_with_body_system(ecs: &mut Ecs) {
+fn check_collision_with_body_system(ecs: &mut Ecs) -> SystemResult {
     let mut is_game_over = false;
     {
         let (head_id, (_, head_body_part, head_transform)) = ecs
@@ -130,9 +130,11 @@ fn check_collision_with_body_system(ecs: &mut Ecs) {
     if is_game_over {
         game_over(ecs);
     }
+
+    Ok(())
 }
 
-fn move_head_system(ecs: &mut Ecs) {
+fn move_head_system(ecs: &mut Ecs) -> SystemResult {
     let is_game_over = {
         let input_state = ecs.shared_resource::<InputState>().unwrap();
         let (_, (_, mut velocity, mut transform)) = ecs
@@ -166,6 +168,8 @@ fn move_head_system(ecs: &mut Ecs) {
     if is_game_over {
         game_over(ecs);
     }
+
+    Ok(())
 }
 
 fn game_over(ecs: &mut Ecs) {
@@ -248,7 +252,7 @@ fn spawn_snake(ecs: &mut Ecs) {
     ));
 }
 
-fn move_body_parts_system(ecs: &mut Ecs) {
+fn move_body_parts_system(ecs: &mut Ecs) -> SystemResult {
     let (head_id, _) = ecs.query_one::<(R<SnakeHead>,)>().unwrap();
     let (tail_id, _) = ecs.query_one::<(R<SnakeTail>,)>().unwrap();
     let mut pivots = ecs.shared_resource_mut::<PivotList>().unwrap();
@@ -277,9 +281,11 @@ fn move_body_parts_system(ecs: &mut Ecs) {
     for id_pivot_to_delete in pivots_to_delete {
         pivots.0.remove(id_pivot_to_delete);
     }
+
+    Ok(())
 }
 
-fn eat_apple_system(ecs: &mut Ecs) {
+fn eat_apple_system(ecs: &mut Ecs) -> SystemResult {
     let mut grow_snake = false;
     {
         let (_, (_, head_transform, head_sprite)) = ecs
@@ -356,6 +362,8 @@ fn eat_apple_system(ecs: &mut Ecs) {
             ecs.remove_component::<SnakeTail>(old_tail_id);
         }
     }
+
+    Ok(())
 }
 
 fn compute_new_segment_velocity(angle_degrees: f32) -> Velocity {

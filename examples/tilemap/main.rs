@@ -6,7 +6,7 @@ use tuber::core::tilemap::{Tile, Tilemap};
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
-use tuber::ecs::system::SystemBundle;
+use tuber::ecs::system::{SystemBundle, SystemResult};
 use tuber::engine::state::{State, StateContext};
 use tuber::engine::{Engine, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
@@ -96,7 +96,7 @@ impl State for MainState {
     }
 }
 
-fn move_camera_system(ecs: &mut Ecs) {
+fn move_camera_system(ecs: &mut Ecs) -> SystemResult {
     let input_state = ecs.shared_resource::<InputState>().unwrap();
     let (_, (_, mut transform)) = ecs
         .query_one::<(R<OrthographicCamera>, W<Transform2D>)>()
@@ -121,4 +121,6 @@ fn move_camera_system(ecs: &mut Ecs) {
         transform.scale.0 -= 0.01;
         transform.scale.1 -= 0.01;
     }
+
+    Ok(())
 }

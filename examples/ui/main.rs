@@ -4,7 +4,7 @@ use tuber::core::input::InputState;
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
-use tuber::ecs::system::SystemBundle;
+use tuber::ecs::system::{SystemBundle, SystemResult};
 use tuber::engine::state::{State, StateContext};
 use tuber::engine::{Engine, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
@@ -99,16 +99,18 @@ impl State for MainState {
     }
 }
 
-fn lose_health_system(ecs: &mut Ecs) {
+fn lose_health_system(ecs: &mut Ecs) -> SystemResult {
     for (_, (mut frame,)) in ecs.query::<(W<Frame>,)>() {
         frame.width -= 1.0;
         if frame.width < 0.0 {
             frame.width = 200.0;
         }
     }
+
+    Ok(())
 }
 
-fn move_camera_right_system(ecs: &mut Ecs) {
+fn move_camera_right_system(ecs: &mut Ecs) -> SystemResult {
     let input_state = ecs.shared_resource::<InputState>().unwrap();
     let (_, (_, mut transform)) = ecs
         .query_one::<(R<OrthographicCamera>, W<Transform2D>)>()
@@ -124,4 +126,6 @@ fn move_camera_right_system(ecs: &mut Ecs) {
     } else if input_state.is(KeyDown(Key::D)) && input_state.is(KeyUp(Key::Q)) {
         transform.translation.0 += 10.0;
     }
+
+    Ok(())
 }

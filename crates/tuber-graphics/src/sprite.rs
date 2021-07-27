@@ -2,6 +2,7 @@ use crate::texture::{TextureRegion, TextureSource};
 use std::time::Instant;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::query::accessors::W;
+use tuber_ecs::system::SystemResult;
 
 pub struct Sprite {
     pub width: f32,
@@ -24,7 +25,7 @@ pub struct AnimationState {
     pub flip_x: bool,
 }
 
-pub fn sprite_animation_step_system(ecs: &mut Ecs) {
+pub fn sprite_animation_step_system(ecs: &mut Ecs) -> SystemResult {
     for (_, (mut animated_sprite,)) in ecs.query::<(W<AnimatedSprite>,)>() {
         let mut animation_state = &mut animated_sprite.animation_state;
         animation_state.current_keyframe = ((animation_state.start_instant.elapsed().as_millis()
@@ -32,4 +33,6 @@ pub fn sprite_animation_step_system(ecs: &mut Ecs) {
             % animation_state.keyframes.len() as u128)
             as usize
     }
+
+    Ok(())
 }

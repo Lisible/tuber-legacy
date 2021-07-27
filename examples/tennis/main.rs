@@ -3,7 +3,7 @@ use tuber::core::input::{Input, InputState};
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
-use tuber::ecs::system::SystemBundle;
+use tuber::ecs::system::{SystemBundle, SystemResult};
 use tuber::engine::state::{State, StateContext};
 use tuber::engine::{Engine, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
@@ -121,7 +121,7 @@ impl State for MainState {
     }
 }
 
-fn move_paddle_system(ecs: &mut Ecs) {
+fn move_paddle_system(ecs: &mut Ecs) -> SystemResult {
     let input_state = ecs.shared_resource::<InputState>().unwrap();
     for (_id, (mut transform, _)) in ecs.query::<(W<Transform2D>, R<Player>)>() {
         if input_state.is(Input::KeyDown(Key::Z)) {
@@ -130,9 +130,11 @@ fn move_paddle_system(ecs: &mut Ecs) {
             transform.translation.1 += 5.0;
         }
     }
+
+    Ok(())
 }
 
-fn move_ball_system(ecs: &mut Ecs) {
+fn move_ball_system(ecs: &mut Ecs) -> SystemResult {
     for (_id, (rectangle_shape, mut transform, mut velocity)) in
         ecs.query::<(R<RectangleShape>, W<Transform2D>, W<Velocity>)>()
     {
@@ -152,9 +154,11 @@ fn move_ball_system(ecs: &mut Ecs) {
         transform.translation.1 += velocity.y;
         transform.angle += 1.0;
     }
+
+    Ok(())
 }
 
-fn collision_system(ecs: &mut Ecs) {
+fn collision_system(ecs: &mut Ecs) -> SystemResult {
     {
         for (_paddle_id, (paddle_transform, paddle_shape, _)) in
             ecs.query::<(R<Transform2D>, R<RectangleShape>, R<Paddle>)>()
@@ -203,6 +207,8 @@ fn collision_system(ecs: &mut Ecs) {
             }
         }
     }
+
+    Ok(())
 }
 
 fn ball_is_close_to_paddle(

@@ -3,7 +3,7 @@ use tuber::core::input::{Input, InputState};
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
-use tuber::ecs::system::SystemBundle;
+use tuber::ecs::system::{SystemBundle, SystemResult};
 use tuber::engine::state::{State, StateContext};
 use tuber::engine::{Engine, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
@@ -126,7 +126,7 @@ impl State for MainState {
     }
 }
 
-fn move_system(ecs: &mut Ecs) {
+fn move_system(ecs: &mut Ecs) -> SystemResult {
     let input = ecs.shared_resource::<InputState>().unwrap();
     let (_, (mut rigid_body, transform)) =
         ecs.query_one::<(W<RigidBody2D>, R<Transform2D>)>().unwrap();
@@ -172,9 +172,11 @@ fn move_system(ecs: &mut Ecs) {
             }
         }
     }
+
+    Ok(())
 }
 
-fn jump_system(ecs: &mut Ecs) {
+fn jump_system(ecs: &mut Ecs) -> SystemResult {
     let input = ecs.shared_resource::<InputState>().unwrap();
     let (_, (mut rigid_body,)) = ecs.query_one::<(W<RigidBody2D>,)>().unwrap();
     if input.is(Input::KeyDown(Key::Z)) {
@@ -182,4 +184,6 @@ fn jump_system(ecs: &mut Ecs) {
             rigid_body.acceleration.y = -40.0;
         }
     }
+
+    Ok(())
 }
