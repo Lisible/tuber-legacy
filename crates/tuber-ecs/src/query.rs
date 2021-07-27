@@ -1,5 +1,6 @@
 use crate::bitset::BitSet;
 use crate::ecs::Components;
+use crate::query::ComponentTypeId::{OptionalComponentTypeId, RequiredComponentTypeId};
 use crate::EntityIndex;
 use accessors::Accessor;
 use std::any::TypeId;
@@ -11,7 +12,7 @@ pub trait Query<'a> {
 
     fn fetch(index: EntityIndex, components: &'a Components) -> Option<Self::ResultType>;
     fn matching_ids(entity_count: usize, components: &'a Components) -> HashSet<EntityIndex>;
-    fn type_ids() -> Vec<TypeId>;
+    fn type_ids() -> Vec<ComponentTypeId>;
 }
 
 macro_rules! impl_query_tuples {
@@ -34,7 +35,7 @@ macro_rules! impl_query_tuples {
                 result
             }
 
-            fn type_ids() -> Vec<TypeId> {
+            fn type_ids() -> Vec<ComponentTypeId> {
                 vec![$th::type_id(), $($t::type_id(),)*]
             }
         }
@@ -91,13 +92,18 @@ impl<'a, 'b, Q: Query<'b>> QueryIterator<'a, Q> {
     pub fn new(entity_count: usize, components: &'a Components) -> Self {
         let mut bitsets = vec![];
         for type_id in Q::type_ids() {
-            if let Some(component_store) = components.get(&type_id) {
-                bitsets.push(component_store.entities_bitset.clone());
+            match type_id {
+                RequiredComponentTypeId(type_id) => {
+                    if let Some(component_store) = components.get(&type_id) {
+                        bitsets.push(component_store.entities_bitset.clone());
+                    }
+                }
+                OptionalComponentTypeId(_) => continue,
             }
         }
 
         let mut matching_entities = vec![];
-        if bitsets.len() == Q::type_ids().len() {
+        if bitsets.len() == Q::type_ids().iter().filter(|t| t.is_required()).count() {
             'outer: for i in 0..entity_count {
                 for bitset in bitsets.iter() {
                     if !bitset.bit(i) {
@@ -137,6 +143,8 @@ where
 pub mod accessors {
     use crate::bitset::BitSet;
     use crate::ecs::Components;
+    use crate::query::ComponentTypeId;
+    use crate::query::ComponentTypeId::{OptionalComponentTypeId, RequiredComponentTypeId};
     use crate::EntityIndex;
     use std::any::TypeId;
     use std::cell::{Ref, RefMut};
@@ -145,6 +153,7 @@ pub mod accessors {
 
     pub struct R<T>(PhantomData<T>);
     pub struct W<T>(PhantomData<T>);
+    pub struct Opt<'a, T: Accessor<'a>>(PhantomData<&'a T>);
 
     pub trait Accessor<'a> {
         type RawType: 'a;
@@ -152,8 +161,9 @@ pub mod accessors {
 
         fn fetch(index: usize, components: &'a Components) -> Option<Self::RefType>;
         fn matching_ids(entity_count: usize, components: &'a Components) -> HashSet<EntityIndex>;
-        fn type_id() -> TypeId;
+        fn type_id() -> ComponentTypeId;
     }
+
     impl<'a, T: 'static> Accessor<'a> for R<T> {
         type RawType = T;
         type RefType = Ref<'a, T>;
@@ -180,10 +190,11 @@ pub mod accessors {
             result
         }
 
-        fn type_id() -> TypeId {
-            TypeId::of::<T>()
+        fn type_id() -> ComponentTypeId {
+            RequiredComponentTypeId(TypeId::of::<T>())
         }
     }
+
     impl<'a, T: 'static> Accessor<'a> for W<T> {
         type RawType = T;
         type RefType = RefMut<'a, T>;
@@ -210,8 +221,43 @@ pub mod accessors {
             result
         }
 
-        fn type_id() -> TypeId {
-            TypeId::of::<T>()
+        fn type_id() -> ComponentTypeId {
+            RequiredComponentTypeId(TypeId::of::<T>())
+        }
+    }
+
+    impl<'a, T: 'static + Accessor<'a>> Accessor<'a> for Opt<'a, T> {
+        type RawType = T::RawType;
+        type RefType = Option<T::RefType>;
+
+        fn fetch(index: usize, components: &'a Components) -> Option<Self::RefType> {
+            Some(T::fetch(index, components))
+        }
+
+        fn matching_ids(entity_count: usize, _components: &'a Components) -> HashSet<EntityIndex> {
+            (0..entity_count).collect()
+        }
+
+        fn type_id() -> ComponentTypeId {
+            if let RequiredComponentTypeId(type_id) = T::type_id() {
+                OptionalComponentTypeId(type_id)
+            } else {
+                panic!("Can't use nested OptionalComponentTypeId")
+            }
+        }
+    }
+}
+
+pub enum ComponentTypeId {
+    RequiredComponentTypeId(TypeId),
+    OptionalComponentTypeId(TypeId),
+}
+
+impl ComponentTypeId {
+    pub fn is_required(&self) -> bool {
+        match &self {
+            RequiredComponentTypeId(_) => true,
+            _ => false,
         }
     }
 }

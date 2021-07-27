@@ -1,7 +1,7 @@
 //! The ecs module defines the Ecs struct which is the main entry point of tuber-ecs
 
 use crate::bitset::BitSet;
-use crate::query::{Query, QueryIterator, QueryIteratorByIds};
+use crate::query::{ComponentTypeId, Query, QueryIterator, QueryIteratorByIds};
 use crate::EntityIndex;
 use std::any::{Any, TypeId};
 use std::cell::{Ref, RefCell, RefMut};
@@ -136,6 +136,16 @@ impl Ecs {
     pub fn query_one<'a, Q: Query<'a>>(&'a self) -> Option<Q::ResultType> {
         let index = {
             let type_ids = Q::type_ids();
+            let type_ids: Vec<_> = type_ids
+                .iter()
+                .filter_map(|type_id| {
+                    if let ComponentTypeId::RequiredComponentTypeId(type_id) = type_id {
+                        Some(type_id)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
             let bitsets: Vec<&EntitiesBitsetType> = type_ids
                 .iter()
                 .filter_map(|type_id| Some(&self.components.get(&type_id)?.entities_bitset))
@@ -265,5 +275,25 @@ mod tests {
             (*(ecs.query_one::<(R<Position>,)>().unwrap().1).0),
             Position { x: 12.0, y: 1.0 }
         );
+    }
+
+    #[test]
+    pub fn ecs_query_optional() {
+        let mut ecs = Ecs::new();
+        ecs.insert((Position { x: 12.0, y: 1.0 }, Velocity { x: 2.0, y: 3.0 }));
+        ecs.insert((Position { x: 15.0, y: 8.0 },));
+
+        assert_eq!(ecs.query::<(R<Position>, Opt<R<Velocity>>)>().count(), 2);
+    }
+
+    #[test]
+    pub fn ecs_query_one_optional() {
+        let mut ecs = Ecs::new();
+        ecs.insert((Position { x: 12.0, y: 1.0 },));
+
+        let (_, (position, velocity)) = ecs.query_one::<(R<Position>, Opt<R<Velocity>>)>().unwrap();
+
+        assert_eq!(*position, Position { x: 12.0, y: 1.0 });
+        assert!(velocity.is_none());
     }
 }
