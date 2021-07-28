@@ -18,7 +18,7 @@ pub struct BitmapFont {
     letter_spacing: u32,
     /// The flag specifying whether case must be taken in account when looking for a glyph
     ignore_case: bool,
-    /// The glyphs data
+    /// The glyphs assets
     glyphs: HashMap<char, BitmapGlyph>,
 }
 

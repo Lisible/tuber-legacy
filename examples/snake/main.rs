@@ -9,7 +9,7 @@ use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::{SystemBundle, SystemResult};
 use tuber::ecs::EntityIndex;
 use tuber::engine::state::{State, StateContext};
-use tuber::engine::{Engine, Result, TuberRunner};
+use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::sprite::Sprite;
 use tuber::graphics::Graphics;
@@ -47,12 +47,12 @@ struct Velocity {
 struct Score(u32);
 
 fn main() -> Result<()> {
-    let mut engine = Engine::new();
-    let graphics = Graphics::new(Box::new(GraphicsWGPU::new()));
+    let mut engine = Engine::new(EngineSettings {
+        graphics: Some(Graphics::new(Box::new(GraphicsWGPU::new()))),
+    });
 
-    engine.state_stack_mut().push_state(Box::new(MainState));
-
-    WinitTuberRunner.run(engine, graphics)
+    engine.push_initial_state(Box::new(MainState));
+    WinitTuberRunner.run(engine)
 }
 
 struct MainState;

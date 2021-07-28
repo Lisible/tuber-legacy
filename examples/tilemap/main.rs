@@ -8,7 +8,7 @@ use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::{SystemBundle, SystemResult};
 use tuber::engine::state::{State, StateContext};
-use tuber::engine::{Engine, Result, TuberRunner};
+use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::tilemap::TilemapRender;
 use tuber::graphics::Graphics;
@@ -18,12 +18,13 @@ use tuber::WinitTuberRunner;
 struct MapUpdateTimer(std::time::Instant);
 
 fn main() -> Result<()> {
-    let mut engine = Engine::new();
-    let graphics = Graphics::new(Box::new(GraphicsWGPU::new()));
+    let mut engine = Engine::new(EngineSettings {
+        graphics: Some(Graphics::new(Box::new(GraphicsWGPU::new()))),
+    });
 
-    engine.state_stack_mut().push_state(Box::new(MainState));
+    engine.push_initial_state(Box::new(MainState));
 
-    WinitTuberRunner.run(engine, graphics)
+    WinitTuberRunner.run(engine)
 }
 
 struct MainState;

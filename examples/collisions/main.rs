@@ -1,6 +1,6 @@
 use tuber::core::transform::Transform2D;
 use tuber::engine::state::{State, StateContext};
-use tuber::engine::{Engine, Result, TuberRunner};
+use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::shape::RectangleShape;
 use tuber::graphics::Graphics;
@@ -11,12 +11,13 @@ use tuber::WinitTuberRunner;
 struct MouseControlled;
 
 fn main() -> Result<()> {
-    let mut engine = Engine::new();
-    let graphics = Graphics::new(Box::new(GraphicsWGPU::new()));
+    let mut engine = Engine::new(EngineSettings {
+        graphics: Some(Graphics::new(Box::new(GraphicsWGPU::new()))),
+    });
 
-    engine.state_stack_mut().push_state(Box::new(MainState));
+    engine.push_initial_state(Box::new(MainState));
 
-    WinitTuberRunner.run(engine, graphics)
+    WinitTuberRunner.run(engine)
 }
 
 struct MainState;

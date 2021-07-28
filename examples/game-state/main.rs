@@ -1,9 +1,10 @@
 use tuber::core::input::keyboard::Key;
 use tuber::core::input::{Input, InputState};
 use tuber::core::transform::Transform2D;
+use tuber::ecs::EntityIndex;
 use tuber::engine::state::{State, StateContext, StateStackRequest};
-use tuber::engine::Result;
 use tuber::engine::{Engine, TuberRunner};
+use tuber::engine::{EngineSettings, Result};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::ui::Text;
 use tuber::graphics::Graphics;
@@ -11,14 +12,16 @@ use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::*;
 
 fn main() -> Result<()> {
-    let mut engine = Engine::new();
-    engine
-        .state_stack_mut()
-        .push_state(Box::new(GameState::new()));
-    let mut runner = WinitTuberRunner;
     let mut graphics = Graphics::new(Box::new(GraphicsWGPU::new()));
     graphics.set_clear_color((1.0, 1.0, 1.0));
-    runner.run(engine, graphics)
+
+    let mut engine = Engine::new(EngineSettings {
+        graphics: Some(graphics),
+    });
+
+    engine.push_initial_state(Box::new(GameState::new()));
+
+    WinitTuberRunner.run(engine)
 }
 
 struct GameState {
@@ -82,12 +85,14 @@ impl State for GameState {
 
 struct Pause {
     should_resume: bool,
+    pause_label: Option<EntityIndex>,
 }
 
 impl Pause {
     pub fn new() -> Self {
         Self {
             should_resume: false,
+            pause_label: None,
         }
     }
 }
@@ -107,7 +112,7 @@ impl State for Pause {
             Transform2D::default(),
         ));
 
-        state_context.ecs.insert((
+        self.pause_label = Some(state_context.ecs.insert((
             Text::new("Pause state", "examples/game-state/font.json"),
             Transform2D {
                 translation: (100.0, 100.0, 0),
@@ -115,17 +120,27 @@ impl State for Pause {
                 scale: (2.0, 2.0),
                 ..Default::default()
             },
-        ));
+        )));
     }
 
     fn update(&mut self, state_context: &mut StateContext) {
-        let input = state_context
-            .ecs
-            .shared_resource::<InputState>()
-            .expect("Input state");
+        {
+            let input = state_context
+                .ecs
+                .shared_resource::<InputState>()
+                .expect("Input state");
 
-        if input.was(Input::KeyUp(Key::S)) && input.is(Input::KeyDown(Key::S)) {
-            self.should_resume = true;
+            if input.was(Input::KeyUp(Key::S)) && input.is(Input::KeyDown(Key::S)) {
+                self.should_resume = true;
+            }
+        }
+
+        if self.should_resume {
+            if let Some(pause_label) = self.pause_label {
+                state_context.ecs.delete_by_ids(&[pause_label]);
+            }
+
+            self.pause_label = None;
         }
     }
 

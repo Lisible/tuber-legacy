@@ -4,7 +4,7 @@ use tuber_core::input::keyboard::Key;
 use tuber_core::input::mouse::Button;
 use tuber_core::input::Input;
 use tuber_engine::{Engine, Result as TuberResult, TuberRunner};
-use tuber_graphics::{Graphics, Window};
+use tuber_graphics::Window;
 use winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
 use winit::{
     event::{Event, WindowEvent},
@@ -20,7 +20,7 @@ enum TuberWinitError {
 
 pub struct WinitTuberRunner;
 impl TuberRunner for WinitTuberRunner {
-    fn run(&mut self, mut engine: Engine, mut graphics: Graphics) -> TuberResult<()> {
+    fn run(&mut self, mut engine: Engine) -> TuberResult<()> {
         const UPDATE_TARGET_FPS: u32 = 100;
         const RENDER_TARGET_FPS: u32 = 60;
         const DELTA_TIME: f64 = 1.0 / UPDATE_TARGET_FPS as f64;
@@ -34,14 +34,14 @@ impl TuberRunner for WinitTuberRunner {
             .with_title("tuber")
             .build(&event_loop)
             .unwrap();
-        graphics.initialize(
-            Window(Box::new(
-                &window as &dyn raw_window_handle::HasRawWindowHandle,
-            )),
-            (window.inner_size().width, window.inner_size().height),
-        );
-
-        engine.set_graphics(graphics);
+        if let Some(graphics) = engine.graphics_mut() {
+            graphics.initialize(
+                Window(Box::new(
+                    &window as &dyn raw_window_handle::HasRawWindowHandle,
+                )),
+                (window.inner_size().width, window.inner_size().height),
+            );
+        }
 
         event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Poll;

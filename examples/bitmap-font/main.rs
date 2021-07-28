@@ -6,7 +6,7 @@ use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::{SystemBundle, SystemResult};
 use tuber::engine::state::{State, StateContext};
-use tuber::engine::{Engine, TuberRunner};
+use tuber::engine::{Engine, EngineSettings, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::ui::Text;
 use tuber::graphics::Graphics;
@@ -14,12 +14,16 @@ use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::WinitTuberRunner;
 
 fn main() -> tuber::engine::Result<()> {
-    let mut engine = Engine::new();
-    let mut runner = WinitTuberRunner;
     let mut graphics = Graphics::new(Box::new(GraphicsWGPU::new()));
     graphics.set_clear_color((1.0, 1.0, 1.0));
-    engine.state_stack_mut().push_state(Box::new(MainState));
-    runner.run(engine, graphics)
+
+    let mut engine = Engine::new(EngineSettings {
+        graphics: Some(graphics),
+    });
+
+    engine.push_initial_state(Box::new(MainState));
+
+    WinitTuberRunner.run(engine)
 }
 
 struct MainState;
