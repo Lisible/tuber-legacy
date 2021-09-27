@@ -197,6 +197,10 @@ impl TryFrom<VirtualKeyCodeWrapper> for Key {
             VirtualKeyCode::LControl => Ok(Key::LControl),
             VirtualKeyCode::RControl => Ok(Key::RControl),
             VirtualKeyCode::Escape => Ok(Key::Escape),
+            VirtualKeyCode::Up => Ok(Key::UpArrow),
+            VirtualKeyCode::Down => Ok(Key::DownArrow),
+            VirtualKeyCode::Left => Ok(Key::LeftArrow),
+            VirtualKeyCode::Right => Ok(Key::RightArrow),
             virtual_keycode => Err(TuberWinitError::UnknownVirtualKeycode(virtual_keycode)),
         }
     }

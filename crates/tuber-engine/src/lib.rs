@@ -1,6 +1,6 @@
 use state::*;
 use tuber_core::input;
-use tuber_core::input::InputState;
+use tuber_core::input::{InputState, Keymap};
 use tuber_core::tilemap::Tilemap;
 use tuber_core::transform::Transform2D;
 use tuber_ecs::ecs::Ecs;
@@ -38,8 +38,11 @@ pub struct Engine {
 }
 
 fn create_ecs() -> Ecs {
+    const KEYMAP_FILE: &'static str = "keymap.json";
     let mut ecs = Ecs::new();
-    ecs.insert_shared_resource(InputState::new());
+    ecs.insert_shared_resource(InputState::new(
+        Keymap::from_file(KEYMAP_FILE).expect("Keymap loading failed"),
+    ));
     ecs
 }
 

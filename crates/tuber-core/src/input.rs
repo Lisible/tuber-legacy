@@ -1,5 +1,13 @@
+use crate::input::keyboard::Key;
+use serde_derive::Deserialize;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufReader;
+
 pub mod keyboard {
-    #[derive(Debug, Copy, Clone)]
+    use serde_derive::Deserialize;
+
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize)]
     pub enum Key {
         A = 0,
         B,
@@ -44,8 +52,14 @@ pub mod keyboard {
         LControl,
         RControl,
         Escape,
+        UpArrow,
+        DownArrow,
+        LeftArrow,
+        RightArrow,
     }
 }
+
+const KEY_COUNT: usize = 47;
 
 pub mod mouse {
     #[derive(Debug, Copy, Clone)]
@@ -57,6 +71,8 @@ pub mod mouse {
 }
 
 pub enum Input {
+    ActionDown(String),
+    ActionUp(String),
     KeyDown(keyboard::Key),
     KeyUp(keyboard::Key),
     MouseMotion((f32, f32)),
@@ -65,28 +81,30 @@ pub enum Input {
 }
 
 pub struct InputState {
-    key_state: [bool; 43],
-    previous_key_state: [bool; 43],
+    key_state: [bool; KEY_COUNT],
+    previous_key_state: [bool; KEY_COUNT],
     mouse_button_state: [bool; 3],
     previous_mouse_button_state: [bool; 3],
     last_mouse_position: (f32, f32),
     mouse_moved: bool,
+    keymap: Keymap,
 }
 impl InputState {
-    pub fn new() -> Self {
+    pub fn new(keymap: Keymap) -> Self {
         Self {
-            key_state: [false; 43],
-            previous_key_state: [false; 43],
+            key_state: [false; KEY_COUNT],
+            previous_key_state: [false; KEY_COUNT],
             mouse_button_state: [false; 3],
             previous_mouse_button_state: [false; 3],
             last_mouse_position: (0.0, 0.0),
             mouse_moved: false,
+            keymap,
         }
     }
 
     pub fn clear(&mut self) {
-        self.key_state = [false; 43];
-        self.previous_key_state = [false; 43];
+        self.key_state = [false; KEY_COUNT];
+        self.previous_key_state = [false; KEY_COUNT];
         self.mouse_button_state = [false; 3];
         self.previous_mouse_button_state = [false; 3];
         self.last_mouse_position = (0.0, 0.0);
@@ -100,6 +118,12 @@ impl InputState {
             Input::MouseButtonDown(button) => self.mouse_button_state[button as usize],
             Input::MouseButtonUp(button) => !self.mouse_button_state[button as usize],
             Input::MouseMotion(..) => self.mouse_moved,
+            Input::ActionDown(action) => {
+                self.key_state[self.keymap.reversed_keymap[&Action(action)] as usize]
+            }
+            Input::ActionUp(action) => {
+                !self.key_state[self.keymap.reversed_keymap[&Action(action)] as usize]
+            }
         }
     }
 
@@ -110,6 +134,12 @@ impl InputState {
             Input::MouseButtonDown(button) => self.previous_mouse_button_state[button as usize],
             Input::MouseButtonUp(button) => !self.previous_mouse_button_state[button as usize],
             Input::MouseMotion(..) => unimplemented!(),
+            Input::ActionDown(action) => {
+                self.previous_key_state[self.keymap.reversed_keymap[&Action(action)] as usize]
+            }
+            Input::ActionUp(action) => {
+                !self.previous_key_state[self.keymap.reversed_keymap[&Action(action)] as usize]
+            }
         }
     }
 
@@ -130,10 +160,58 @@ impl InputState {
                 self.last_mouse_position = new_position;
                 self.mouse_moved = true;
             }
+            _ => {}
         }
     }
 
     pub fn mouse_position(&self) -> (f32, f32) {
         self.last_mouse_position
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, Eq, PartialEq, Hash)]
+pub struct Action(String);
+
+#[derive(Debug, Deserialize)]
+pub struct Keymap {
+    keymap: HashMap<Key, Action>,
+    reversed_keymap: HashMap<Action, Key>,
+}
+
+impl Keymap {
+    pub fn from_file(file_path: &str) -> Result<Self, String> {
+        let file = File::open(file_path).expect("Couldn't open keymap file");
+        let reader = BufReader::new(file);
+        let keymap: HashMap<Key, Action> =
+            serde_json::from_reader(reader).expect("Couldn't parse keymap file");
+        let reversed_keymap: HashMap<Action, Key> = keymap
+            .iter()
+            .map(|(key, value)| (value.clone(), key.clone()))
+            .collect();
+
+        Ok(Keymap {
+            keymap,
+            reversed_keymap,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn deserialize() {
+        let json =
+            "{\"A\": \"do_something\", \"B\": \"do_something_else\", \"C\": \"do_something\"}";
+
+        let keymap = serde_json::from_str::<HashMap<Key, Action>>(json).unwrap();
+        assert!(keymap.contains_key(&Key::A));
+        assert!(keymap.contains_key(&Key::B));
+        assert!(keymap.contains_key(&Key::C));
+        assert_eq!(keymap[&Key::A], Action("do_something".into()));
+        assert_eq!(keymap[&Key::B], Action("do_something_else".into()));
+        assert_eq!(keymap[&Key::C], Action("do_something".into()));
     }
 }

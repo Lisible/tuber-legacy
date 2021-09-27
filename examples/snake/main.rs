@@ -1,7 +1,6 @@
 use rand::{thread_rng, Rng};
 use std::collections::VecDeque;
-use tuber::core::input::keyboard::Key;
-use tuber::core::input::Input::KeyDown;
+use tuber::core::input::Input::ActionDown;
 use tuber::core::input::InputState;
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::Ecs;
@@ -143,13 +142,13 @@ fn move_head_system(ecs: &mut Ecs) -> SystemResult {
             .unwrap();
 
         let mut pivot_list = ecs.shared_resource_mut::<PivotList>().unwrap();
-        if input_state.is(KeyDown(Key::Q)) {
+        if input_state.is(ActionDown("rotate_head_left".into())) {
             transform.angle -= 2.0;
             pivot_list.0.push_back(Pivot {
                 position: transform.translation,
                 angle: transform.angle,
             });
-        } else if input_state.is(KeyDown(Key::D)) {
+        } else if input_state.is(ActionDown("rotate_head_right".into())) {
             transform.angle += 2.0;
             pivot_list.0.push_back(Pivot {
                 position: transform.translation,
