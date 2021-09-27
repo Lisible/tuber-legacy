@@ -31,7 +31,7 @@ impl TuberRunner for WinitTuberRunner {
 
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
-            .with_title("tuber")
+            .with_title(engine.application_title())
             .build(&event_loop)
             .unwrap();
         if let Some(graphics) = engine.graphics_mut() {

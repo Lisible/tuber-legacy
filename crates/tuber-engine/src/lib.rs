@@ -17,6 +17,16 @@ pub mod state;
 
 pub struct EngineSettings {
     pub graphics: Option<Graphics>,
+    pub application_title: Option<String>,
+}
+
+impl Default for EngineSettings {
+    fn default() -> Self {
+        Self {
+            graphics: None,
+            application_title: None,
+        }
+    }
 }
 
 pub struct Engine {
@@ -24,6 +34,7 @@ pub struct Engine {
     ecs: Ecs,
     system_bundles: Vec<SystemBundle>,
     graphics: Option<Graphics>,
+    application_title: String,
 }
 
 fn create_ecs() -> Ecs {
@@ -39,7 +50,14 @@ impl Engine {
             ecs: create_ecs(),
             system_bundles: vec![],
             graphics: settings.graphics,
+            application_title: settings
+                .application_title
+                .unwrap_or("tuber Application".into()),
         }
+    }
+
+    pub fn application_title(&self) -> &str {
+        &self.application_title
     }
 
     pub fn push_initial_state(&mut self, state: Box<dyn State>) {

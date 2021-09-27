@@ -19,6 +19,7 @@ fn main() -> tuber::engine::Result<()> {
 
     let mut engine = Engine::new(EngineSettings {
         graphics: Some(graphics),
+        ..Default::default()
     });
 
     engine.push_initial_state(Box::new(MainState));

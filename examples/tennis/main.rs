@@ -32,6 +32,7 @@ struct Velocity {
 fn main() -> Result<()> {
     let mut engine = Engine::new(EngineSettings {
         graphics: Some(Graphics::new(Box::new(GraphicsWGPU::new()))),
+        ..Default::default()
     });
 
     engine.push_initial_state(Box::new(MainState));
