@@ -41,7 +41,7 @@ fn create_ecs() -> Ecs {
     const KEYMAP_FILE: &'static str = "keymap.json";
     let mut ecs = Ecs::new();
     ecs.insert_shared_resource(InputState::new(
-        Keymap::from_file(KEYMAP_FILE).expect("Keymap loading failed"),
+        Keymap::from_file(KEYMAP_FILE).unwrap_or(Keymap::default()),
     ));
     ecs
 }
