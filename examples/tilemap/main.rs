@@ -68,7 +68,8 @@ impl State for MainState {
             tilemap,
             TilemapRender {
                 identifier: "tilemap".into(),
-                texture_atlas_identifier: "examples/tilemap/tiles.json".to_string(),
+                texture_atlas_identifier: "tiles".to_string(),
+                texture_identifier: "tileset".to_string(),
                 tile_texture_function: Box::new(|tile: &Tile| {
                     if tile.tags.contains(&String::from("water")) {
                         return Some("water");

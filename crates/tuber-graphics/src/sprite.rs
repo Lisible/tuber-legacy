@@ -1,4 +1,4 @@
-use crate::texture::{TextureRegion, TextureSource};
+use crate::texture::TextureRegion;
 use std::time::Instant;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::query::accessors::W;
@@ -7,13 +7,14 @@ use tuber_ecs::system::SystemResult;
 pub struct Sprite {
     pub width: f32,
     pub height: f32,
-    pub texture: TextureSource,
+    pub texture_identifier: String,
+    pub texture_region: TextureRegion,
 }
 
 pub struct AnimatedSprite {
     pub width: f32,
     pub height: f32,
-    pub texture: TextureSource,
+    pub texture_identifier: String,
     pub animation_state: AnimationState,
 }
 

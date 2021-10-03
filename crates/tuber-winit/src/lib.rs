@@ -25,6 +25,9 @@ impl TuberRunner for WinitTuberRunner {
         const RENDER_TARGET_FPS: u32 = 60;
         const DELTA_TIME: f64 = 1.0 / UPDATE_TARGET_FPS as f64;
         const TIME_BETWEEN_FRAME: f64 = 1.0 / RENDER_TARGET_FPS as f64;
+
+        engine.ignite();
+
         let mut current_time = Instant::now();
         let mut accumulator = 0f64;
         let mut last_render_time = Instant::now();
@@ -34,14 +37,10 @@ impl TuberRunner for WinitTuberRunner {
             .with_title(engine.application_title())
             .build(&event_loop)
             .unwrap();
-        if let Some(graphics) = engine.graphics_mut() {
-            graphics.initialize(
-                Window(Box::new(
-                    &window as &dyn raw_window_handle::HasRawWindowHandle,
-                )),
-                (window.inner_size().width, window.inner_size().height),
-            );
-        }
+        engine.initialize_graphics(
+            Window(Box::new(&window)),
+            (window.inner_size().width, window.inner_size().height),
+        );
 
         event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Poll;

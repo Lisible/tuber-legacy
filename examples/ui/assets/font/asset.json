@@ -1,0 +1,7 @@
+{
+  "identifier": "font",
+  "kind": "bitmap_font",
+  "metadata": {
+    "font_data": "font.json"
+  }
+}

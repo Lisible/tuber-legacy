@@ -72,7 +72,7 @@ impl State for MainState {
         ));
 
         state_context.ecs.insert((
-            Text::new("Health".into(), "examples/ui/font.json".into()),
+            Text::new("Health".into(), "font".into()),
             Transform2D {
                 translation: (0.0, 35.0, 0),
                 ..Default::default()

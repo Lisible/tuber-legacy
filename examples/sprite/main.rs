@@ -4,12 +4,14 @@ use tuber::engine::state::{State, StateContext};
 use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::sprite::{AnimatedSprite, AnimationState, Sprite};
-use tuber::graphics::texture::{TextureRegion, TextureSource};
+use tuber::graphics::texture::TextureRegion;
 use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::WinitTuberRunner;
+use tuber_graphics::texture::TextureAtlas;
 
 fn main() -> Result<()> {
+    env_logger::init();
     let mut engine = Engine::new(EngineSettings {
         graphics: Some(Graphics::new(Box::new(GraphicsWGPU::new()))),
         ..Default::default()
@@ -47,7 +49,8 @@ impl State for MainState {
             Sprite {
                 width: 50.0,
                 height: 50.0,
-                texture: "examples/sprite/sprite.png".into(),
+                texture_identifier: "sprite".into(),
+                texture_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
             },
         ));
 
@@ -59,7 +62,8 @@ impl State for MainState {
             Sprite {
                 width: 50.0,
                 height: 50.0,
-                texture: "examples/sprite/sprite2.png".into(),
+                texture_identifier: "sprite".into(),
+                texture_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
             },
         ));
 
@@ -71,7 +75,8 @@ impl State for MainState {
             Sprite {
                 width: 50.0,
                 height: 50.0,
-                texture: "fqgqgqgpng".into(),
+                texture_identifier: "mkgskgsmlgk".into(),
+                texture_region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
             },
         ));
 
@@ -83,13 +88,15 @@ impl State for MainState {
             Sprite {
                 width: 100.0,
                 height: 100.0,
-                texture: TextureSource::TextureRegion(
-                    "mkgskgsmlgk".into(),
-                    TextureRegion::new(0.0, 0.0, 16.0, 16.0),
-                ),
+                texture_identifier: "mkgskgsmlgk".into(),
+                texture_region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
             },
         ));
 
+        let texture_atlas = state_context
+            .asset_store
+            .asset::<TextureAtlas>("tiles")
+            .unwrap();
         state_context.ecs.insert((
             Transform2D {
                 translation: (375.0, 350.0, 0),
@@ -98,10 +105,8 @@ impl State for MainState {
             Sprite {
                 width: 100.0,
                 height: 100.0,
-                texture: TextureSource::TextureAtlas(
-                    "examples/sprite/texture-atlas.json".into(),
-                    "tree".into(),
-                ),
+                texture_identifier: "tileset".into(),
+                texture_region: texture_atlas.texture_region("tree").unwrap(),
             },
         ));
 
@@ -113,10 +118,8 @@ impl State for MainState {
             Sprite {
                 width: 50.0,
                 height: 50.0,
-                texture: TextureSource::TextureAtlas(
-                    "examples/sprite/texture-atlas.json".into(),
-                    "house".into(),
-                ),
+                texture_identifier: "tileset".into(),
+                texture_region: texture_atlas.texture_region("house").unwrap(),
             },
         ));
 
@@ -128,7 +131,7 @@ impl State for MainState {
             AnimatedSprite {
                 width: 100.0,
                 height: 100.0,
-                texture: TextureSource::WholeTexture("examples/sprite/animated_sprite.png".into()),
+                texture_identifier: "animated_sprite".into(),
 
                 animation_state: AnimationState {
                     keyframes: vec![

@@ -1,5 +1,5 @@
 use crate::input::keyboard::Key;
-use crate::CoreError;
+use crate::{CoreError, CoreResult};
 use serde_derive::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
@@ -180,7 +180,7 @@ pub struct Keymap {
 }
 
 impl Keymap {
-    pub fn from_file(file_path: &str) -> Result<Self, CoreError> {
+    pub fn from_file(file_path: &str) -> CoreResult<Self> {
         let file = File::open(file_path).map_err(|e| CoreError::KeymapFileOpenError(e))?;
         let reader = BufReader::new(file);
         let keymap: HashMap<Key, Action> =

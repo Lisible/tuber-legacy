@@ -1,5 +1,6 @@
 {
-  "font_atlas_path": "examples/game-state/font_atlas.json",
+  "font_atlas_texture": "font_atlas_texture",
+  "font_atlas": "font_atlas",
   "font_atlas_region": {
     "x": 0.0,
     "y": 0.0,

@@ -2,13 +2,16 @@ use crate::texture::TextureRegion;
 use crate::GraphicsError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BitmapFont {
-    /// Path of the font atlas
-    font_atlas_path: String,
-    /// The region of the bitmap font on the texture atlas
+    /// Identifier of the font tiles
+    font_atlas: String,
+    /// Identifier of the font tiles texture
+    font_atlas_texture: String,
+    /// The region of the bitmap font on the texture tiles
     font_atlas_region: TextureRegion,
     /// The height of a line in pixels
     line_height: u32,
@@ -23,8 +26,12 @@ pub struct BitmapFont {
 }
 
 impl BitmapFont {
-    pub fn font_atlas_path(&self) -> &str {
-        &self.font_atlas_path
+    pub fn font_atlas(&self) -> &str {
+        &self.font_atlas
+    }
+
+    pub fn font_atlas_texture(&self) -> &str {
+        &self.font_atlas_texture
     }
 
     pub fn font_atlas_region(&self) -> TextureRegion {
@@ -51,7 +58,7 @@ impl BitmapFont {
         self.ignore_case
     }
 
-    pub fn from_file(path: &str) -> Result<Self, GraphicsError> {
+    pub fn from_file(path: &PathBuf) -> Result<Self, GraphicsError> {
         Self::from_str(
             &std::fs::read_to_string(path)
                 .map_err(|error| GraphicsError::BitmapFontFileReadError(error))?,
@@ -86,7 +93,8 @@ mod tests {
     fn parse_from_json() -> Result<(), GraphicsError> {
         let json = r#"
         {
-            "font_atlas_path": "font_atlas",
+            "font_atlas": "font_atlas",
+            "font_atlas_texture": "font_atlas_texture",
             "font_atlas_region": {
                 "x": 0,
                 "y": 0,
@@ -119,7 +127,8 @@ mod tests {
         "#;
 
         let bitmap_font = BitmapFont::from_str(json)?;
-        assert_eq!(bitmap_font.font_atlas_path, "font_atlas");
+        assert_eq!(bitmap_font.font_atlas, "font_atlas");
+        assert_eq!(bitmap_font.font_atlas_texture, "font_atlas_texture");
         assert_eq!(bitmap_font.line_height, 32);
         assert_eq!(bitmap_font.line_spacing, 4);
         assert_eq!(bitmap_font.letter_spacing, 2);

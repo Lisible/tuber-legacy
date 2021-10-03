@@ -149,7 +149,7 @@ impl TilemapRenderer {
             mapped_at_creation: false,
         });
 
-        let texture_identifier = texture_atlas.texture_identifier();
+        let texture_identifier = &tilemap_render.texture_identifier;
         let texture = textures.get(texture_identifier).unwrap();
         let texture_width = texture.size.0 as f32;
         let texture_height = texture.size.1 as f32;

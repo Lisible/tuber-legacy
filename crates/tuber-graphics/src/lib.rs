@@ -1,28 +1,24 @@
-use crate::bitmap_font::BitmapFont;
-use crate::camera::OrthographicCamera;
-use crate::low_level::*;
-use crate::shape::RectangleShape;
-use crate::sprite::{sprite_animation_step_system, AnimatedSprite, Sprite};
-use crate::texture::{TextureAtlas, TextureData, TextureMetadata, TextureRegion, TextureSource};
-use crate::tilemap::TilemapRender;
 use image::ImageError;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use std::any::{Any, TypeId};
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::BufReader;
+
+use tuber_core::asset::{AssetMetadata, AssetStore, GenericLoader};
 use tuber_core::tilemap::Tilemap;
 use tuber_core::transform::Transform2D;
 use tuber_ecs::system::SystemBundle;
 use tuber_ecs::EntityIndex;
 
-#[derive(Debug)]
-pub enum GraphicsError {
-    TextureFileOpenError(std::io::Error),
-    AtlasDescriptionFileOpenError(std::io::Error),
-    ImageDecodeError(ImageError),
-    SerdeError(serde_json::error::Error),
-    BitmapFontFileReadError(std::io::Error),
-}
+use crate::bitmap_font::BitmapFont;
+use crate::camera::OrthographicCamera;
+use crate::low_level::*;
+use crate::shape::RectangleShape;
+use crate::sprite::{sprite_animation_step_system, AnimatedSprite, Sprite};
+use crate::texture::{
+    default_texture_loader, texture_atlas_loader, texture_loader, Texture, TextureAtlas,
+    TextureMetadata, TextureRegion,
+};
+use crate::tilemap::TilemapRender;
 
 pub mod bitmap_font;
 pub mod camera;
@@ -32,6 +28,18 @@ pub mod sprite;
 pub mod texture;
 pub mod tilemap;
 pub mod ui;
+
+#[derive(Debug)]
+pub enum GraphicsError {
+    TextureFileOpenError(std::io::Error),
+    TextureMetadataNotFound,
+    AtlasDescriptionFileOpenError(std::io::Error),
+    ImageDecodeError(ImageError),
+    SerdeError(serde_json::error::Error),
+    BitmapFontFileReadError(std::io::Error),
+}
+
+const DEFAULT_TEXTURE_IDENTIFIER: &'static str = "default_texture";
 
 pub type Color = (f32, f32, f32);
 
@@ -46,8 +54,6 @@ unsafe impl HasRawWindowHandle for Window<'_> {
 pub struct Graphics {
     graphics_impl: Box<dyn LowLevelGraphicsAPI>,
     texture_metadata: HashMap<String, TextureMetadata>,
-    texture_atlases: HashMap<String, TextureAtlas>,
-    fonts: HashMap<String, BitmapFont>,
 }
 
 impl Graphics {
@@ -55,12 +61,27 @@ impl Graphics {
         Self {
             graphics_impl,
             texture_metadata: HashMap::new(),
-            texture_atlases: HashMap::new(),
-            fonts: Default::default(),
         }
     }
-    pub fn initialize(&mut self, window: Window, window_size: (u32, u32)) {
-        self.graphics_impl.initialize(window, window_size);
+    pub fn initialize(
+        &mut self,
+        window: Window,
+        window_size: (u32, u32),
+        asset_store: &mut AssetStore,
+    ) {
+        let default_texture_metadata = AssetMetadata {
+            identifier: DEFAULT_TEXTURE_IDENTIFIER.into(),
+            kind: "texture".into(),
+            asset_path: "".into(),
+            metadata: HashMap::new(),
+        };
+        let default_texture = default_texture_loader(&default_texture_metadata);
+        asset_store
+            .insert_asset::<Texture>(default_texture_metadata, default_texture)
+            .unwrap();
+
+        self.graphics_impl
+            .initialize(window, window_size, asset_store);
     }
 
     pub fn render(&mut self) {
@@ -85,36 +106,8 @@ impl Graphics {
         );
     }
 
-    fn load_texture_atlas(&mut self, texture_atlas_path: &str) -> Result<(), GraphicsError> {
-        let atlas_description_file = File::open(texture_atlas_path)
-            .map_err(|e| GraphicsError::AtlasDescriptionFileOpenError(e))?;
-        let reader = BufReader::new(atlas_description_file);
-        let texture_atlas: TextureAtlas =
-            serde_json::from_reader(reader).map_err(|e| GraphicsError::SerdeError(e))?;
-
-        if !self
-            .graphics_impl
-            .is_texture_in_memory(&texture_atlas.texture_identifier)
-        {
-            self.load_texture(&texture_atlas.texture_identifier);
-        }
-
-        self.texture_atlases
-            .insert(texture_atlas_path.to_owned(), texture_atlas);
-        Ok(())
-    }
-
-    fn load_texture(&mut self, texture: &str) {
-        if let Ok(texture_data) = TextureData::from_file(&texture) {
-            self.texture_metadata.insert(
-                texture.to_owned(),
-                TextureMetadata {
-                    width: texture_data.size.0,
-                    height: texture_data.size.1,
-                },
-            );
-            self.graphics_impl.load_texture(texture_data);
-        }
+    fn load_texture_to_vram(&mut self, texture: &Texture) {
+        self.graphics_impl.load_texture(texture);
     }
 
     pub fn prepare_animated_sprite(
@@ -122,35 +115,26 @@ impl Graphics {
         animated_sprite: &AnimatedSprite,
         transform: &Transform2D,
         apply_view_transform: bool,
+        asset_store: &mut AssetStore,
     ) -> Result<(), GraphicsError> {
-        if let TextureSource::TextureAtlas(texture_atlas_identifier, _) = &animated_sprite.texture {
-            if !self.texture_atlases.contains_key(texture_atlas_identifier) {
-                self.load_texture_atlas(texture_atlas_identifier)?;
-            }
-        }
+        self.load_texture_in_vram_if_required(asset_store, &animated_sprite.texture_identifier);
 
-        let texture = animated_sprite
-            .texture
-            .texture_identifier(&self.texture_atlases);
-        if !self.graphics_impl.is_texture_in_memory(&texture) {
-            self.load_texture(&texture);
-        }
+        let TextureMetadata { width, height } = self
+            .texture_metadata
+            .get(&animated_sprite.texture_identifier)
+            .ok_or(GraphicsError::TextureMetadataNotFound)?;
 
-        let (texture_width, texture_height) = match self.texture_metadata.get(&texture) {
-            Some(metadata) => (metadata.width, metadata.height),
-            None => (32, 32),
-        };
+        let (texture_width, texture_height) = (*width as f32, *height as f32);
 
         let current_keyframe = animated_sprite.animation_state.keyframes
             [animated_sprite.animation_state.current_keyframe];
 
         let mut normalized_texture_region = TextureRegion::new(
-            current_keyframe.x,
-            current_keyframe.y,
-            current_keyframe.width,
-            current_keyframe.height,
-        )
-        .normalize(texture_width, texture_height);
+            current_keyframe.x / texture_width,
+            current_keyframe.y / texture_height,
+            current_keyframe.width / texture_width,
+            current_keyframe.height / texture_height,
+        );
 
         if animated_sprite.animation_state.flip_x {
             normalized_texture_region = normalized_texture_region.flip_x();
@@ -162,7 +146,7 @@ impl Graphics {
                 height: animated_sprite.height,
                 color: (1.0, 1.0, 1.0),
                 texture: Some(TextureDescription {
-                    identifier: texture,
+                    identifier: animated_sprite.texture_identifier.clone(),
                     texture_region: normalized_texture_region,
                 }),
             },
@@ -173,39 +157,62 @@ impl Graphics {
         Ok(())
     }
 
+    fn load_texture_in_vram_if_required(
+        &mut self,
+        asset_manager: &mut AssetStore,
+        texture_identifier: &str,
+    ) {
+        if !self.graphics_impl.is_texture_in_vram(texture_identifier) {
+            let texture = asset_manager.asset::<Texture>(texture_identifier);
+            if let Ok(texture) = texture {
+                self.texture_metadata.insert(
+                    texture_identifier.into(),
+                    TextureMetadata {
+                        width: texture.size.0,
+                        height: texture.size.1,
+                    },
+                );
+                self.load_texture_to_vram(&texture);
+            }
+        }
+    }
+
     pub fn prepare_sprite(
         &mut self,
         sprite: &Sprite,
         transform: &Transform2D,
         apply_view_transform: bool,
+        asset_manager: &mut AssetStore,
     ) -> Result<(), GraphicsError> {
-        if let TextureSource::TextureAtlas(texture_atlas_identifier, _) = &sprite.texture {
-            if !self.texture_atlases.contains_key(texture_atlas_identifier) {
-                self.load_texture_atlas(texture_atlas_identifier)?;
-            }
-        }
+        self.load_texture_in_vram_if_required(asset_manager, &sprite.texture_identifier);
 
-        let texture = sprite.texture.texture_identifier(&self.texture_atlases);
-        if !self.graphics_impl.is_texture_in_memory(&texture) {
-            self.load_texture(&texture);
-        }
-
-        let (texture_width, texture_height) = match self.texture_metadata.get(&texture) {
-            Some(metadata) => (metadata.width, metadata.height),
-            None => (32, 32),
+        let texture_metadata = self.texture_metadata.get(&sprite.texture_identifier);
+        let texture_metadata = match texture_metadata {
+            Some(metadata) => metadata,
+            None => &TextureMetadata {
+                width: 32,
+                height: 32,
+            },
         };
+
+        let (texture_width, texture_height) = (
+            texture_metadata.width as f32,
+            texture_metadata.height as f32,
+        );
+
         self.graphics_impl.prepare_quad(
             &QuadDescription {
                 width: sprite.width,
                 height: sprite.height,
                 color: (1.0, 1.0, 1.0),
                 texture: Some(TextureDescription {
-                    identifier: texture,
-                    texture_region: sprite.texture.normalized_texture_region(
-                        texture_width,
-                        texture_height,
-                        &self.texture_atlases,
-                    ),
+                    identifier: sprite.texture_identifier.clone(),
+                    texture_region: TextureRegion {
+                        x: sprite.texture_region.x / texture_width,
+                        y: sprite.texture_region.y / texture_height,
+                        width: sprite.texture_region.width / texture_width,
+                        height: sprite.texture_region.height / texture_height,
+                    },
                 }),
             },
             transform,
@@ -219,47 +226,54 @@ impl Graphics {
         tilemap: &Tilemap,
         tilemap_render: &TilemapRender,
         transform: &Transform2D,
+        asset_store: &mut AssetStore,
     ) {
-        if !self
-            .texture_atlases
-            .contains_key(&tilemap_render.texture_atlas_identifier)
         {
-            self.load_texture_atlas(&tilemap_render.texture_atlas_identifier)
+            asset_store
+                .load::<TextureAtlas>(&tilemap_render.texture_atlas_identifier)
                 .unwrap();
+            asset_store
+                .load::<Texture>(&tilemap_render.texture_identifier)
+                .unwrap();
+            self.load_texture_in_vram_if_required(asset_store, &tilemap_render.texture_identifier);
         }
 
-        self.graphics_impl.prepare_tilemap(
-            tilemap,
-            tilemap_render,
-            self.texture_atlases
-                .get(&tilemap_render.texture_atlas_identifier)
-                .unwrap(),
-            transform,
-        );
+        self.graphics_impl
+            .prepare_tilemap(tilemap, tilemap_render, transform, asset_store);
     }
 
     pub fn prepare_text(
         &mut self,
         text: &str,
-        font_path: &str,
+        font_identifier: &str,
         transform: &Transform2D,
         apply_view_transform: bool,
+        asset_store: &mut AssetStore,
     ) {
-        if !self.fonts.contains_key(font_path) {
-            self.load_font(font_path).expect("Font not found");
-        }
-        let font_atlas_path = self.fonts[font_path].font_atlas_path().to_owned();
-        if !self.texture_atlases.contains_key(&font_atlas_path) {
-            self.load_texture_atlas(&font_atlas_path).unwrap();
+        let (font_atlas, font_texture) = {
+            let font = asset_store.asset::<BitmapFont>(font_identifier).unwrap();
+            (
+                font.font_atlas().to_string(),
+                font.font_atlas_texture().to_string(),
+            )
+        };
+
+        {
+            asset_store.load::<TextureAtlas>(&font_atlas).unwrap();
+            asset_store.load::<Texture>(&font_texture).unwrap();
+            self.load_texture_in_vram_if_required(asset_store, &font_texture);
         }
 
-        let font = &self.fonts[font_path];
-        let texture_atlas = &self.texture_atlases[font.font_atlas_path()];
+        let font = asset_store
+            .stored_asset::<BitmapFont>(font_identifier)
+            .unwrap();
+        let texture_atlas = asset_store
+            .stored_asset::<TextureAtlas>(font.font_atlas())
+            .unwrap();
 
-        let texture_identifier = texture_atlas.texture_identifier();
-        let texture = &self.texture_metadata[texture_identifier];
+        let texture = &self.texture_metadata[&font_texture];
         let font_region = texture_atlas
-            .texture_region(font_path)
+            .texture_region(font_identifier)
             .expect("Font region not found");
 
         let mut offset_x = transform.translation.0;
@@ -294,7 +308,7 @@ impl Graphics {
                     height: glyph_region.height,
                     color: (0.0, 0.0, 0.0),
                     texture: Some(TextureDescription {
-                        identifier: texture_identifier.into(),
+                        identifier: font_texture.clone().into(),
                         texture_region: TextureRegion {
                             x: (font_region.x + glyph_region.x) / texture.width as f32,
                             y: (font_region.y + glyph_region.y) / texture.height as f32,
@@ -321,12 +335,6 @@ impl Graphics {
             .update_camera(camera_id, camera, transform);
     }
 
-    fn load_font(&mut self, font_path: &str) -> Result<(), GraphicsError> {
-        let font = BitmapFont::from_file(font_path)?;
-        self.fonts.insert(font_path.into(), font);
-        Ok(())
-    }
-
     pub fn default_system_bundle() -> SystemBundle {
         let mut system_bundle = SystemBundle::new();
         system_bundle.add_system(sprite_animation_step_system);
@@ -340,4 +348,18 @@ impl Graphics {
     pub fn on_window_resized(&mut self, width: u32, height: u32) {
         self.graphics_impl.on_window_resized((width, height));
     }
+
+    pub fn loaders() -> Vec<(TypeId, GenericLoader)> {
+        vec![
+            (TypeId::of::<Texture>(), Box::new(texture_loader)),
+            (TypeId::of::<TextureAtlas>(), Box::new(texture_atlas_loader)),
+            (TypeId::of::<BitmapFont>(), Box::new(font_loader)),
+        ]
+    }
+}
+
+fn font_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
+    let mut font_file_path = asset_metadata.asset_path.clone();
+    font_file_path.push(&asset_metadata.metadata["font_data"]);
+    Box::new(BitmapFont::from_file(&font_file_path).unwrap())
 }

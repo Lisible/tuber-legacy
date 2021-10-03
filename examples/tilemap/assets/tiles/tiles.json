@@ -1,5 +1,4 @@
 {
-    "texture_identifier": "examples/tilemap/tiles.png",
     "textures": {
         "dirt": {
             "x": 0,

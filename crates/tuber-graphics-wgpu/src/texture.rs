@@ -1,5 +1,6 @@
 use crate::TuberGraphicsWGPUError;
-use tuber_graphics::texture::{TextureData, TextureSize};
+use tuber_graphics::texture::Texture as TextureData;
+use tuber_graphics::texture::TextureSize;
 use wgpu::{TextureDimension, TextureFormat};
 
 pub struct Texture {
@@ -14,9 +15,9 @@ impl Texture {
     pub fn from_texture_data(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        texture_data: TextureData,
+        texture_data: &TextureData,
     ) -> Result<Self, TuberGraphicsWGPUError> {
-        let rgba = texture_data.bytes;
+        let rgba = texture_data.bytes.clone();
         let size = texture_data.size;
 
         let texture_size = wgpu::Extent3d {

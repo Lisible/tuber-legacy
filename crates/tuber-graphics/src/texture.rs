@@ -2,109 +2,18 @@ use crate::GraphicsError;
 use crate::GraphicsError::{ImageDecodeError, TextureFileOpenError};
 use nalgebra::Vector4;
 use serde::{Deserialize, Serialize};
+use std::any::Any;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufReader;
+use tuber_core::asset::AssetMetadata;
 
 pub type TextureSize = (u32, u32);
 
-pub struct TextureData {
+pub struct Texture {
     pub identifier: String,
     pub size: TextureSize,
     pub bytes: Vec<u8>,
-}
-
-impl TextureData {
-    pub fn from_bytes(identifier: &str, bytes: &[u8]) -> Result<TextureData, GraphicsError> {
-        let image = image::load_from_memory(bytes).unwrap();
-        let image = image.as_rgba8().unwrap();
-
-        Ok(TextureData {
-            identifier: identifier.into(),
-            size: image.dimensions(),
-            bytes: image.to_vec(),
-        })
-    }
-
-    pub fn from_file(file_path: &str) -> Result<TextureData, GraphicsError> {
-        use image::io::Reader as ImageReader;
-        let image = ImageReader::open(file_path)
-            .map_err(|e| TextureFileOpenError(e))?
-            .decode()
-            .map_err(|e| ImageDecodeError(e))?;
-        let image = image.as_rgba8().unwrap();
-
-        Ok(TextureData {
-            identifier: file_path.into(),
-            size: image.dimensions(),
-            bytes: image.to_vec(),
-        })
-    }
-}
-
-#[derive(Clone)]
-pub enum TextureSource {
-    WholeTexture(String),
-    TextureRegion(String, TextureRegion),
-    TextureAtlas(String, String),
-}
-
-impl TextureSource {
-    pub(crate) fn texture_identifier(
-        &self,
-        texture_atlases: &HashMap<String, TextureAtlas>,
-    ) -> String {
-        match self {
-            TextureSource::WholeTexture(texture_identifier) => texture_identifier,
-            TextureSource::TextureRegion(texture_identifier, _) => texture_identifier,
-            TextureSource::TextureAtlas(texture_atlas_identifier, _) => {
-                &texture_atlases
-                    .get(texture_atlas_identifier)
-                    .expect("Texture atlas not found")
-                    .texture_identifier
-            }
-        }
-        .into()
-    }
-
-    pub(crate) fn normalized_texture_region(
-        &self,
-        texture_width: u32,
-        texture_height: u32,
-        texture_atlases: &HashMap<String, TextureAtlas>,
-    ) -> TextureRegion {
-        match self {
-            TextureSource::WholeTexture(_) => TextureRegion::new(0.0, 0.0, 1.0, 1.0),
-            TextureSource::TextureRegion(_, region) => TextureRegion {
-                x: region.x / texture_width as f32,
-                y: region.y / texture_height as f32,
-                width: region.width / texture_width as f32,
-                height: region.height / texture_height as f32,
-            },
-            TextureSource::TextureAtlas(texture_atlas, texture_name) => {
-                let region = texture_atlases
-                    .get(texture_atlas)
-                    .expect("Texture atlas not found")
-                    .textures
-                    .get(texture_name)
-                    .expect("Texture not found in atlas");
-
-                TextureRegion {
-                    x: region.x / texture_width as f32,
-                    y: region.y / texture_height as f32,
-                    width: region.width / texture_width as f32,
-                    height: region.height / texture_height as f32,
-                }
-            }
-        }
-    }
-}
-
-impl<T> From<T> for TextureSource
-where
-    T: ToString,
-{
-    fn from(str: T) -> Self {
-        TextureSource::WholeTexture(str.to_string())
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
@@ -152,14 +61,13 @@ impl From<TextureRegion> for Vector4<f32> {
     }
 }
 
-pub struct TextureMetadata {
+pub(crate) struct TextureMetadata {
     pub width: u32,
     pub height: u32,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct TextureAtlas {
-    pub texture_identifier: String,
     pub textures: HashMap<String, TextureRegion>,
 }
 
@@ -167,8 +75,53 @@ impl TextureAtlas {
     pub fn texture_region(&self, texture_name: &str) -> Option<TextureRegion> {
         self.textures.get(texture_name).cloned()
     }
+}
 
-    pub fn texture_identifier(&self) -> &str {
-        &self.texture_identifier
+pub(crate) fn texture_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
+    use image::io::Reader as ImageReader;
+    let mut file_path = asset_metadata.asset_path.clone();
+    file_path.push(asset_metadata.metadata.get("texture_data").unwrap());
+    let image = ImageReader::open(file_path)
+        .map_err(|e| TextureFileOpenError(e))
+        .unwrap()
+        .decode()
+        .map_err(|e| ImageDecodeError(e))
+        .unwrap();
+    let image = image.as_rgba8().unwrap();
+
+    Box::new(Texture {
+        identifier: asset_metadata.identifier.clone(),
+        size: image.dimensions(),
+        bytes: image.to_vec(),
+    })
+}
+pub(crate) fn texture_atlas_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
+    let mut texture_atlas_path = asset_metadata.asset_path.clone();
+    texture_atlas_path.push(
+        asset_metadata
+            .metadata
+            .get("texture_atlas_description")
+            .unwrap(),
+    );
+    let atlas_description_file = File::open(texture_atlas_path)
+        .map_err(|e| GraphicsError::AtlasDescriptionFileOpenError(e))
+        .unwrap();
+    let reader = BufReader::new(atlas_description_file);
+    let texture_atlas: TextureAtlas = serde_json::from_reader(reader)
+        .map_err(|e| GraphicsError::SerdeError(e))
+        .unwrap();
+
+    Box::new(texture_atlas)
+}
+
+pub(crate) fn default_texture_loader(asset_metadata: &AssetMetadata) -> Texture {
+    let bytes = include_bytes!("../textures/default_texture.png");
+    let image = image::load_from_memory(bytes).unwrap();
+    let image = image.as_rgba8().unwrap();
+
+    Texture {
+        identifier: asset_metadata.identifier.clone(),
+        size: image.dimensions(),
+        bytes: image.to_vec(),
     }
 }

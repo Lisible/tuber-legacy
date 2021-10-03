@@ -3,10 +3,11 @@ use crate::{DrawCommand, DrawCommandData, DrawRange, QuadDrawCommand, Vertex};
 use nalgebra::{Matrix4, Vector2, Vector3, Vector4};
 use num_traits::identities::Zero;
 use std::collections::HashMap;
+use tuber_core::asset::AssetStore;
 use tuber_core::transform::{IntoMatrix4, Transform2D};
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::low_level::QuadDescription;
-use tuber_graphics::texture::TextureData;
+use tuber_graphics::texture::Texture as TextureData;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{
     BindGroupLayout, BufferDescriptor, Device, FragmentState, Queue, RenderPass, RenderPipeline,
@@ -32,7 +33,12 @@ pub(crate) struct QuadRenderer {
 }
 
 impl QuadRenderer {
-    pub fn new(device: &Device, queue: &Queue, texture_format: &TextureFormat) -> Self {
+    pub fn new(
+        device: &Device,
+        queue: &Queue,
+        texture_format: &TextureFormat,
+        asset_store: &AssetStore,
+    ) -> Self {
         let uniforms = Uniforms::new();
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("quad_renderer_uniform_buffer"),
@@ -69,13 +75,12 @@ impl QuadRenderer {
         let textured_fragment_shader_module =
             device.create_shader_module(&wgpu::include_spirv!("shaders/textured_shader.frag.spv"));
 
-        let default_texture_bytes = include_bytes!("./textures/default_texture.png");
-        let default_texture = Texture::from_texture_data(
-            device,
-            queue,
-            TextureData::from_bytes("default_texture", default_texture_bytes).unwrap(),
-        )
-        .unwrap();
+        let default_texture_data = asset_store
+            .stored_asset::<TextureData>("default_texture")
+            .expect("Default texture asset couldn't be found");
+
+        let default_texture =
+            Texture::from_texture_data(device, queue, default_texture_data).unwrap();
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

@@ -1,0 +1,7 @@
+{
+  "identifier": "snake_face_texture",
+  "kind": "texture",
+  "metadata": {
+    "texture_data": "snake_face.png"
+  }
+}

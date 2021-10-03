@@ -3,7 +3,7 @@ use crate::*;
 /// The low level API
 pub trait LowLevelGraphicsAPI {
     /// Initializes the API for a given window
-    fn initialize(&mut self, window: Window, window_size: WindowSize);
+    fn initialize(&mut self, window: Window, window_size: WindowSize, asset_store: &AssetStore);
     /// Renders
     fn render(&mut self);
 
@@ -18,12 +18,12 @@ pub trait LowLevelGraphicsAPI {
         &mut self,
         tilemap: &Tilemap,
         tilemap_render: &TilemapRender,
-        texture_atlas: &TextureAtlas,
         transform: &Transform2D,
+        asset_store: &AssetStore,
     );
-    fn is_texture_in_memory(&self, texture_identifier: &str) -> bool;
+    fn is_texture_in_vram(&self, texture_identifier: &str) -> bool;
     /// Loads a texture in memory
-    fn load_texture(&mut self, texture_data: TextureData);
+    fn load_texture(&mut self, texture_data: &Texture);
     /// Updates the view/projection matrix
     fn update_camera(
         &mut self,

@@ -12,6 +12,7 @@ use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::*;
 
 fn main() -> Result<()> {
+    env_logger::init();
     let mut graphics = Graphics::new(Box::new(GraphicsWGPU::new()));
     graphics.set_clear_color((1.0, 1.0, 1.0));
 
@@ -53,7 +54,7 @@ impl State for GameState {
         ));
 
         state_context.ecs.insert((
-            Text::new("Game state", "examples/game-state/font.json"),
+            Text::new("Game state", "font"),
             Transform2D {
                 translation: (100.0, 100.0, 0),
                 scale: (2.0, 2.0),
@@ -114,7 +115,7 @@ impl State for Pause {
         ));
 
         self.pause_label = Some(state_context.ecs.insert((
-            Text::new("Pause state", "examples/game-state/font.json"),
+            Text::new("Pause state", "font"),
             Transform2D {
                 translation: (100.0, 100.0, 0),
                 angle: 5.0,

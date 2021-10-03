@@ -47,10 +47,7 @@ impl State for MainState {
         ));
 
         state_context.ecs.insert((
-            Text::new(
-                "Hello World\nThis is a second line",
-                "examples/bitmap-font/font.json",
-            ),
+            Text::new("Hello World\nThis is a second line", "font"),
             Transform2D {
                 translation: (100.0, 100.0, 0),
                 angle: 0.0,

@@ -1,5 +1,4 @@
 {
-    "texture_identifier": "examples/sprite/texture-atlas.png",
     "textures": {
         "house": {
             "x": 16,

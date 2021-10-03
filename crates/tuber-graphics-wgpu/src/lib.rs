@@ -5,14 +5,14 @@ use futures;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::ops::Range;
+use tuber_core::asset::AssetStore;
 use tuber_core::tilemap::Tilemap;
 use tuber_core::transform::Transform2D;
 use tuber_graphics::camera::OrthographicCamera;
-use tuber_graphics::texture::TextureData;
 use tuber_graphics::tilemap::TilemapRender;
 use tuber_graphics::{
-    low_level::LowLevelGraphicsAPI, low_level::QuadDescription, texture::TextureAtlas, Color,
-    Window, WindowSize,
+    low_level::LowLevelGraphicsAPI, low_level::QuadDescription, texture::Texture as TextureData,
+    Color, Window, WindowSize,
 };
 
 mod quad_renderer;
@@ -54,7 +54,7 @@ impl GraphicsWGPU {
 }
 
 impl LowLevelGraphicsAPI for GraphicsWGPU {
-    fn initialize(&mut self, window: Window, window_size: WindowSize) {
+    fn initialize(&mut self, window: Window, window_size: WindowSize, asset_store: &AssetStore) {
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
         let surface = unsafe { instance.create_surface(&window) };
         let adapter = async {
@@ -91,7 +91,7 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         let format = sc_desc.format;
 
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
-        let quad_renderer = QuadRenderer::new(&device, &queue, &format);
+        let quad_renderer = QuadRenderer::new(&device, &queue, &format, &asset_store);
         let tilemap_renderer = TilemapRenderer::new(&device, &format);
 
         self.wgpu_state = Some(WGPUState {
@@ -193,10 +193,13 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         &mut self,
         tilemap: &Tilemap,
         tilemap_render: &TilemapRender,
-        texture_atlas: &TextureAtlas,
         transform: &Transform2D,
+        asset_store: &AssetStore,
     ) {
         let state = self.wgpu_state.as_mut().expect("Graphics is uninitialized");
+        let texture_atlas = asset_store
+            .stored_asset(&tilemap_render.texture_atlas_identifier)
+            .unwrap();
         if let Some(draw_command) = state.tilemap_renderer.prepare(
             &state.device,
             &state.queue,
@@ -210,15 +213,15 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         }
     }
 
-    fn is_texture_in_memory(&self, texture_identifier: &str) -> bool {
+    fn is_texture_in_vram(&self, texture_identifier: &str) -> bool {
         self.textures.contains_key(texture_identifier)
     }
 
-    fn load_texture(&mut self, texture_data: TextureData) {
+    fn load_texture(&mut self, texture_data: &TextureData) {
         let state = self.wgpu_state.as_ref().expect("Graphics is uninitialized");
         let identifier = texture_data.identifier.clone();
         let texture =
-            Texture::from_texture_data(&state.device, &state.queue, texture_data).unwrap();
+            Texture::from_texture_data(&state.device, &state.queue, &texture_data).unwrap();
         self.textures.insert(identifier, texture);
     }
 

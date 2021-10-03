@@ -1,3 +1,4 @@
+use tuber_core::asset::AssetStore;
 use tuber_core::input::{Input, InputState};
 use tuber_core::transform::Transform2D;
 use tuber_core::DeltaTime;
@@ -95,4 +96,5 @@ pub enum StateStackRequest {
 pub struct StateContext<'engine> {
     pub ecs: &'engine mut Ecs,
     pub system_bundles: &'engine mut Vec<SystemBundle>,
+    pub asset_store: &'engine mut AssetStore,
 }

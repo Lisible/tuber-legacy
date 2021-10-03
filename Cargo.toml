@@ -22,4 +22,5 @@ tuber-ecs = { path = "crates/tuber-ecs", version = "0.1.0" }
 
 [dev-dependencies]
 rand = "0.8.3"
+env_logger = "0.9.0"
 

@@ -1,8 +1,9 @@
 use state::*;
-use tuber_core::input;
+use tuber_core::asset::AssetStore;
 use tuber_core::input::{InputState, Keymap};
 use tuber_core::tilemap::Tilemap;
 use tuber_core::transform::Transform2D;
+use tuber_core::{input, CoreError};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::query::accessors::{R, W};
 use tuber_ecs::system::SystemBundle;
@@ -11,7 +12,7 @@ use tuber_graphics::shape::RectangleShape;
 use tuber_graphics::sprite::{AnimatedSprite, Sprite};
 use tuber_graphics::tilemap::TilemapRender;
 use tuber_graphics::ui::{Frame, Image, NoViewTransform, Text};
-use tuber_graphics::Graphics;
+use tuber_graphics::{Graphics, Window};
 
 pub mod state;
 
@@ -35,6 +36,7 @@ pub struct Engine {
     system_bundles: Vec<SystemBundle>,
     graphics: Option<Graphics>,
     application_title: String,
+    asset_store: AssetStore,
 }
 
 fn create_ecs() -> Ecs {
@@ -48,6 +50,10 @@ fn create_ecs() -> Ecs {
 
 impl Engine {
     pub fn new(settings: EngineSettings) -> Engine {
+        let mut asset_manager = AssetStore::new();
+        asset_manager.load_assets_metadata().unwrap();
+        asset_manager.register_loaders(Graphics::loaders());
+
         Self {
             state_stack: StateStack::new(),
             ecs: create_ecs(),
@@ -56,7 +62,22 @@ impl Engine {
             application_title: settings
                 .application_title
                 .unwrap_or("tuber Application".into()),
+            asset_store: asset_manager,
         }
+    }
+
+    pub fn initialize_graphics(&mut self, window: Window, window_size: (u32, u32)) {
+        if let Some(graphics) = &mut self.graphics {
+            graphics.initialize(
+                Window(Box::new(&window)),
+                window_size,
+                &mut self.asset_store,
+            );
+        }
+    }
+
+    pub fn asset_store(&self) -> &AssetStore {
+        &self.asset_store
     }
 
     pub fn application_title(&self) -> &str {
@@ -69,20 +90,18 @@ impl Engine {
             &mut StateContext {
                 ecs: &mut self.ecs,
                 system_bundles: &mut self.system_bundles,
+                asset_store: &mut self.asset_store,
             },
         )
     }
 
-    pub fn ignite(mut self) -> Result<()> {
-        loop {
-            self.step(1.0);
-        }
-    }
+    pub fn ignite(&mut self) {}
 
     pub fn step(&mut self, delta_time: f64) {
         let mut state_context = StateContext {
             ecs: &mut self.ecs,
             system_bundles: &mut self.system_bundles,
+            asset_store: &mut self.asset_store,
         };
         self.state_stack
             .update_current_state(delta_time, &mut state_context);
@@ -92,6 +111,7 @@ impl Engine {
         let mut state_context = StateContext {
             ecs: &mut self.ecs,
             system_bundles: &mut self.system_bundles,
+            asset_store: &mut self.asset_store,
         };
         self.state_stack.handle_input(input, &mut state_context);
     }
@@ -123,7 +143,7 @@ impl Engine {
             self.ecs
                 .query::<(R<Tilemap>, R<TilemapRender>, R<Transform2D>)>()
         {
-            graphics.prepare_tilemap(&tilemap, &tilemap_render, &transform);
+            graphics.prepare_tilemap(&tilemap, &tilemap_render, &transform, &mut self.asset_store);
         }
 
         for (_, (rectangle_shape, transform)) in
@@ -132,13 +152,15 @@ impl Engine {
             graphics.prepare_rectangle(&rectangle_shape, &transform, true);
         }
         for (_, (sprite, transform)) in self.ecs.query::<(R<Sprite>, R<Transform2D>)>() {
-            graphics.prepare_sprite(&sprite, &transform, true).unwrap();
+            graphics
+                .prepare_sprite(&sprite, &transform, true, &mut self.asset_store)
+                .unwrap();
         }
         for (_, (animated_sprite, transform)) in
             self.ecs.query::<(R<AnimatedSprite>, R<Transform2D>)>()
         {
             graphics
-                .prepare_animated_sprite(&animated_sprite, &transform, true)
+                .prepare_animated_sprite(&animated_sprite, &transform, true, &mut self.asset_store)
                 .unwrap();
         }
 
@@ -167,7 +189,13 @@ impl Engine {
                 .ecs
                 .query_one_by_id::<(R<NoViewTransform>,)>(id)
                 .is_some();
-            graphics.prepare_text(text.text(), text.font(), &transform, apply_view_transform);
+            graphics.prepare_text(
+                text.text(),
+                text.font(),
+                &transform,
+                apply_view_transform,
+                &mut self.asset_store,
+            );
         }
 
         for (id, (image, transform)) in self.ecs.query::<(R<Image>, R<Transform2D>)>() {
@@ -178,11 +206,17 @@ impl Engine {
             let sprite = Sprite {
                 width: image.width,
                 height: image.height,
-                texture: image.texture.clone(),
+                texture_identifier: image.texture_identifier.clone(),
+                texture_region: image.texture_region,
             };
 
             graphics
-                .prepare_sprite(&sprite, &transform, apply_view_transform)
+                .prepare_sprite(
+                    &sprite,
+                    &transform,
+                    apply_view_transform,
+                    &mut self.asset_store,
+                )
                 .unwrap();
         }
         graphics.render();
@@ -200,4 +234,12 @@ pub trait TuberRunner {
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
-pub enum Error {}
+pub enum Error {
+    CoreError(CoreError),
+}
+
+impl From<CoreError> for Error {
+    fn from(error: CoreError) -> Self {
+        Error::CoreError(error)
+    }
+}

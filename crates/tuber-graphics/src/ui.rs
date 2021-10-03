@@ -1,10 +1,11 @@
-use crate::texture::TextureSource;
+use crate::texture::TextureRegion;
 use crate::Color;
 
 pub struct Image {
     pub width: f32,
     pub height: f32,
-    pub texture: TextureSource,
+    pub texture_region: TextureRegion,
+    pub texture_identifier: String,
 }
 
 pub struct Frame {

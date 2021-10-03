@@ -14,6 +14,7 @@ use tuber::graphics::sprite::Sprite;
 use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::WinitTuberRunner;
+use tuber_graphics::texture::TextureRegion;
 
 const WINDOW_WIDTH: u32 = 800;
 const WINDOW_HEIGHT: u32 = 600;
@@ -203,7 +204,13 @@ fn spawn_apple(ecs: &mut Ecs) {
         Sprite {
             width: 64.0,
             height: 64.0,
-            texture: "examples/snake/apple.png".into(),
+            texture_identifier: "apple_texture".into(),
+            texture_region: TextureRegion {
+                x: 0.0,
+                y: 0.0,
+                width: 32.0,
+                height: 32.0,
+            },
         },
         Apple,
     ));
@@ -219,7 +226,13 @@ fn spawn_snake(ecs: &mut Ecs) {
         Sprite {
             width: BODY_PART_SIZE,
             height: BODY_PART_SIZE,
-            texture: "examples/snake/snake_tail.png".into(),
+            texture_identifier: "snake_tail_texture".into(),
+            texture_region: TextureRegion {
+                x: 0.0,
+                y: 0.0,
+                width: 32.0,
+                height: 32.0,
+            },
         },
         Velocity {
             x: 0.0,
@@ -239,7 +252,13 @@ fn spawn_snake(ecs: &mut Ecs) {
         Sprite {
             width: BODY_PART_SIZE,
             height: BODY_PART_SIZE,
-            texture: "examples/snake/snake_face.png".into(),
+            texture_identifier: "snake_face_texture".into(),
+            texture_region: TextureRegion {
+                x: 0.0,
+                y: 0.0,
+                width: 32.0,
+                height: 32.0,
+            },
         },
         Velocity {
             x: 0.0,
@@ -341,7 +360,13 @@ fn eat_apple_system(ecs: &mut Ecs) -> SystemResult {
                 Sprite {
                     width: 64.0,
                     height: 64.0,
-                    texture: "examples/snake/snake_tail.png".into(),
+                    texture_identifier: "snake_tail_texture".into(),
+                    texture_region: TextureRegion {
+                        x: 0.0,
+                        y: 0.0,
+                        width: 32.0,
+                        height: 32.0,
+                    },
                 },
                 tail_velocity,
                 SnakeBodyPart {
@@ -357,7 +382,7 @@ fn eat_apple_system(ecs: &mut Ecs) -> SystemResult {
                     .query_one_by_id::<(W<SnakeBodyPart>, W<Sprite>)>(old_tail_id)
                     .unwrap();
                 old_tail_body_part.next_body_part = Some(new_tail_id);
-                sprite.texture = "examples/snake/snake_body.png".into();
+                sprite.texture_identifier = "snake_body_texture".into();
             }
             ecs.remove_component::<SnakeTail>(old_tail_id);
         }
