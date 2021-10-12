@@ -68,10 +68,6 @@ impl Engine {
         }
     }
 
-    pub fn asset_store(&self) -> &AssetStore {
-        &self.asset_store
-    }
-
     pub fn application_title(&self) -> &str {
         &self.application_title
     }
@@ -86,8 +82,6 @@ impl Engine {
             },
         )
     }
-
-    pub fn ignite(&mut self) {}
 
     pub fn step(&mut self, delta_time: f64) {
         let mut state_context = StateContext {
@@ -113,14 +107,6 @@ impl Engine {
             .as_mut()
             .expect("No graphics")
             .on_window_resized(width, height);
-    }
-
-    pub fn graphics_mut(&mut self) -> Option<&mut Graphics> {
-        self.graphics.as_mut()
-    }
-
-    pub fn state_stack_mut(&mut self) -> &mut StateStack {
-        &mut self.state_stack
     }
 
     pub fn render(&mut self) {

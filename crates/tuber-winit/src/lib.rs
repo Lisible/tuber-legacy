@@ -26,8 +26,6 @@ impl TuberRunner for WinitTuberRunner {
         const DELTA_TIME: f64 = 1.0 / UPDATE_TARGET_FPS as f64;
         const TIME_BETWEEN_FRAME: f64 = 1.0 / RENDER_TARGET_FPS as f64;
 
-        engine.ignite();
-
         let mut current_time = Instant::now();
         let mut accumulator = 0f64;
         let mut last_render_time = Instant::now();
