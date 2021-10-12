@@ -6,11 +6,13 @@ use std::collections::HashMap;
 use tuber_core::asset::{AssetMetadata, AssetStore, GenericLoader};
 use tuber_core::tilemap::Tilemap;
 use tuber_core::transform::Transform2D;
+use tuber_ecs::ecs::Ecs;
+use tuber_ecs::query::accessors::{R, W};
 use tuber_ecs::system::SystemBundle;
 use tuber_ecs::EntityIndex;
 
 use crate::bitmap_font::BitmapFont;
-use crate::camera::OrthographicCamera;
+use crate::camera::{Active, OrthographicCamera};
 use crate::low_level::*;
 use crate::shape::RectangleShape;
 use crate::sprite::{sprite_animation_step_system, AnimatedSprite, Sprite};
@@ -19,6 +21,7 @@ use crate::texture::{
     TextureMetadata, TextureRegion,
 };
 use crate::tilemap::TilemapRender;
+use crate::ui::{Frame, Image, NoViewTransform, Text};
 
 pub mod bitmap_font;
 pub mod camera;
@@ -323,6 +326,75 @@ impl Graphics {
 
             offset_x += glyph_region.width + font.letter_spacing() as f32;
         }
+    }
+
+    pub fn render_scene(&mut self, ecs: &Ecs, asset_store: &mut AssetStore) {
+        let (camera_id, (camera, _, camera_transform)) = ecs
+            .query_one::<(R<OrthographicCamera>, R<Active>, R<Transform2D>)>()
+            .expect("There is no camera");
+        self.update_camera(camera_id, &camera, &camera_transform);
+
+        for (_, (tilemap, tilemap_render, transform)) in
+            ecs.query::<(R<Tilemap>, R<TilemapRender>, R<Transform2D>)>()
+        {
+            self.prepare_tilemap(&tilemap, &tilemap_render, &transform, asset_store);
+        }
+
+        for (_, (rectangle_shape, transform)) in ecs.query::<(R<RectangleShape>, R<Transform2D>)>()
+        {
+            self.prepare_rectangle(&rectangle_shape, &transform, true);
+        }
+        for (_, (sprite, transform)) in ecs.query::<(R<Sprite>, R<Transform2D>)>() {
+            self.prepare_sprite(&sprite, &transform, true, asset_store)
+                .unwrap();
+        }
+        for (_, (animated_sprite, transform)) in ecs.query::<(R<AnimatedSprite>, R<Transform2D>)>()
+        {
+            self.prepare_animated_sprite(&animated_sprite, &transform, true, asset_store)
+                .unwrap();
+        }
+
+        for (_, (mut tilemap_render,)) in ecs.query::<(W<TilemapRender>,)>() {
+            tilemap_render.dirty = false;
+        }
+
+        for (id, (frame, transform)) in ecs.query::<(R<Frame>, R<Transform2D>)>() {
+            let apply_view_transform = !ecs.query_one_by_id::<(R<NoViewTransform>,)>(id).is_some();
+            self.prepare_rectangle(
+                &RectangleShape {
+                    width: frame.width,
+                    height: frame.height,
+                    color: frame.color,
+                },
+                &transform,
+                apply_view_transform,
+            );
+        }
+
+        for (id, (text, transform)) in ecs.query::<(R<Text>, R<Transform2D>)>() {
+            let apply_view_transform = !ecs.query_one_by_id::<(R<NoViewTransform>,)>(id).is_some();
+            self.prepare_text(
+                text.text(),
+                text.font(),
+                &transform,
+                apply_view_transform,
+                asset_store,
+            );
+        }
+
+        for (id, (image, transform)) in ecs.query::<(R<Image>, R<Transform2D>)>() {
+            let apply_view_transform = !ecs.query_one_by_id::<(R<NoViewTransform>,)>(id).is_some();
+            let sprite = Sprite {
+                width: image.width,
+                height: image.height,
+                texture_identifier: image.texture_identifier.clone(),
+                texture_region: image.texture_region,
+            };
+
+            self.prepare_sprite(&sprite, &transform, apply_view_transform, asset_store)
+                .unwrap();
+        }
+        self.render();
     }
 
     pub fn update_camera(

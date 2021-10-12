@@ -1,17 +1,9 @@
 use state::*;
 use tuber_core::asset::AssetStore;
 use tuber_core::input::{InputState, Keymap};
-use tuber_core::tilemap::Tilemap;
-use tuber_core::transform::Transform2D;
 use tuber_core::{input, CoreError};
 use tuber_ecs::ecs::Ecs;
-use tuber_ecs::query::accessors::{R, W};
 use tuber_ecs::system::SystemBundle;
-use tuber_graphics::camera::{Active, OrthographicCamera};
-use tuber_graphics::shape::RectangleShape;
-use tuber_graphics::sprite::{AnimatedSprite, Sprite};
-use tuber_graphics::tilemap::TilemapRender;
-use tuber_graphics::ui::{Frame, Image, NoViewTransform, Text};
 use tuber_graphics::{Graphics, Window};
 
 pub mod state;
@@ -132,94 +124,9 @@ impl Engine {
     }
 
     pub fn render(&mut self) {
-        let graphics = self.graphics.as_mut().unwrap();
-        let (camera_id, (camera, _, camera_transform)) = self
-            .ecs
-            .query_one::<(R<OrthographicCamera>, R<Active>, R<Transform2D>)>()
-            .expect("There is no camera");
-        graphics.update_camera(camera_id, &camera, &camera_transform);
-
-        for (_, (tilemap, tilemap_render, transform)) in
-            self.ecs
-                .query::<(R<Tilemap>, R<TilemapRender>, R<Transform2D>)>()
-        {
-            graphics.prepare_tilemap(&tilemap, &tilemap_render, &transform, &mut self.asset_store);
+        if let Some(graphics) = self.graphics.as_mut() {
+            graphics.render_scene(&self.ecs, &mut self.asset_store);
         }
-
-        for (_, (rectangle_shape, transform)) in
-            self.ecs.query::<(R<RectangleShape>, R<Transform2D>)>()
-        {
-            graphics.prepare_rectangle(&rectangle_shape, &transform, true);
-        }
-        for (_, (sprite, transform)) in self.ecs.query::<(R<Sprite>, R<Transform2D>)>() {
-            graphics
-                .prepare_sprite(&sprite, &transform, true, &mut self.asset_store)
-                .unwrap();
-        }
-        for (_, (animated_sprite, transform)) in
-            self.ecs.query::<(R<AnimatedSprite>, R<Transform2D>)>()
-        {
-            graphics
-                .prepare_animated_sprite(&animated_sprite, &transform, true, &mut self.asset_store)
-                .unwrap();
-        }
-
-        for (_, (mut tilemap_render,)) in self.ecs.query::<(W<TilemapRender>,)>() {
-            tilemap_render.dirty = false;
-        }
-
-        for (id, (frame, transform)) in self.ecs.query::<(R<Frame>, R<Transform2D>)>() {
-            let apply_view_transform = !self
-                .ecs
-                .query_one_by_id::<(R<NoViewTransform>,)>(id)
-                .is_some();
-            graphics.prepare_rectangle(
-                &RectangleShape {
-                    width: frame.width,
-                    height: frame.height,
-                    color: frame.color,
-                },
-                &transform,
-                apply_view_transform,
-            );
-        }
-
-        for (id, (text, transform)) in self.ecs.query::<(R<Text>, R<Transform2D>)>() {
-            let apply_view_transform = !self
-                .ecs
-                .query_one_by_id::<(R<NoViewTransform>,)>(id)
-                .is_some();
-            graphics.prepare_text(
-                text.text(),
-                text.font(),
-                &transform,
-                apply_view_transform,
-                &mut self.asset_store,
-            );
-        }
-
-        for (id, (image, transform)) in self.ecs.query::<(R<Image>, R<Transform2D>)>() {
-            let apply_view_transform = !self
-                .ecs
-                .query_one_by_id::<(R<NoViewTransform>,)>(id)
-                .is_some();
-            let sprite = Sprite {
-                width: image.width,
-                height: image.height,
-                texture_identifier: image.texture_identifier.clone(),
-                texture_region: image.texture_region,
-            };
-
-            graphics
-                .prepare_sprite(
-                    &sprite,
-                    &transform,
-                    apply_view_transform,
-                    &mut self.asset_store,
-                )
-                .unwrap();
-        }
-        graphics.render();
     }
 }
 
