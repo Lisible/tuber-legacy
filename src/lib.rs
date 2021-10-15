@@ -3,5 +3,4 @@ pub use tuber_ecs as ecs;
 pub use tuber_engine as engine;
 pub use tuber_graphics as graphics;
 pub use tuber_graphics_wgpu as graphics_wgpu;
-pub use tuber_physics as physics;
 pub use tuber_winit::WinitTuberRunner;
