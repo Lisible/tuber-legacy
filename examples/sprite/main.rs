@@ -95,7 +95,7 @@ impl State for MainState {
 
         let texture_atlas = state_context
             .asset_store
-            .asset::<TextureAtlas>("tiles")
+            .asset::<TextureAtlas>("atlas")
             .unwrap();
         state_context.ecs.insert((
             Transform2D {
@@ -105,7 +105,7 @@ impl State for MainState {
             Sprite {
                 width: 100.0,
                 height: 100.0,
-                texture_identifier: "tileset".into(),
+                texture_identifier: "atlas_texture".into(),
                 texture_region: texture_atlas.texture_region("tree").unwrap(),
             },
         ));
@@ -118,7 +118,7 @@ impl State for MainState {
             Sprite {
                 width: 50.0,
                 height: 50.0,
-                texture_identifier: "tileset".into(),
+                texture_identifier: "atlas_texture".into(),
                 texture_region: texture_atlas.texture_region("house").unwrap(),
             },
         ));
