@@ -1,0 +1,7 @@
+{
+  "identifier": "atlas",
+  "kind": "texture_atlas",
+  "metadata": {
+    "texture_atlas_description": "atlas.json"
+  }
+}

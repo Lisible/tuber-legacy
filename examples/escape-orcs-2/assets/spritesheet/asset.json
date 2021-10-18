@@ -1,0 +1,7 @@
+{
+  "identifier": "spritesheet",
+  "kind": "texture",
+  "metadata": {
+    "texture_data": "spritesheet.png"
+  }
+}

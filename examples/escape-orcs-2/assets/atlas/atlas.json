@@ -1,0 +1,28 @@
+{
+  "textures": {
+    "player_1": {
+      "x": 0,
+      "y": 0,
+      "width": 16,
+      "height": 16
+    },
+    "player_2": {
+      "x": 16,
+      "y": 0,
+      "width": 16,
+      "height": 16
+    },
+    "orc_1": {
+      "x": 0,
+      "y": 16,
+      "width": 16,
+      "height": 16
+    },
+    "orc_2": {
+      "x": 16,
+      "y": 16,
+      "width": 16,
+      "height": 16
+    }
+  }
+}
