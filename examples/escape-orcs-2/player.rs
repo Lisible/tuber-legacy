@@ -1,14 +1,16 @@
+use crate::game_state::Movement;
 use crate::item::Item;
 use std::time::Instant;
 use tuber::core::asset::AssetStore;
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
 use tuber::graphics::sprite::{AnimatedSprite, AnimationState};
-use tuber::graphics::texture::{TextureAtlas, TextureRegion};
+use tuber::graphics::texture::TextureAtlas;
 
 pub(crate) struct Player {
-    item: Option<Item>,
-    score: u32,
+    pub last_movement: Option<Movement>,
+    pub item: Option<Item>,
+    pub score: u32,
 }
 
 pub(crate) fn create_player(asset_store: &mut AssetStore) -> impl EntityDefinition {
@@ -16,6 +18,7 @@ pub(crate) fn create_player(asset_store: &mut AssetStore) -> impl EntityDefiniti
 
     (
         Player {
+            last_movement: None,
             item: None,
             score: 0,
         },

@@ -103,15 +103,6 @@ impl InputState {
         }
     }
 
-    pub fn clear(&mut self) {
-        self.key_state = [false; KEY_COUNT];
-        self.previous_key_state = [false; KEY_COUNT];
-        self.mouse_button_state = [false; 3];
-        self.previous_mouse_button_state = [false; 3];
-        self.last_mouse_position = (0.0, 0.0);
-        self.mouse_moved = false;
-    }
-
     pub fn is(&self, input: Input) -> bool {
         match input {
             Input::KeyDown(key) => self.key_state[key as usize],

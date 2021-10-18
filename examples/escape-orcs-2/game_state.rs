@@ -1,11 +1,14 @@
-use crate::orc::create_orc;
-use crate::player;
-use crate::player::create_player;
+use crate::orc::{create_orc, Orc};
+use crate::player::{create_player, Player};
+use tuber::core::input::{Input, InputState};
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
+use tuber::ecs::query::accessors::W;
+use tuber::ecs::system::SystemBundle;
 use tuber::engine::state::{State, StateContext};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::Graphics;
+use tuber_ecs::ecs::Ecs;
 
 pub(crate) struct GameState;
 impl State for GameState {
@@ -20,6 +23,10 @@ impl State for GameState {
         state_context
             .system_bundles
             .push(Graphics::default_system_bundle());
+
+        let mut system_bundle = SystemBundle::new();
+        system_bundle.add_system(move_player);
+        state_context.system_bundles.push(system_bundle);
     }
 }
 
@@ -36,4 +43,55 @@ fn create_camera() -> impl EntityDefinition {
         Active,
         Transform2D::default(),
     )
+}
+
+#[derive(Clone)]
+pub(crate) enum Movement {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+fn move_player(ecs: &mut Ecs) {
+    const VELOCITY: f32 = 64.0;
+
+    let input_state = ecs.shared_resource::<InputState>().unwrap();
+    let player_direction = if input_state.is(Input::ActionDown("move_up".into())) {
+        Movement::Up
+    } else if input_state.is(Input::ActionDown("move_down".into())) {
+        Movement::Down
+    } else if input_state.is(Input::ActionDown("move_left".into())) {
+        Movement::Left
+    } else if input_state.is(Input::ActionDown("move_right".into())) {
+        Movement::Right
+    } else {
+        if let Some((_, (mut player,))) = ecs.query_one::<(W<Player>,)>() {
+            player.last_movement = None;
+        }
+
+        for (_, (mut orc,)) in ecs.query::<(W<Orc>,)>() {
+            orc.last_movement = None;
+        }
+        return;
+    };
+
+    if let Some((_, (mut player, mut transform))) = ecs.query_one::<(W<Player>, W<Transform2D>)>() {
+        let last = player.last_movement.replace(player_direction.clone());
+        if last.is_none() {
+            match player_direction {
+                Movement::Up => transform.translation.1 -= VELOCITY,
+                Movement::Down => transform.translation.1 += VELOCITY,
+                Movement::Left => transform.translation.0 -= VELOCITY,
+                Movement::Right => transform.translation.0 += VELOCITY,
+            }
+        }
+    }
+
+    for (_, (mut orc, mut transform)) in ecs.query::<(W<Orc>, W<Transform2D>)>() {
+        let last = orc.last_movement.replace(Movement::Right);
+        if last.is_none() {
+            transform.translation.0 += VELOCITY
+        }
+    }
 }

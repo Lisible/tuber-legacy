@@ -1,17 +1,21 @@
-use crate::item::Item;
+use crate::game_state::Movement;
 use std::time::Instant;
 use tuber::core::asset::AssetStore;
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
 use tuber::graphics::sprite::{AnimatedSprite, AnimationState};
-use tuber::graphics::texture::{TextureAtlas, TextureRegion};
+use tuber::graphics::texture::TextureAtlas;
 
-pub(crate) struct Orc;
+pub(crate) struct Orc {
+    pub last_movement: Option<Movement>,
+}
 pub(crate) fn create_orc(asset_store: &mut AssetStore) -> impl EntityDefinition {
     let atlas = asset_store.asset::<TextureAtlas>("atlas").unwrap();
 
     (
-        Orc,
+        Orc {
+            last_movement: None,
+        },
         Transform2D {
             translation: (128.0, 128.0, 0),
             ..Default::default()
