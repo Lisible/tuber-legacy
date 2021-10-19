@@ -1,0 +1,6 @@
+[book]
+authors = ["Clément Sibille"]
+language = "en"
+multilingual = false
+src = "src"
+title = "tuberBook"
