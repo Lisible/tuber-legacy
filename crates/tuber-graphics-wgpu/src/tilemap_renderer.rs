@@ -139,7 +139,12 @@ impl TilemapRenderer {
         textures: &HashMap<String, Texture>,
     ) -> Option<DrawCommand> {
         if !tilemap_render.dirty {
-            return None;
+            return Some(DrawCommand {
+                draw_command_data: DrawCommandData::TilemapDrawCommand(TilemapDrawCommand {
+                    tilemap_identifier: tilemap_render.identifier.to_owned(),
+                }),
+                z_order: transform.translation.2,
+            });
         }
 
         let buffer = device.create_buffer(&BufferDescriptor {
