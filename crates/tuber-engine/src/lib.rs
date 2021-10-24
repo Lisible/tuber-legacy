@@ -58,6 +58,10 @@ impl Engine {
         }
     }
 
+    pub fn should_exit(&self) -> bool {
+        self.state_stack.current_state().is_none()
+    }
+
     pub fn initialize_graphics(&mut self, window: Window, window_size: (u32, u32)) {
         if let Some(graphics) = &mut self.graphics {
             graphics.initialize(

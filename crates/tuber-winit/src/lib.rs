@@ -81,6 +81,12 @@ impl TuberRunner for WinitTuberRunner {
                     let frame_time = new_time.duration_since(current_time).as_secs_f64();
                     current_time = new_time;
                     accumulator += frame_time;
+
+                    if engine.should_exit() {
+                        *control_flow = ControlFlow::Exit;
+                        return;
+                    }
+
                     while accumulator >= DELTA_TIME {
                         engine.step(DELTA_TIME);
                         accumulator -= DELTA_TIME;
