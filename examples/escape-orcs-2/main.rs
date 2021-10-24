@@ -16,7 +16,7 @@ fn main() -> Result<()> {
         application_title: Some("Escape Orcs 2".into()),
     });
 
-    engine.push_initial_state(Box::new(GameState));
+    engine.push_initial_state(Box::new(GameState::new()));
 
     WinitTuberRunner.run(engine)
 }

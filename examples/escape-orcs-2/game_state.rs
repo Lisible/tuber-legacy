@@ -5,12 +5,20 @@ use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
 use tuber::ecs::query::accessors::W;
 use tuber::ecs::system::SystemBundle;
-use tuber::engine::state::{State, StateContext};
+use tuber::engine::state::{State, StateContext, StateStackRequest};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::Graphics;
 use tuber_ecs::ecs::Ecs;
 
-pub(crate) struct GameState;
+pub(crate) struct GameState {
+    do_exit: bool,
+}
+impl GameState {
+    pub(crate) fn new() -> Self {
+        Self { do_exit: false }
+    }
+}
+
 impl State for GameState {
     fn initialize(&mut self, state_context: &mut StateContext) {
         state_context.ecs.insert(create_camera());
@@ -27,6 +35,21 @@ impl State for GameState {
         let mut system_bundle = SystemBundle::new();
         system_bundle.add_system(move_player);
         state_context.system_bundles.push(system_bundle);
+    }
+
+    fn update(&mut self, state_context: &mut StateContext) {
+        let input_state = state_context.ecs.shared_resource::<InputState>().unwrap();
+        if input_state.is(Input::ActionDown("exit_game".into())) {
+            self.do_exit = true;
+        }
+    }
+
+    fn stack_requests(&mut self) -> Vec<StateStackRequest> {
+        if self.do_exit {
+            return vec![StateStackRequest::Pop];
+        }
+
+        vec![]
     }
 }
 
