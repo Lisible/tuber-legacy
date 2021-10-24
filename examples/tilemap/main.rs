@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use tuber::core::input::keyboard::Key;
 use tuber::core::input::Input::{KeyDown, KeyUp};
 use tuber::core::input::InputState;
+use tuber::core::tilemap::IntoTag;
 use tuber::core::tilemap::{Tile, Tilemap};
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::Ecs;
@@ -13,7 +14,9 @@ use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::tilemap::TilemapRender;
 use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
+use tuber::proc_macros::*;
 use tuber::WinitTuberRunner;
+use tuber_core::tilemap::Tag;
 
 struct MapUpdateTimer(std::time::Instant);
 
@@ -49,15 +52,15 @@ impl State for MainState {
 
         use rand::Rng;
         let mut rng = rand::thread_rng();
-        let mut tilemap = Tilemap::new(100, 100, 16, 16, &["dirt".into()]);
+        let mut tilemap = Tilemap::new(100, 100, 16, 16, &[TileTags::Dirt]);
         for tile in &mut tilemap.tiles {
             let tile_tag = rng.gen_range(0..=2);
             let mut tags = HashSet::new();
 
             match tile_tag {
-                0 => tags.insert("water".to_owned()),
-                1 => tags.insert("sand".to_owned()),
-                2 => tags.insert("dirt".to_owned()),
+                0 => tags.insert(TileTags::Water.into_tag()),
+                1 => tags.insert(TileTags::Sand.into_tag()),
+                2 => tags.insert(TileTags::Dirt.into_tag()),
                 _ => panic!(),
             };
 
@@ -71,11 +74,11 @@ impl State for MainState {
                 texture_atlas_identifier: "tiles".to_string(),
                 texture_identifier: "tileset".to_string(),
                 tile_texture_function: Box::new(|tile: &Tile| {
-                    if tile.tags.contains(&String::from("water")) {
+                    if tile.tags.contains(&TileTags::Water.into_tag()) {
                         return Some("water");
-                    } else if tile.tags.contains(&String::from("dirt")) {
+                    } else if tile.tags.contains(&TileTags::Dirt.into_tag()) {
                         return Some("dirt");
-                    } else if tile.tags.contains(&String::from("sand")) {
+                    } else if tile.tags.contains(&TileTags::Sand.into_tag()) {
                         return Some("sand");
                     }
 
@@ -97,6 +100,13 @@ impl State for MainState {
             .push(Graphics::default_system_bundle());
         state_context.system_bundles.push(bundle);
     }
+}
+
+#[derive(Tag, Clone)]
+enum TileTags {
+    Water,
+    Dirt,
+    Sand,
 }
 
 fn move_camera_system(ecs: &mut Ecs) -> SystemResult {

@@ -1,4 +1,26 @@
 use std::collections::HashSet;
+use std::hash::Hash;
+
+#[derive(Clone, Eq, PartialEq, Hash)]
+pub struct Tag {
+    identifier: String,
+}
+
+impl Tag {
+    pub fn new(identifier: &str) -> Self {
+        Tag {
+            identifier: identifier.into(),
+        }
+    }
+
+    pub fn identifier(&self) -> &str {
+        &self.identifier
+    }
+}
+
+pub trait IntoTag: Clone {
+    fn into_tag(self) -> Tag;
+}
 
 pub struct Tilemap {
     pub width: usize,
@@ -14,7 +36,7 @@ impl Tilemap {
         height: usize,
         tile_width: usize,
         tile_height: usize,
-        default_tags: &[String],
+        default_tags: &[impl IntoTag],
     ) -> Self {
         Self {
             width,
@@ -28,13 +50,17 @@ impl Tilemap {
 
 #[derive(Clone)]
 pub struct Tile {
-    pub tags: HashSet<String>,
+    pub tags: HashSet<Tag>,
 }
 
 impl Tile {
-    pub fn with_tags(tags: &[String]) -> Self {
+    pub fn with_tags(tags: &[impl IntoTag]) -> Self {
         Self {
-            tags: tags.iter().cloned().map(|s| s.to_owned()).collect(),
+            tags: tags
+                .iter()
+                .cloned()
+                .map(|s| s.into_tag().to_owned())
+                .collect(),
         }
     }
 }
