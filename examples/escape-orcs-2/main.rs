@@ -9,6 +9,7 @@ mod game_state;
 mod item;
 mod orc;
 mod player;
+mod terrain;
 
 fn main() -> Result<()> {
     let mut engine = Engine::new(EngineSettings {

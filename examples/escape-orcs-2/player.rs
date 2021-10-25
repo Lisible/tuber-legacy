@@ -22,7 +22,10 @@ pub(crate) fn create_player(asset_store: &mut AssetStore) -> impl EntityDefiniti
             item: None,
             score: 0,
         },
-        Transform2D::default(),
+        Transform2D {
+            translation: (0.0, 0.0, 10),
+            ..Default::default()
+        },
         AnimatedSprite {
             width: 64.0,
             height: 64.0,

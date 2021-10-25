@@ -1,5 +1,6 @@
 use crate::orc::{create_orc, Orc};
 use crate::player::{create_player, Player};
+use crate::terrain::create_terrain;
 use tuber::core::input::{Input, InputState};
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
@@ -28,6 +29,7 @@ impl State for GameState {
         state_context
             .ecs
             .insert(create_orc(state_context.asset_store));
+        state_context.ecs.insert(create_terrain());
         state_context
             .system_bundles
             .push(Graphics::default_system_bundle());
