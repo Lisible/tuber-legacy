@@ -5,6 +5,7 @@ use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::WinitTuberRunner;
 
+mod character;
 mod game_state;
 mod item;
 mod orc;

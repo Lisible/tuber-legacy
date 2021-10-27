@@ -5,6 +5,8 @@ use tuber::graphics::tilemap::TilemapRender;
 use tuber::proc_macros::Tag;
 use tuber_core::transform::Transform2D;
 
+pub const TILE_SIZE: usize = 64;
+
 #[derive(Tag, Clone)]
 enum TileTags {
     Stone,
@@ -22,7 +24,6 @@ enum TileTags {
 pub(crate) fn create_terrain() -> impl EntityDefinition {
     const MAP_WIDTH: usize = 12;
     const MAP_HEIGHT: usize = 10;
-    const TILE_SIZE: usize = 64;
 
     let mut tilemap = Tilemap::new(
         MAP_WIDTH,
