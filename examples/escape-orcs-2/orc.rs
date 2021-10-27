@@ -1,3 +1,4 @@
+use crate::character::Character;
 use crate::game_state::Movement;
 use std::time::Instant;
 use tuber::core::asset::AssetStore;
@@ -15,6 +16,11 @@ pub(crate) fn create_orc(asset_store: &mut AssetStore) -> impl EntityDefinition 
     (
         Orc {
             last_movement: None,
+        },
+        Character {
+            initial_position: (64.0, 64.0),
+            animation_time: 0.0,
+            movement: Movement::Idle,
         },
         Transform2D {
             translation: (128.0, 128.0, 10),

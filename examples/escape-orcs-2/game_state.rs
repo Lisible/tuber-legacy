@@ -2,6 +2,8 @@ use crate::character::Character;
 use crate::orc::{create_orc, Orc};
 use crate::player::{create_player, Player};
 use crate::terrain::{create_terrain, TILE_SIZE};
+use rand::prelude::ThreadRng;
+use rand::Rng;
 use std::f32::consts::PI;
 use tuber::core::input::{Input, InputState};
 use tuber::core::transform::Transform2D;
@@ -23,8 +25,14 @@ impl GameState {
     }
 }
 
+struct RandomNumberGenerator(ThreadRng);
+
 impl State for GameState {
     fn initialize(&mut self, state_context: &mut StateContext) {
+        state_context
+            .ecs
+            .insert_shared_resource(RandomNumberGenerator(rand::thread_rng()));
+
         state_context.ecs.insert(create_camera());
         state_context
             .ecs
@@ -74,7 +82,7 @@ fn create_camera() -> impl EntityDefinition {
     )
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Movement {
     Up,
     Down,
@@ -84,18 +92,23 @@ pub(crate) enum Movement {
 }
 
 fn move_player(ecs: &mut Ecs) {
-    let input_state = ecs.shared_resource::<InputState>().unwrap();
-    let player_movement = if input_state.is(Input::ActionDown("move_up".into())) {
-        Movement::Up
-    } else if input_state.is(Input::ActionDown("move_down".into())) {
-        Movement::Down
-    } else if input_state.is(Input::ActionDown("move_left".into())) {
-        Movement::Left
-    } else if input_state.is(Input::ActionDown("move_right".into())) {
-        Movement::Right
-    } else {
-        return;
+    let player_movement = {
+        let input_state = ecs.shared_resource::<InputState>().unwrap();
+        let player_movement = if input_state.is(Input::ActionDown("move_up".into())) {
+            Movement::Up
+        } else if input_state.is(Input::ActionDown("move_down".into())) {
+            Movement::Down
+        } else if input_state.is(Input::ActionDown("move_left".into())) {
+            Movement::Left
+        } else if input_state.is(Input::ActionDown("move_right".into())) {
+            Movement::Right
+        } else {
+            return;
+        };
+        player_movement
     };
+
+    move_orcs(ecs);
 
     if let Some((_, (_, mut character, transform))) =
         ecs.query_one::<(R<Player>, W<Character>, R<Transform2D>)>()
@@ -109,13 +122,36 @@ fn move_player(ecs: &mut Ecs) {
     }
 }
 
+fn move_orcs(ecs: &mut Ecs) {
+    let rng = &mut ecs
+        .shared_resource_mut::<RandomNumberGenerator>()
+        .unwrap()
+        .0;
+
+    const MOVEMENTS: [Movement; 4] = [
+        Movement::Up,
+        Movement::Down,
+        Movement::Left,
+        Movement::Right,
+    ];
+
+    let (_, (_, player_character)) = ecs.query_one::<(R<Player>, R<Character>)>().unwrap();
+    for (_, (_, mut character, transform)) in ecs.query::<(R<Orc>, W<Character>, R<Transform2D>)>()
+    {
+        if character.movement == Movement::Idle {
+            character.movement = MOVEMENTS[rng.gen_range(0..4)];
+            character.animation_time = 0.0;
+            character.initial_position.0 = transform.translation.0;
+            character.initial_position.1 = transform.translation.1;
+        }
+    }
+}
+
 fn update_character_position(ecs: &mut Ecs) {
     const ANIMATION_SPEED: f32 = 2f32;
     let delta_time = ecs.shared_resource::<DeltaTime>().unwrap().0 as f32;
 
-    if let Some((_, (mut character, mut transform))) =
-        ecs.query_one::<(W<Character>, W<Transform2D>)>()
-    {
+    for (_, (mut character, mut transform)) in ecs.query::<(W<Character>, W<Transform2D>)>() {
         character.animation_time += delta_time * ANIMATION_SPEED;
 
         if character.movement == Movement::Right {
