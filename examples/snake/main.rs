@@ -211,6 +211,7 @@ fn spawn_apple(ecs: &mut Ecs) {
                 width: 32.0,
                 height: 32.0,
             },
+            ..Default::default()
         },
         Apple,
     ));
@@ -233,6 +234,7 @@ fn spawn_snake(ecs: &mut Ecs) {
                 width: 32.0,
                 height: 32.0,
             },
+            ..Default::default()
         },
         Velocity {
             x: 0.0,
@@ -259,6 +261,7 @@ fn spawn_snake(ecs: &mut Ecs) {
                 width: 32.0,
                 height: 32.0,
             },
+            ..Default::default()
         },
         Velocity {
             x: 0.0,
@@ -367,6 +370,7 @@ fn eat_apple_system(ecs: &mut Ecs) -> SystemResult {
                         width: 32.0,
                         height: 32.0,
                     },
+                    ..Default::default()
                 },
                 tail_velocity,
                 SnakeBodyPart {

@@ -12,6 +12,18 @@ pub struct Sprite {
     pub texture_region: TextureRegion,
 }
 
+impl Default for Sprite {
+    fn default() -> Self {
+        Self {
+            width: 32.0,
+            height: 32.0,
+            offset: (0.0, 0.0, 0),
+            texture_identifier: "texture".into(),
+            texture_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
+        }
+    }
+}
+
 pub struct AnimatedSprite {
     pub width: f32,
     pub height: f32,
