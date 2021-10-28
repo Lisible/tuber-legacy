@@ -10,8 +10,8 @@ use tuber_graphics::low_level::QuadDescription;
 use tuber_graphics::texture::Texture as TextureData;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{
-    BindGroupLayout, BufferDescriptor, Device, FragmentState, Queue, RenderPass, RenderPipeline,
-    ShaderModule, TextureFormat,
+    BindGroupLayout, BlendFactor, BlendOperation, BufferDescriptor, Device, FragmentState, Queue,
+    RenderPass, RenderPipeline, ShaderModule, TextureFormat,
 };
 
 const MAX_INSTANCE_COUNT: u64 = 100_000;
@@ -224,8 +224,12 @@ impl QuadRenderer {
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
                     format: *texture_format,
-                    alpha_blend: wgpu::BlendState::REPLACE,
-                    color_blend: wgpu::BlendState::REPLACE,
+                    alpha_blend: Default::default(),
+                    color_blend: wgpu::BlendState {
+                        src_factor: BlendFactor::SrcAlpha,
+                        dst_factor: BlendFactor::OneMinusSrcAlpha,
+                        operation: BlendOperation::Add,
+                    },
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
             }),
