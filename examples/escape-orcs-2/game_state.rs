@@ -48,6 +48,7 @@ impl State for GameState {
         let mut system_bundle = SystemBundle::new();
         system_bundle.add_system(move_player);
         system_bundle.add_system(update_character_position);
+        system_bundle.add_system(update_camera_position);
         state_context.system_bundles.push(system_bundle);
     }
 
@@ -78,8 +79,21 @@ fn create_camera() -> impl EntityDefinition {
             far: 100.0,
         },
         Active,
-        Transform2D::default(),
+        Transform2D {
+            translation: (-368.0, -268.0, 0),
+            ..Default::default()
+        },
     )
+}
+
+pub(crate) fn update_camera_position(ecs: &mut Ecs) {
+    let (_, (_, player_transform)) = ecs.query_one::<(R<Player>, R<Transform2D>)>().unwrap();
+    let (_, (_, mut camera_transform)) = ecs
+        .query_one::<(R<OrthographicCamera>, W<Transform2D>)>()
+        .unwrap();
+
+    camera_transform.translation.0 = player_transform.translation.0 - 368f32;
+    camera_transform.translation.1 = player_transform.translation.1 - 268f32;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -135,7 +149,6 @@ fn move_orcs(ecs: &mut Ecs) {
         Movement::Right,
     ];
 
-    let (_, (_, player_character)) = ecs.query_one::<(R<Player>, R<Character>)>().unwrap();
     for (_, (_, mut character, transform)) in ecs.query::<(R<Orc>, W<Character>, R<Transform2D>)>()
     {
         if character.movement == Movement::Idle {
