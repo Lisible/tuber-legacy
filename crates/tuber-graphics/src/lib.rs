@@ -203,6 +203,15 @@ impl Graphics {
             texture_metadata.height as f32,
         );
 
+        let effective_transform = Transform2D {
+            translation: (
+                transform.translation.0 + sprite.offset.0,
+                transform.translation.1 + sprite.offset.1,
+                transform.translation.2 + sprite.offset.2,
+            ),
+            ..*transform
+        };
+
         self.graphics_impl.prepare_quad(
             &QuadDescription {
                 width: sprite.width,
@@ -218,7 +227,7 @@ impl Graphics {
                     },
                 }),
             },
-            transform,
+            &effective_transform,
             apply_view_transform,
         );
         Ok(())
@@ -387,6 +396,7 @@ impl Graphics {
             let sprite = Sprite {
                 width: image.width,
                 height: image.height,
+                offset: (0.0, 0.0, 0),
                 texture_identifier: image.texture_identifier.clone(),
                 texture_region: image.texture_region,
             };

@@ -4,7 +4,7 @@ use std::time::Instant;
 use tuber::core::asset::AssetStore;
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
-use tuber::graphics::sprite::{AnimatedSprite, AnimationState};
+use tuber::graphics::sprite::{AnimatedSprite, AnimationState, Sprite};
 use tuber::graphics::texture::TextureAtlas;
 
 pub(crate) struct Orc {
@@ -40,6 +40,13 @@ pub(crate) fn create_orc(asset_store: &mut AssetStore) -> impl EntityDefinition 
                 frame_duration: 500,
                 flip_x: false,
             },
+        },
+        Sprite {
+            width: 48.0,
+            height: 14.0,
+            texture_identifier: "spritesheet".to_string(),
+            texture_region: atlas.texture_region("shadow").unwrap(),
+            offset: (6.0, 55.0, -1),
         },
     )
 }

@@ -7,6 +7,7 @@ use tuber_ecs::system::SystemResult;
 pub struct Sprite {
     pub width: f32,
     pub height: f32,
+    pub offset: (f32, f32, i32),
     pub texture_identifier: String,
     pub texture_region: TextureRegion,
 }

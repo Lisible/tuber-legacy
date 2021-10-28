@@ -5,7 +5,7 @@ use std::time::Instant;
 use tuber::core::asset::AssetStore;
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
-use tuber::graphics::sprite::{AnimatedSprite, AnimationState};
+use tuber::graphics::sprite::{AnimatedSprite, AnimationState, Sprite};
 use tuber::graphics::texture::TextureAtlas;
 
 pub(crate) struct Player {
@@ -44,6 +44,13 @@ pub(crate) fn create_player(asset_store: &mut AssetStore) -> impl EntityDefiniti
                 frame_duration: 500,
                 flip_x: false,
             },
+        },
+        Sprite {
+            width: 32.0,
+            height: 14.0,
+            texture_identifier: "spritesheet".to_string(),
+            texture_region: atlas.texture_region("shadow").unwrap(),
+            offset: (14.0, 52.0, -1),
         },
     )
 }
