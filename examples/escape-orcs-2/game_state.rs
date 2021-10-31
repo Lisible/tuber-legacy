@@ -130,8 +130,8 @@ fn move_player(ecs: &mut Ecs) {
         if character.movement == Movement::Idle {
             character.movement = player_movement;
             character.animation_time = 0.0;
-            character.initial_position.0 = transform.translation.0;
-            character.initial_position.1 = transform.translation.1;
+            character.initial_position.0 = transform.translation.0 as i32 / TILE_SIZE as i32;
+            character.initial_position.1 = transform.translation.1 as i32 / TILE_SIZE as i32;
         }
     }
 }
@@ -154,8 +154,8 @@ fn move_orcs(ecs: &mut Ecs) {
         if character.movement == Movement::Idle {
             character.movement = MOVEMENTS[rng.gen_range(0..4)];
             character.animation_time = 0.0;
-            character.initial_position.0 = transform.translation.0;
-            character.initial_position.1 = transform.translation.1;
+            character.initial_position.0 = transform.translation.0 as i32 / TILE_SIZE as i32;
+            character.initial_position.1 = transform.translation.1 as i32 / TILE_SIZE as i32;
         }
     }
 }
@@ -165,45 +165,51 @@ fn update_character_position(ecs: &mut Ecs) {
     let delta_time = ecs.shared_resource::<DeltaTime>().unwrap().0 as f32;
 
     for (_, (mut character, mut transform)) in ecs.query::<(W<Character>, W<Transform2D>)>() {
+        let target_position =
+            compute_target_position(character.initial_position, character.movement);
         character.animation_time += delta_time * ANIMATION_SPEED;
+        let delta_translation = ease_in_out(character.animation_time) * TILE_SIZE as f32;
 
-        if character.movement == Movement::Right {
-            transform.translation.0 = character.initial_position.0
-                + ease_in_out(character.animation_time) * TILE_SIZE as f32;
+        transform.translation = match character.movement {
+            Movement::Up => (
+                transform.translation.0,
+                character.initial_position.1 as f32 * TILE_SIZE as f32 - delta_translation,
+                transform.translation.2,
+            ),
+            Movement::Down => (
+                transform.translation.0,
+                character.initial_position.1 as f32 * TILE_SIZE as f32 + delta_translation,
+                transform.translation.2,
+            ),
+            Movement::Left => (
+                character.initial_position.0 as f32 * TILE_SIZE as f32 - delta_translation,
+                transform.translation.1,
+                transform.translation.2,
+            ),
+            Movement::Right => (
+                character.initial_position.0 as f32 * TILE_SIZE as f32 + delta_translation,
+                transform.translation.1,
+                transform.translation.2,
+            ),
+            _ => transform.translation,
+        };
 
-            if transform.translation.0 as i32
-                == character.initial_position.0 as i32 + TILE_SIZE as i32
-            {
-                character.movement = Movement::Idle;
-            }
-        } else if character.movement == Movement::Left {
-            transform.translation.0 = character.initial_position.0
-                - ease_in_out(character.animation_time) * TILE_SIZE as f32;
-
-            if transform.translation.0 as i32
-                == character.initial_position.0 as i32 - TILE_SIZE as i32
-            {
-                character.movement = Movement::Idle;
-            }
-        } else if character.movement == Movement::Up {
-            transform.translation.1 = character.initial_position.1
-                - ease_in_out(character.animation_time) * TILE_SIZE as f32;
-
-            if transform.translation.1 as i32
-                == character.initial_position.1 as i32 - TILE_SIZE as i32
-            {
-                character.movement = Movement::Idle;
-            }
-        } else if character.movement == Movement::Down {
-            transform.translation.1 = character.initial_position.1
-                + ease_in_out(character.animation_time) * TILE_SIZE as f32;
-
-            if transform.translation.1 as i32
-                == character.initial_position.1 as i32 + TILE_SIZE as i32
-            {
-                character.movement = Movement::Idle;
-            }
+        if character.animation_time >= 1f32 && character.movement != Movement::Idle {
+            println!("animation_time reached one");
+            transform.translation.0 = target_position.0 as f32 * TILE_SIZE as f32;
+            transform.translation.1 = target_position.1 as f32 * TILE_SIZE as f32;
+            character.movement = Movement::Idle;
         }
+    }
+}
+
+fn compute_target_position(initial_position: (i32, i32), movement: Movement) -> (i32, i32) {
+    match movement {
+        Movement::Up => (initial_position.0, initial_position.1 - 1),
+        Movement::Down => (initial_position.0, initial_position.1 + 1),
+        Movement::Left => (initial_position.0 - 1, initial_position.1),
+        Movement::Right => (initial_position.0 + 1, initial_position.1),
+        _ => initial_position,
     }
 }
 

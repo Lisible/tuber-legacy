@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use tuber::core::tilemap::{IntoTag, Tag, Tile, Tilemap};
 use tuber::ecs::ecs::EntityDefinition;
 use tuber::graphics::tilemap::TilemapRender;

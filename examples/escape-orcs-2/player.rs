@@ -22,7 +22,7 @@ pub(crate) fn create_player(asset_store: &mut AssetStore) -> impl EntityDefiniti
             score: 0,
         },
         Character {
-            initial_position: (0.0, 0.0),
+            initial_position: (0, 0),
             animation_time: 0.0,
             movement: Movement::Idle,
         },

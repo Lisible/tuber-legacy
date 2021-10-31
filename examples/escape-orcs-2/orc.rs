@@ -18,7 +18,7 @@ pub(crate) fn create_orc(asset_store: &mut AssetStore) -> impl EntityDefinition 
             last_movement: None,
         },
         Character {
-            initial_position: (64.0, 64.0),
+            initial_position: (4, 4),
             animation_time: 0.0,
             movement: Movement::Idle,
         },
