@@ -2,7 +2,7 @@
 name = "tuber"
 version = "0.1.0"
 authors = ["Clément Sibille <clement.sibille@protonmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [workspace]
 members = ["crates/*"]

@@ -2,7 +2,7 @@
 name = "tuber-graphics-wgpu"
 version = "0.1.0"
 authors = ["Clément Sibille <claymeuns@protonmail.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,13 +10,9 @@ edition = "2018"
 tuber-core = { path = "../tuber-core" }
 tuber-graphics = { path = "../tuber-graphics" }
 tuber-ecs = { path = "../tuber-ecs" }
-wgpu = "0.7.0"
+wgpu = "0.11"
 raw-window-handle = "0.3.3"
 futures = { version = "0.3.14", features = ["executor"] }
 bytemuck = { version =  "1.5", features = [ "derive" ] }
 nalgebra = "0.27"
 num-traits = "0.2.14"
-
-[build-dependencies]
-glob = "0.3"
-shaderc = "0.7"
