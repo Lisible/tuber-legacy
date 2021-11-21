@@ -7,6 +7,7 @@ use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
 use tuber::graphics::sprite::{AnimatedSprite, AnimationState, Sprite};
 use tuber::graphics::texture::TextureAtlas;
+use tuber_graphics::material::Material;
 
 pub(crate) struct Player {
     pub item: Option<Item>,
@@ -48,9 +49,11 @@ pub(crate) fn create_player(asset_store: &mut AssetStore) -> impl EntityDefiniti
         Sprite {
             width: 32.0,
             height: 14.0,
-            texture_identifier: "spritesheet".to_string(),
-            texture_region: atlas.texture_region("shadow").unwrap(),
             offset: (14.0, 52.0, -1),
+            material: Material {
+                albedo_map_identifier: "spritesheet".to_string(),
+                albedo_map_region: atlas.texture_region("shadow").unwrap(),
+            },
         },
     )
 }

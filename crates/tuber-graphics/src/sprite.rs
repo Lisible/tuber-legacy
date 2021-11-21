@@ -1,3 +1,4 @@
+use crate::material::Material;
 use crate::texture::TextureRegion;
 use std::time::Instant;
 use tuber_ecs::ecs::Ecs;
@@ -8,8 +9,7 @@ pub struct Sprite {
     pub width: f32,
     pub height: f32,
     pub offset: (f32, f32, i32),
-    pub texture_identifier: String,
-    pub texture_region: TextureRegion,
+    pub material: Material,
 }
 
 impl Default for Sprite {
@@ -18,8 +18,10 @@ impl Default for Sprite {
             width: 32.0,
             height: 32.0,
             offset: (0.0, 0.0, 0),
-            texture_identifier: "texture".into(),
-            texture_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
+            material: Material {
+                albedo_map_identifier: "texture".to_string(),
+                albedo_map_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
+            },
         }
     }
 }

@@ -1,5 +1,10 @@
-use crate::TuberGraphicsWGPUError;
+use crate::quad_renderer::QuadRenderer;
+use crate::{DrawCommand, DrawCommandData, DrawType, TuberGraphicsWGPUError};
 use futures::executor::block_on;
+use tuber_core::transform::Transform2D;
+use tuber_ecs::EntityIndex;
+use tuber_graphics::camera::OrthographicCamera;
+use tuber_graphics::low_level::QuadDescription;
 use tuber_graphics::{Window, WindowSize};
 
 pub struct WGPUState {
@@ -8,6 +13,8 @@ pub struct WGPUState {
     queue: wgpu::Queue,
     surface_configuration: wgpu::SurfaceConfiguration,
     size: WindowSize,
+    quad_renderer: QuadRenderer,
+    pending_draw_commands: Vec<DrawCommand>,
 }
 
 impl WGPUState {
@@ -39,12 +46,18 @@ impl WGPUState {
             present_mode: wgpu::PresentMode::Fifo,
         };
 
+        surface.configure(&device, &surface_configuration);
+
+        let quad_renderer = QuadRenderer::new(&device, surface_configuration.format);
+
         Self {
             surface,
             device,
             queue,
             surface_configuration,
             size: window_size,
+            quad_renderer,
+            pending_draw_commands: vec![],
         }
     }
 
@@ -73,7 +86,7 @@ impl WGPUState {
             });
 
         {
-            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("render_pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachment {
                     view: &view,
@@ -90,10 +103,56 @@ impl WGPUState {
                 }],
                 depth_stencil_attachment: None,
             });
+
+            dbg!(&self.pending_draw_commands.len());
+            for draw_command in &self.pending_draw_commands {
+                {
+                    match draw_command {
+                        DrawCommand {
+                            draw_command_data, ..
+                        } if draw_command.draw_type() == DrawType::Quad => {
+                            if let DrawCommandData::QuadDrawCommand(draw_command_data) =
+                                draw_command_data
+                            {
+                                self.quad_renderer
+                                    .render(&mut render_pass, draw_command_data);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
+
         output.present();
+
+        self.pending_draw_commands.clear();
+        self.quad_renderer.clear_pending_quads();
         Ok(())
+    }
+
+    pub(crate) fn prepare_quad(
+        &mut self,
+        quad_description: &QuadDescription,
+        transform: &Transform2D,
+    ) {
+        self.pending_draw_commands.push(self.quad_renderer.prepare(
+            &self.device,
+            &self.queue,
+            quad_description,
+            transform,
+        ));
+    }
+
+    pub(crate) fn update_camera(
+        &mut self,
+        _camera_id: EntityIndex,
+        camera: &OrthographicCamera,
+        transform: &Transform2D,
+    ) {
+        self.quad_renderer
+            .set_camera(&self.queue, camera, transform);
     }
 }
