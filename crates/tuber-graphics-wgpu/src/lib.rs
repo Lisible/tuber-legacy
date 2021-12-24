@@ -1,5 +1,6 @@
 mod geometry;
 mod quad_renderer;
+mod texture;
 mod wgpu_state;
 
 use crate::wgpu_state::WGPUState;
@@ -11,7 +12,7 @@ use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::low_level::{LowLevelGraphicsAPI, QuadDescription};
-use tuber_graphics::texture::Texture;
+use tuber_graphics::texture::TextureData;
 use tuber_graphics::tilemap::TilemapRender;
 use tuber_graphics::{Color, Window, WindowSize};
 
@@ -78,7 +79,7 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         false
     }
 
-    fn load_texture(&mut self, _texture_data: &Texture) {}
+    fn load_texture(&mut self, _texture_data: &TextureData) {}
 
     fn update_camera(
         &mut self,

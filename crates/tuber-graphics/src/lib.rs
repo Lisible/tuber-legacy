@@ -18,7 +18,7 @@ use crate::material::Material;
 use crate::shape::RectangleShape;
 use crate::sprite::{sprite_animation_step_system, AnimatedSprite, Sprite};
 use crate::texture::{
-    default_texture_loader, texture_atlas_loader, texture_loader, Texture, TextureAtlas,
+    default_texture_loader, texture_atlas_loader, texture_loader, TextureAtlas, TextureData,
     TextureMetadata, TextureRegion,
 };
 use crate::tilemap::TilemapRender;
@@ -82,7 +82,7 @@ impl Graphics {
         };
         let default_texture = default_texture_loader(&default_texture_metadata);
         asset_store
-            .insert_asset::<Texture>(default_texture_metadata, default_texture)
+            .insert_asset::<TextureData>(default_texture_metadata, default_texture)
             .unwrap();
 
         self.graphics_impl
@@ -111,7 +111,7 @@ impl Graphics {
         );
     }
 
-    fn load_texture_to_vram(&mut self, texture: &Texture) {
+    fn load_texture_to_vram(&mut self, texture: &TextureData) {
         self.graphics_impl.load_texture(texture);
     }
 
@@ -168,7 +168,7 @@ impl Graphics {
         texture_identifier: &str,
     ) {
         if !self.graphics_impl.is_texture_in_vram(texture_identifier) {
-            let texture = asset_manager.asset::<Texture>(texture_identifier);
+            let texture = asset_manager.asset::<TextureData>(texture_identifier);
             if let Ok(texture) = texture {
                 self.texture_metadata.insert(
                     texture_identifier.into(),
@@ -252,7 +252,7 @@ impl Graphics {
                 .load::<TextureAtlas>(&tilemap_render.texture_atlas_identifier)
                 .unwrap();
             asset_store
-                .load::<Texture>(&tilemap_render.texture_identifier)
+                .load::<TextureData>(&tilemap_render.texture_identifier)
                 .unwrap();
             self.load_texture_in_vram_if_required(asset_store, &tilemap_render.texture_identifier);
         }
@@ -279,7 +279,7 @@ impl Graphics {
 
         {
             asset_store.load::<TextureAtlas>(&font_atlas).unwrap();
-            asset_store.load::<Texture>(&font_texture).unwrap();
+            asset_store.load::<TextureData>(&font_texture).unwrap();
             self.load_texture_in_vram_if_required(asset_store, &font_texture);
         }
 
@@ -442,7 +442,7 @@ impl Graphics {
 
     pub fn loaders() -> Vec<(TypeId, GenericLoader)> {
         vec![
-            (TypeId::of::<Texture>(), Box::new(texture_loader)),
+            (TypeId::of::<TextureData>(), Box::new(texture_loader)),
             (TypeId::of::<TextureAtlas>(), Box::new(texture_atlas_loader)),
             (TypeId::of::<BitmapFont>(), Box::new(font_loader)),
         ]

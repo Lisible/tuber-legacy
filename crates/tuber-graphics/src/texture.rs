@@ -10,7 +10,7 @@ use tuber_core::asset::AssetMetadata;
 
 pub type TextureSize = (u32, u32);
 
-pub struct Texture {
+pub struct TextureData {
     pub identifier: String,
     pub size: TextureSize,
     pub bytes: Vec<u8>,
@@ -89,7 +89,7 @@ pub(crate) fn texture_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
         .unwrap();
     let image = image.as_rgba8().unwrap();
 
-    Box::new(Texture {
+    Box::new(TextureData {
         identifier: asset_metadata.identifier.clone(),
         size: image.dimensions(),
         bytes: image.to_vec(),
@@ -114,12 +114,12 @@ pub(crate) fn texture_atlas_loader(asset_metadata: &AssetMetadata) -> Box<dyn An
     Box::new(texture_atlas)
 }
 
-pub(crate) fn default_texture_loader(asset_metadata: &AssetMetadata) -> Texture {
+pub(crate) fn default_texture_loader(asset_metadata: &AssetMetadata) -> TextureData {
     let bytes = include_bytes!("../textures/default_texture.png");
     let image = image::load_from_memory(bytes).unwrap();
     let image = image.as_rgba8().unwrap();
 
-    Texture {
+    TextureData {
         identifier: asset_metadata.identifier.clone(),
         size: image.dimensions(),
         bytes: image.to_vec(),
