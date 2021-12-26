@@ -1,10 +1,12 @@
 use crate::quad_renderer::QuadRenderer;
 use crate::{DrawCommand, DrawCommandData, DrawType, TuberGraphicsWGPUError};
 use futures::executor::block_on;
+use std::collections::HashMap;
 use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::low_level::QuadDescription;
+use tuber_graphics::texture::TextureData;
 use tuber_graphics::{Window, WindowSize};
 
 pub struct WGPUState {
@@ -15,6 +17,7 @@ pub struct WGPUState {
     size: WindowSize,
     quad_renderer: QuadRenderer,
     pending_draw_commands: Vec<DrawCommand>,
+    textures_in_vram: HashMap<String, wgpu::Texture>,
 }
 
 impl WGPUState {
@@ -57,6 +60,7 @@ impl WGPUState {
             surface_configuration,
             size: window_size,
             quad_renderer,
+            textures_in_vram: HashMap::new(),
             pending_draw_commands: vec![],
         }
     }
@@ -154,5 +158,16 @@ impl WGPUState {
     ) {
         self.quad_renderer
             .set_camera(&self.queue, camera, transform);
+    }
+
+    pub(crate) fn load_texture_in_vram(&mut self, texture_data: &TextureData) {
+        use crate::texture;
+        let texture = texture::create_texture_from_data(&self.device, &self.queue, &texture_data);
+        self.textures_in_vram
+            .insert(texture_data.identifier.clone(), texture);
+    }
+
+    pub(crate) fn is_texture_in_vram(&self, texture_identifier: &str) -> bool {
+        self.textures_in_vram.contains_key(texture_identifier)
     }
 }

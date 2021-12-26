@@ -111,10 +111,6 @@ impl Graphics {
         );
     }
 
-    fn load_texture_to_vram(&mut self, texture: &TextureData) {
-        self.graphics_impl.load_texture(texture);
-    }
-
     pub fn prepare_animated_sprite(
         &mut self,
         animated_sprite: &AnimatedSprite,
@@ -177,7 +173,8 @@ impl Graphics {
                         height: texture.size.1,
                     },
                 );
-                self.load_texture_to_vram(&texture);
+
+                self.graphics_impl.load_texture_in_vram(texture);
             }
         }
     }

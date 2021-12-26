@@ -21,9 +21,10 @@ pub trait LowLevelGraphicsAPI {
         transform: &Transform2D,
         asset_store: &AssetStore,
     );
+
     fn is_texture_in_vram(&self, texture_identifier: &str) -> bool;
-    /// Loads a texture in memory
-    fn load_texture(&mut self, texture_data: &TextureData);
+    fn load_texture_in_vram(&mut self, texture_data: &TextureData);
+
     /// Updates the view/projection matrix
     fn update_camera(
         &mut self,

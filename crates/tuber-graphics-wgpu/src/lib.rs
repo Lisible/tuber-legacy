@@ -27,7 +27,14 @@ pub enum MaybeUninitialized<T> {
 }
 
 impl<T> MaybeUninitialized<T> {
-    fn assume_initialized(&mut self) -> &mut T {
+    fn assume_initialized(&self) -> &T {
+        match self {
+            MaybeUninitialized::Initialized(value) => value,
+            _ => panic!("Tried to use an uninitialized value"),
+        }
+    }
+
+    fn assume_initialized_mut(&mut self) -> &mut T {
         match self {
             MaybeUninitialized::Initialized(value) => value,
             _ => panic!("Tried to use an uninitialized value"),
@@ -52,7 +59,7 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
     }
 
     fn render(&mut self) {
-        self.state.assume_initialized().render().unwrap();
+        self.state.assume_initialized_mut().render().unwrap();
     }
 
     fn prepare_quad(
@@ -62,7 +69,7 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         _apply_view_transform: bool,
     ) {
         self.state
-            .assume_initialized()
+            .assume_initialized_mut()
             .prepare_quad(quad_description, transform);
     }
 
@@ -75,11 +82,17 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
     ) {
     }
 
-    fn is_texture_in_vram(&self, _texture_identifier: &str) -> bool {
-        false
+    fn is_texture_in_vram(&self, texture_identifier: &str) -> bool {
+        self.state
+            .assume_initialized()
+            .is_texture_in_vram(texture_identifier)
     }
 
-    fn load_texture(&mut self, _texture_data: &TextureData) {}
+    fn load_texture_in_vram(&mut self, texture_data: &TextureData) {
+        self.state
+            .assume_initialized_mut()
+            .load_texture_in_vram(texture_data);
+    }
 
     fn update_camera(
         &mut self,
@@ -88,14 +101,14 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         transform: &Transform2D,
     ) {
         self.state
-            .assume_initialized()
+            .assume_initialized_mut()
             .update_camera(camera_id, camera, transform);
     }
 
     fn set_clear_color(&mut self, _color: Color) {}
 
     fn on_window_resized(&mut self, size: WindowSize) {
-        self.state.assume_initialized().resize(size);
+        self.state.assume_initialized_mut().resize(size);
     }
 }
 

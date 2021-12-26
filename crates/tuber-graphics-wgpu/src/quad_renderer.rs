@@ -44,6 +44,8 @@ impl QuadRenderer {
         let quad_bind_group_layout = Self::create_quad_bind_group_layout(device);
         let quad_bind_group =
             Self::create_quad_bind_group(device, &quad_bind_group_layout, &quad_uniform_buffer);
+        let texture_bind_group_layout = Self::create_texture_bind_group_layout(device);
+        // TODO let texture_bind_group = Self::create_texture_bind_group(device)
         let render_pipeline = Self::create_render_pipeline(
             device,
             surface_texture_format,
@@ -293,6 +295,33 @@ impl QuadRenderer {
                     size: wgpu::BufferSize::new(QUAD_UNIFORM_SIZE as u64),
                 }),
             }],
+        })
+    }
+
+    fn create_texture_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("quad_renderer_texture_bind_group_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler {
+                        filtering: false,
+                        comparison: true,
+                    },
+                    count: None,
+                },
+            ],
         })
     }
 
