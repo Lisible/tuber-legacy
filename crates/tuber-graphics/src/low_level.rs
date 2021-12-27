@@ -1,4 +1,3 @@
-use crate::texture::TextureSize;
 use crate::*;
 
 /// The low level API

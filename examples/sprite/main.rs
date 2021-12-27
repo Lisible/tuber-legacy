@@ -8,7 +8,7 @@ use tuber::graphics::texture::TextureRegion;
 use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::WinitTuberRunner;
-use tuber_graphics::material::Material;
+use tuber_graphics::material::{Material, MaterialTexture};
 use tuber_graphics::texture::TextureAtlas;
 
 fn main() -> Result<()> {
@@ -51,8 +51,11 @@ impl State for MainState {
                 width: 50.0,
                 height: 50.0,
                 material: Material {
-                    albedo_map_identifier: "sprite".to_string(),
-                    albedo_map_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
+                    albedo_map: MaterialTexture {
+                        identifier: "sprite".to_string(),
+                        region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
+                    },
+                    normal_map: None,
                 },
                 ..Default::default()
             },
@@ -67,8 +70,11 @@ impl State for MainState {
                 width: 50.0,
                 height: 50.0,
                 material: Material {
-                    albedo_map_identifier: "sprite".to_string(),
-                    albedo_map_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
+                    albedo_map: MaterialTexture {
+                        identifier: "sprite".to_string(),
+                        region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
+                    },
+                    normal_map: None,
                 },
                 ..Default::default()
             },
@@ -83,8 +89,11 @@ impl State for MainState {
                 width: 50.0,
                 height: 50.0,
                 material: Material {
-                    albedo_map_identifier: "dfhgfhfh".to_string(),
-                    albedo_map_region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
+                    albedo_map: MaterialTexture {
+                        identifier: "dfhgfhfh".to_string(),
+                        region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
+                    },
+                    normal_map: None,
                 },
                 ..Default::default()
             },
@@ -99,8 +108,11 @@ impl State for MainState {
                 width: 100.0,
                 height: 100.0,
                 material: Material {
-                    albedo_map_identifier: "dfhgfhfh".to_string(),
-                    albedo_map_region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
+                    albedo_map: MaterialTexture {
+                        identifier: "dfhgfhfh".to_string(),
+                        region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
+                    },
+                    normal_map: None,
                 },
                 ..Default::default()
             },
@@ -119,8 +131,11 @@ impl State for MainState {
                 width: 100.0,
                 height: 100.0,
                 material: Material {
-                    albedo_map_identifier: "atlas_texture".to_string(),
-                    albedo_map_region: texture_atlas.texture_region("tree").unwrap(),
+                    albedo_map: MaterialTexture {
+                        identifier: "atlas_texture".to_string(),
+                        region: texture_atlas.texture_region("tree").unwrap(),
+                    },
+                    normal_map: None,
                 },
                 ..Default::default()
             },
@@ -135,8 +150,11 @@ impl State for MainState {
                 width: 50.0,
                 height: 50.0,
                 material: Material {
-                    albedo_map_identifier: "atlas_texture".to_string(),
-                    albedo_map_region: texture_atlas.texture_region("house").unwrap(),
+                    albedo_map: MaterialTexture {
+                        identifier: "atlas_texture".to_string(),
+                        region: texture_atlas.texture_region("house").unwrap(),
+                    },
+                    normal_map: None,
                 },
                 ..Default::default()
             },

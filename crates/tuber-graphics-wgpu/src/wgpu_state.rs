@@ -1,3 +1,5 @@
+use crate::composition::Compositor;
+use crate::g_buffer::GBuffer;
 use crate::quad_renderer::QuadRenderer;
 use crate::{DrawCommand, DrawCommandData, DrawType, TuberGraphicsWGPUError};
 use futures::executor::block_on;
@@ -6,8 +8,9 @@ use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::low_level::QuadDescription;
-use tuber_graphics::texture::{TextureData, TextureMetadata};
+use tuber_graphics::texture::TextureData;
 use tuber_graphics::{Window, WindowSize};
+use wgpu::SurfaceTexture;
 
 pub struct WGPUState {
     surface: wgpu::Surface,
@@ -16,6 +19,7 @@ pub struct WGPUState {
     surface_configuration: wgpu::SurfaceConfiguration,
     size: WindowSize,
     quad_renderer: QuadRenderer,
+    compositor: Compositor,
     pending_draw_commands: Vec<DrawCommand>,
     textures_in_vram: HashMap<String, wgpu::Texture>,
 }
@@ -52,6 +56,7 @@ impl WGPUState {
         surface.configure(&device, &surface_configuration);
 
         let quad_renderer = QuadRenderer::new(&device, surface_configuration.format);
+        let compositor = Compositor::new(&device, surface_configuration.format);
 
         Self {
             surface,
@@ -60,6 +65,7 @@ impl WGPUState {
             surface_configuration,
             size: window_size,
             quad_renderer,
+            compositor,
             textures_in_vram: HashMap::new(),
             pending_draw_commands: vec![],
         }
@@ -76,6 +82,29 @@ impl WGPUState {
     }
 
     pub fn render(&mut self) -> Result<(), TuberGraphicsWGPUError> {
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("render_encoder"),
+            });
+
+        let g_buffer = self.geometry_pass(&mut encoder);
+        self.compositor.prepare(&self.device, g_buffer);
+        let output = self.composition_pass(&mut encoder).unwrap();
+
+        self.queue.submit(std::iter::once(encoder.finish()));
+
+        output.present();
+
+        self.pending_draw_commands.clear();
+        self.quad_renderer.clear_pending_quads();
+        Ok(())
+    }
+
+    fn composition_pass(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<SurfaceTexture, TuberGraphicsWGPUError> {
         let output = self
             .surface
             .get_current_texture()
@@ -83,15 +112,56 @@ impl WGPUState {
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("render_encoder"),
-            });
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("render_pass"),
+                label: Some("composition_pass"),
+                color_attachments: &[wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 1.0,
+                        }),
+                        store: true,
+                    },
+                }],
+                depth_stencil_attachment: None,
+            });
+
+            self.compositor.render(&mut render_pass);
+        }
+
+        Ok(output)
+    }
+
+    fn geometry_pass(&mut self, encoder: &mut wgpu::CommandEncoder) -> GBuffer {
+        let albedo_texture_descriptor = wgpu::TextureDescriptor {
+            label: Some("g_buffer_albedo_texture"),
+            size: wgpu::Extent3d {
+                width: self.size.0,
+                height: self.size.1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Bgra8UnormSrgb,
+            usage: wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING,
+        };
+
+        let albedo_texture = self.device.create_texture(&albedo_texture_descriptor);
+
+        let view = albedo_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("geometry_pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
@@ -109,31 +179,30 @@ impl WGPUState {
             });
 
             for draw_command in &self.pending_draw_commands {
-                {
-                    match draw_command {
-                        DrawCommand {
-                            draw_command_data, ..
-                        } if draw_command.draw_type() == DrawType::Quad => {
-                            if let DrawCommandData::QuadDrawCommand(draw_command_data) =
-                                draw_command_data
-                            {
-                                self.quad_renderer
-                                    .render(&mut render_pass, draw_command_data);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
+                self.render_draw_command(&mut render_pass, draw_command);
             }
         }
 
-        self.queue.submit(std::iter::once(encoder.finish()));
+        GBuffer {
+            albedo: albedo_texture,
+        }
+    }
 
-        output.present();
-
-        self.pending_draw_commands.clear();
-        self.quad_renderer.clear_pending_quads();
-        Ok(())
+    fn render_draw_command<'rpass>(
+        &'rpass self,
+        render_pass: &mut wgpu::RenderPass<'rpass>,
+        draw_command: &DrawCommand,
+    ) {
+        match draw_command {
+            DrawCommand {
+                draw_command_data, ..
+            } if draw_command.draw_type() == DrawType::Quad => {
+                if let DrawCommandData::QuadDrawCommand(draw_command_data) = draw_command_data {
+                    self.quad_renderer.render(render_pass, draw_command_data);
+                }
+            }
+            _ => {}
+        }
     }
 
     pub(crate) fn prepare_quad(

@@ -1,6 +1,5 @@
 use crate::character::Character;
 use crate::game_state::Movement;
-use crate::item::Item;
 use std::time::Instant;
 use tuber::core::asset::AssetStore;
 use tuber::core::transform::Transform2D;
@@ -9,19 +8,13 @@ use tuber::graphics::sprite::{AnimatedSprite, AnimationState, Sprite};
 use tuber::graphics::texture::TextureAtlas;
 use tuber_graphics::material::{Material, MaterialTexture};
 
-pub(crate) struct Player {
-    pub item: Option<Item>,
-    pub score: u32,
-}
+pub(crate) struct Player;
 
 pub(crate) fn create_player(asset_store: &mut AssetStore) -> impl EntityDefinition {
     let atlas = asset_store.asset::<TextureAtlas>("atlas").unwrap();
 
     (
-        Player {
-            item: None,
-            score: 0,
-        },
+        Player,
         Character {
             initial_position: (0, 0),
             animation_time: 0.0,

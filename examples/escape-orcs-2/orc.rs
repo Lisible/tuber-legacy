@@ -8,16 +8,12 @@ use tuber::graphics::sprite::{AnimatedSprite, AnimationState, Sprite};
 use tuber::graphics::texture::TextureAtlas;
 use tuber_graphics::material::{Material, MaterialTexture};
 
-pub(crate) struct Orc {
-    pub last_movement: Option<Movement>,
-}
+pub(crate) struct Orc;
 pub(crate) fn create_orc(asset_store: &mut AssetStore) -> impl EntityDefinition {
     let atlas = asset_store.asset::<TextureAtlas>("atlas").unwrap();
 
     (
-        Orc {
-            last_movement: None,
-        },
+        Orc,
         Character {
             initial_position: (4, 4),
             animation_time: 0.0,

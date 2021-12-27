@@ -7,7 +7,6 @@ use tuber::WinitTuberRunner;
 
 mod character;
 mod game_state;
-mod item;
 mod orc;
 mod player;
 mod terrain;

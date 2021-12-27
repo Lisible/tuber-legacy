@@ -166,7 +166,7 @@ pub struct Action(String);
 
 #[derive(Debug, Deserialize)]
 pub struct Keymap {
-    keymap: HashMap<Key, Action>,
+    _keymap: HashMap<Key, Action>,
     reversed_keymap: HashMap<Action, Key>,
 }
 
@@ -182,7 +182,7 @@ impl Keymap {
             .collect();
 
         Ok(Self {
-            keymap,
+            _keymap: keymap,
             reversed_keymap,
         })
     }
@@ -191,7 +191,7 @@ impl Keymap {
 impl Default for Keymap {
     fn default() -> Self {
         Self {
-            keymap: Default::default(),
+            _keymap: Default::default(),
             reversed_keymap: Default::default(),
         }
     }

@@ -3,11 +3,6 @@ use wgpu::TextureDescriptor;
 
 const BYTES_PER_PIXEL: usize = 4;
 
-pub struct Texture {
-    size: wgpu::Extent3d,
-    handle: wgpu::Texture,
-}
-
 pub(crate) fn create_texture_from_data(
     device: &wgpu::Device,
     queue: &wgpu::Queue,

@@ -7,10 +7,8 @@ use tuber_core::transform::{IntoMatrix4, Transform2D};
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::low_level::QuadDescription;
 use tuber_graphics::texture::{
-    TextureMetadata, TextureRegion, DEFAULT_TEXTURE_IDENTIFIER, DEFAULT_TEXTURE_SIZE,
-    WHITE_TEXTURE_IDENTIFIER, WHITE_TEXTURE_SIZE,
+    TextureRegion, DEFAULT_TEXTURE_IDENTIFIER, WHITE_TEXTURE_IDENTIFIER,
 };
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{
     BindGroupLayoutDescriptor, BufferDescriptor, PipelineLayoutDescriptor, RenderPipelineDescriptor,
 };
@@ -23,10 +21,10 @@ const VERTEX_PER_QUAD: usize = 6;
 pub(crate) struct QuadRenderer {
     vertex_buffer: wgpu::Buffer,
     global_uniform_buffer: wgpu::Buffer,
-    global_bind_group_layout: wgpu::BindGroupLayout,
+    _global_bind_group_layout: wgpu::BindGroupLayout,
     global_bind_group: wgpu::BindGroup,
     quad_uniform_buffer: wgpu::Buffer,
-    quad_bind_group_layout: wgpu::BindGroupLayout,
+    _quad_bind_group_layout: wgpu::BindGroupLayout,
     quad_bind_group: wgpu::BindGroup,
     texture_bind_group_layout: wgpu::BindGroupLayout,
     texture_bind_groups: HashMap<String, wgpu::BindGroup>,
@@ -63,10 +61,10 @@ impl QuadRenderer {
         Self {
             vertex_buffer,
             global_uniform_buffer,
-            global_bind_group_layout,
+            _global_bind_group_layout: global_bind_group_layout,
             global_bind_group,
             quad_uniform_buffer,
-            quad_bind_group_layout,
+            _quad_bind_group_layout: quad_bind_group_layout,
             quad_bind_group,
             texture_bind_group_layout,
             // FIXME: Maybe this should be shared across all renderers

@@ -1,3 +1,5 @@
+mod composition;
+mod g_buffer;
 mod geometry;
 mod quad_renderer;
 mod texture;
@@ -12,7 +14,7 @@ use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::low_level::{LowLevelGraphicsAPI, QuadDescription};
-use tuber_graphics::texture::{TextureData, TextureMetadata};
+use tuber_graphics::texture::TextureData;
 use tuber_graphics::tilemap::TilemapRender;
 use tuber_graphics::{Color, Window, WindowSize};
 
