@@ -6,7 +6,7 @@ use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::low_level::QuadDescription;
-use tuber_graphics::texture::TextureData;
+use tuber_graphics::texture::{TextureData, TextureMetadata};
 use tuber_graphics::{Window, WindowSize};
 
 pub struct WGPUState {
@@ -108,7 +108,6 @@ impl WGPUState {
                 depth_stencil_attachment: None,
             });
 
-            dbg!(&self.pending_draw_commands.len());
             for draw_command in &self.pending_draw_commands {
                 {
                     match draw_command {
@@ -147,6 +146,7 @@ impl WGPUState {
             &self.queue,
             quad_description,
             transform,
+            &self.textures_in_vram,
         ));
     }
 

@@ -1,5 +1,7 @@
-use tuber_graphics::texture::TextureData;
+use tuber_graphics::texture::{TextureData, TextureSize};
 use wgpu::TextureDescriptor;
+
+const BYTES_PER_PIXEL: usize = 4;
 
 pub struct Texture {
     size: wgpu::Extent3d,
@@ -11,12 +13,29 @@ pub(crate) fn create_texture_from_data(
     queue: &wgpu::Queue,
     texture_data: &TextureData,
 ) -> wgpu::Texture {
-    let texture_identifier = create_wgpu_texture_identifier(&texture_data.identifier);
+    create_texture(
+        device,
+        queue,
+        &texture_data.identifier,
+        texture_data.size,
+        &texture_data.bytes,
+    )
+}
+
+fn create_texture(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    identifier: &str,
+    size: TextureSize,
+    data: &[u8],
+) -> wgpu::Texture {
+    let texture_identifier = create_wgpu_texture_identifier(identifier);
     let texture_size = wgpu::Extent3d {
-        width: texture_data.size.0,
-        height: texture_data.size.1,
+        width: size.0,
+        height: size.1,
         depth_or_array_layers: 1,
     };
+
     let texture = device.create_texture(&TextureDescriptor {
         label: Some(&texture_identifier),
         size: texture_size,
@@ -33,11 +52,11 @@ pub(crate) fn create_texture_from_data(
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        &texture_data.bytes,
+        data,
         wgpu::ImageDataLayout {
             offset: 0,
-            bytes_per_row: std::num::NonZeroU32::new(4 * texture_data.size.0),
-            rows_per_image: std::num::NonZeroU32::new(texture_data.size.1),
+            bytes_per_row: std::num::NonZeroU32::new(BYTES_PER_PIXEL as u32 * size.0),
+            rows_per_image: std::num::NonZeroU32::new(size.1),
         },
         texture_size,
     );
@@ -46,5 +65,5 @@ pub(crate) fn create_texture_from_data(
 }
 
 fn create_wgpu_texture_identifier(texture_identifier: &str) -> String {
-    "texture_".to_owned() + texture_identifier
+    "wgputexture_".to_owned() + texture_identifier
 }

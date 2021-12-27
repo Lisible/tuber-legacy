@@ -61,7 +61,7 @@ impl From<TextureRegion> for Vector4<f32> {
     }
 }
 
-pub(crate) struct TextureMetadata {
+pub struct TextureMetadata {
     pub width: u32,
     pub height: u32,
 }
@@ -114,13 +114,25 @@ pub(crate) fn texture_atlas_loader(asset_metadata: &AssetMetadata) -> Box<dyn An
     Box::new(texture_atlas)
 }
 
-pub(crate) fn default_texture_loader(asset_metadata: &AssetMetadata) -> TextureData {
+pub const WHITE_TEXTURE_IDENTIFIER: &'static str = "_white";
+pub const WHITE_TEXTURE_SIZE: (f32, f32) = (1.0, 1.0);
+pub(crate) fn create_white_texture() -> TextureData {
+    TextureData {
+        identifier: WHITE_TEXTURE_IDENTIFIER.into(),
+        size: (1, 1),
+        bytes: vec![0xFF, 0xFF, 0xFF, 0xFF],
+    }
+}
+
+pub const DEFAULT_TEXTURE_IDENTIFIER: &'static str = "_placeholder";
+pub const DEFAULT_TEXTURE_SIZE: (f32, f32) = (32.0, 32.0);
+pub(crate) fn create_placeholder_texture() -> TextureData {
     let bytes = include_bytes!("../textures/default_texture.png");
     let image = image::load_from_memory(bytes).unwrap();
     let image = image.as_rgba8().unwrap();
 
     TextureData {
-        identifier: asset_metadata.identifier.clone(),
+        identifier: DEFAULT_TEXTURE_IDENTIFIER.into(),
         size: image.dimensions(),
         bytes: image.to_vec(),
     }

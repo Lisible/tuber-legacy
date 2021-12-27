@@ -18,8 +18,7 @@ use crate::material::Material;
 use crate::shape::RectangleShape;
 use crate::sprite::{sprite_animation_step_system, AnimatedSprite, Sprite};
 use crate::texture::{
-    default_texture_loader, texture_atlas_loader, texture_loader, TextureAtlas, TextureData,
-    TextureMetadata, TextureRegion,
+    texture_atlas_loader, texture_loader, TextureAtlas, TextureData, TextureMetadata, TextureRegion,
 };
 use crate::tilemap::TilemapRender;
 use crate::ui::{Frame, Image, NoViewTransform, Text};
@@ -43,8 +42,6 @@ pub enum GraphicsError {
     SerdeError(serde_json::error::Error),
     BitmapFontFileReadError(std::io::Error),
 }
-
-const DEFAULT_TEXTURE_IDENTIFIER: &'static str = "default_texture";
 
 pub type Color = (f32, f32, f32);
 
@@ -74,19 +71,10 @@ impl Graphics {
         window_size: (u32, u32),
         asset_store: &mut AssetStore,
     ) {
-        let default_texture_metadata = AssetMetadata {
-            identifier: DEFAULT_TEXTURE_IDENTIFIER.into(),
-            kind: "texture".into(),
-            asset_path: "".into(),
-            metadata: HashMap::new(),
-        };
-        let default_texture = default_texture_loader(&default_texture_metadata);
-        asset_store
-            .insert_asset::<TextureData>(default_texture_metadata, default_texture)
-            .unwrap();
-
         self.graphics_impl
             .initialize(window, window_size, asset_store);
+        self.load_texture_in_vram(&texture::create_white_texture());
+        self.load_texture_in_vram(&texture::create_placeholder_texture());
     }
 
     pub fn render(&mut self) {
@@ -164,19 +152,31 @@ impl Graphics {
         texture_identifier: &str,
     ) {
         if !self.graphics_impl.is_texture_in_vram(texture_identifier) {
-            let texture = asset_manager.asset::<TextureData>(texture_identifier);
-            if let Ok(texture) = texture {
-                self.texture_metadata.insert(
-                    texture_identifier.into(),
-                    TextureMetadata {
-                        width: texture.size.0,
-                        height: texture.size.1,
-                    },
-                );
-
-                self.graphics_impl.load_texture_in_vram(texture);
-            }
+            self.load_texture_from_asset_in_vram(asset_manager, texture_identifier);
         }
+    }
+
+    fn load_texture_from_asset_in_vram(
+        &mut self,
+        asset_manager: &mut AssetStore,
+        texture_identifier: &str,
+    ) {
+        let texture = asset_manager.asset::<TextureData>(texture_identifier);
+        if let Ok(texture) = texture {
+            self.load_texture_in_vram(texture);
+        }
+    }
+
+    fn load_texture_in_vram(&mut self, texture: &TextureData) {
+        self.texture_metadata.insert(
+            texture.identifier.clone(),
+            TextureMetadata {
+                width: texture.size.0,
+                height: texture.size.1,
+            },
+        );
+
+        self.graphics_impl.load_texture_in_vram(texture);
     }
 
     pub fn prepare_sprite(

@@ -2,9 +2,14 @@ use crate::geometry::Vertex;
 use crate::DrawRange::VertexIndexRange;
 use crate::{DrawCommand, DrawCommandData, QuadDrawCommand};
 use nalgebra::Matrix4;
+use std::collections::HashMap;
 use tuber_core::transform::{IntoMatrix4, Transform2D};
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::low_level::QuadDescription;
+use tuber_graphics::texture::{
+    TextureMetadata, TextureRegion, DEFAULT_TEXTURE_IDENTIFIER, DEFAULT_TEXTURE_SIZE,
+    WHITE_TEXTURE_IDENTIFIER, WHITE_TEXTURE_SIZE,
+};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{
     BindGroupLayoutDescriptor, BufferDescriptor, PipelineLayoutDescriptor, RenderPipelineDescriptor,
@@ -23,6 +28,8 @@ pub(crate) struct QuadRenderer {
     quad_uniform_buffer: wgpu::Buffer,
     quad_bind_group_layout: wgpu::BindGroupLayout,
     quad_bind_group: wgpu::BindGroup,
+    texture_bind_group_layout: wgpu::BindGroupLayout,
+    texture_bind_groups: HashMap<String, wgpu::BindGroup>,
     render_pipeline: wgpu::RenderPipeline,
     quad_uniform_alignment: wgpu::BufferAddress,
     pending_quad_count: usize,
@@ -45,12 +52,12 @@ impl QuadRenderer {
         let quad_bind_group =
             Self::create_quad_bind_group(device, &quad_bind_group_layout, &quad_uniform_buffer);
         let texture_bind_group_layout = Self::create_texture_bind_group_layout(device);
-        // TODO let texture_bind_group = Self::create_texture_bind_group(device)
         let render_pipeline = Self::create_render_pipeline(
             device,
             surface_texture_format,
             &global_bind_group_layout,
             &quad_bind_group_layout,
+            &texture_bind_group_layout,
         );
 
         Self {
@@ -61,6 +68,9 @@ impl QuadRenderer {
             quad_uniform_buffer,
             quad_bind_group_layout,
             quad_bind_group,
+            texture_bind_group_layout,
+            // FIXME: Maybe this should be shared across all renderers
+            texture_bind_groups: HashMap::new(),
             render_pipeline,
             quad_uniform_alignment,
             pending_quad_count: 0usize,
@@ -69,12 +79,46 @@ impl QuadRenderer {
 
     pub fn prepare(
         &mut self,
-        _device: &wgpu::Device,
+        device: &wgpu::Device,
         queue: &wgpu::Queue,
         quad: &QuadDescription,
         transform: &Transform2D,
+        textures: &HashMap<String, wgpu::Texture>,
     ) -> DrawCommand {
         assert!(self.pending_quad_count < MAX_QUAD_COUNT);
+
+        let (texture_identifier, normalized_texture_region) = if let Some(texture) = &quad.texture {
+            if !self.texture_bind_groups.contains_key(&texture.identifier) {
+                let view = if let Some(wgpu_texture) = textures.get(&texture.identifier) {
+                    wgpu_texture.create_view(&wgpu::TextureViewDescriptor::default())
+                } else {
+                    textures[DEFAULT_TEXTURE_IDENTIFIER]
+                        .create_view(&wgpu::TextureViewDescriptor::default())
+                };
+
+                let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+                    label: None,
+                    address_mode_u: wgpu::AddressMode::ClampToEdge,
+                    address_mode_v: wgpu::AddressMode::ClampToEdge,
+                    address_mode_w: wgpu::AddressMode::ClampToEdge,
+                    mag_filter: wgpu::FilterMode::Nearest,
+                    min_filter: wgpu::FilterMode::Nearest,
+                    mipmap_filter: wgpu::FilterMode::Nearest,
+                    ..Default::default()
+                });
+
+                self.texture_bind_groups.insert(
+                    texture.identifier.clone(),
+                    self.create_texture_bind_group(device, &view, &sampler),
+                );
+            }
+            (texture.identifier.as_str(), texture.texture_region)
+        } else {
+            (
+                WHITE_TEXTURE_IDENTIFIER,
+                TextureRegion::new(0.0, 0.0, 1.0, 1.0),
+            )
+        };
 
         self.add_uniform_to_buffer(
             queue,
@@ -90,32 +134,47 @@ impl QuadRenderer {
                 Vertex {
                     position: [0.0, 0.0, 0.0],
                     color,
-                    tex_coords: [0.0, 0.0],
+                    tex_coords: [normalized_texture_region.x, normalized_texture_region.y],
                 },
                 Vertex {
                     position: [0.0, quad.height, 0.0],
                     color,
-                    tex_coords: [0.0, 1.0],
+                    tex_coords: [
+                        normalized_texture_region.x,
+                        normalized_texture_region.y + normalized_texture_region.height,
+                    ],
                 },
                 Vertex {
                     position: [quad.width, 0.0, 0.0],
                     color,
-                    tex_coords: [1.0, 0.0],
+                    tex_coords: [
+                        normalized_texture_region.x + normalized_texture_region.width,
+                        normalized_texture_region.y,
+                    ],
                 },
                 Vertex {
                     position: [quad.width, 0.0, 0.0],
                     color,
-                    tex_coords: [1.0, 0.0],
+                    tex_coords: [
+                        normalized_texture_region.x + normalized_texture_region.width,
+                        normalized_texture_region.y,
+                    ],
                 },
                 Vertex {
                     position: [0.0, quad.height, 0.0],
                     color,
-                    tex_coords: [0.0, 1.0],
+                    tex_coords: [
+                        normalized_texture_region.x,
+                        normalized_texture_region.y + normalized_texture_region.height,
+                    ],
                 },
                 Vertex {
                     position: [quad.width, quad.height, 0.0],
                     color,
-                    tex_coords: [1.0, 1.0],
+                    tex_coords: [
+                        normalized_texture_region.x + normalized_texture_region.width,
+                        normalized_texture_region.y + normalized_texture_region.height,
+                    ],
                 },
             ],
         );
@@ -130,7 +189,7 @@ impl QuadRenderer {
                 ),
                 uniform_offset: ((self.pending_quad_count - 1)
                     * self.quad_uniform_alignment as usize) as _,
-                texture: None,
+                texture: texture_identifier.to_string(),
             }),
             z_order: transform.translation.2,
         }
@@ -149,6 +208,7 @@ impl QuadRenderer {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.global_bind_group, &[]);
         render_pass.set_bind_group(1, &self.quad_bind_group, &[draw_command.uniform_offset]);
+        render_pass.set_bind_group(2, &self.texture_bind_groups[&draw_command.texture], &[]);
 
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.draw(vertex_index_range.clone(), 0..1);
@@ -174,7 +234,7 @@ impl QuadRenderer {
         );
         let view_matrix: Matrix4<f32> = (*transform).into_matrix4();
         let uniform = GlobalUniform {
-            view_projection: (view_matrix.try_inverse().unwrap() * projection_matrix).into(),
+            view_projection: (projection_matrix * view_matrix.try_inverse().unwrap()).into(),
         };
         queue.write_buffer(
             &self.global_uniform_buffer,
@@ -316,10 +376,32 @@ impl QuadRenderer {
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler {
-                        filtering: false,
-                        comparison: true,
+                        filtering: true,
+                        comparison: false,
                     },
                     count: None,
+                },
+            ],
+        })
+    }
+
+    fn create_texture_bind_group(
+        &self,
+        device: &wgpu::Device,
+        diffuse_texture_view: &wgpu::TextureView,
+        diffuse_texture_sampler: &wgpu::Sampler,
+    ) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &self.texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(diffuse_texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(diffuse_texture_sampler),
                 },
             ],
         })
@@ -330,6 +412,7 @@ impl QuadRenderer {
         surface_texture_format: wgpu::TextureFormat,
         global_bind_group_layout: &wgpu::BindGroupLayout,
         quad_bind_group_layout: &wgpu::BindGroupLayout,
+        texture_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> wgpu::RenderPipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("quad_renderer_shader_module"),
@@ -338,7 +421,11 @@ impl QuadRenderer {
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("quad_renderer_render_pipeline_layout"),
-            bind_group_layouts: &[global_bind_group_layout, quad_bind_group_layout],
+            bind_group_layouts: &[
+                global_bind_group_layout,
+                quad_bind_group_layout,
+                texture_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
 

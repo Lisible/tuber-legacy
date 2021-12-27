@@ -12,7 +12,7 @@ use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::low_level::{LowLevelGraphicsAPI, QuadDescription};
-use tuber_graphics::texture::TextureData;
+use tuber_graphics::texture::{TextureData, TextureMetadata};
 use tuber_graphics::tilemap::TilemapRender;
 use tuber_graphics::{Color, Window, WindowSize};
 
@@ -137,7 +137,7 @@ impl DrawCommand {
 pub struct QuadDrawCommand {
     pub draw_range: DrawRange,
     pub uniform_offset: wgpu::DynamicOffset,
-    pub texture: Option<String>,
+    pub texture: String,
 }
 
 impl Ord for QuadDrawCommand {
