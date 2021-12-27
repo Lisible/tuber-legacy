@@ -2,6 +2,7 @@ use image::ImageError;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
+use std::default::Default;
 
 use tuber_core::asset::{AssetMetadata, AssetStore, GenericLoader};
 use tuber_core::tilemap::Tilemap;
@@ -14,7 +15,7 @@ use tuber_ecs::EntityIndex;
 use crate::bitmap_font::BitmapFont;
 use crate::camera::{Active, OrthographicCamera};
 use crate::low_level::*;
-use crate::material::Material;
+use crate::material::{Material, MaterialTexture};
 use crate::shape::RectangleShape;
 use crate::sprite::{sprite_animation_step_system, AnimatedSprite, Sprite};
 use crate::texture::{
@@ -188,12 +189,12 @@ impl Graphics {
     ) -> Result<(), GraphicsError> {
         self.load_texture_in_vram_if_required(
             asset_manager,
-            &sprite.material.albedo_map_identifier,
+            &sprite.material.albedo_map.identifier,
         );
 
         let texture_metadata = self
             .texture_metadata
-            .get(&sprite.material.albedo_map_identifier);
+            .get(&sprite.material.albedo_map.identifier);
         let texture_metadata = match texture_metadata {
             Some(metadata) => metadata,
             None => &TextureMetadata {
@@ -222,12 +223,12 @@ impl Graphics {
                 height: sprite.height,
                 color: (1.0, 1.0, 1.0),
                 texture: Some(TextureDescription {
-                    identifier: sprite.material.albedo_map_identifier.clone(),
+                    identifier: sprite.material.albedo_map.identifier.clone(),
                     texture_region: TextureRegion {
-                        x: sprite.material.albedo_map_region.x / texture_width,
-                        y: sprite.material.albedo_map_region.y / texture_height,
-                        width: sprite.material.albedo_map_region.width / texture_width,
-                        height: sprite.material.albedo_map_region.height / texture_height,
+                        x: sprite.material.albedo_map.region.x / texture_width,
+                        y: sprite.material.albedo_map.region.y / texture_height,
+                        width: sprite.material.albedo_map.region.width / texture_width,
+                        height: sprite.material.albedo_map.region.height / texture_height,
                     },
                 }),
             },
@@ -402,8 +403,11 @@ impl Graphics {
                 height: image.height,
                 offset: (0.0, 0.0, 0),
                 material: Material {
-                    albedo_map_identifier: image.texture_identifier.clone(),
-                    albedo_map_region: image.texture_region,
+                    albedo_map: MaterialTexture {
+                        identifier: image.texture_identifier.clone(),
+                        region: image.texture_region,
+                    },
+                    ..Default::default()
                 },
             };
 

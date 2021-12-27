@@ -1,5 +1,6 @@
 use crate::material::Material;
 use crate::texture::TextureRegion;
+use crate::MaterialTexture;
 use std::time::Instant;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::query::accessors::W;
@@ -19,8 +20,11 @@ impl Default for Sprite {
             height: 32.0,
             offset: (0.0, 0.0, 0),
             material: Material {
-                albedo_map_identifier: "texture".to_string(),
-                albedo_map_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
+                albedo_map: MaterialTexture {
+                    identifier: "texture".to_string(),
+                    region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
+                },
+                normal_map: None,
             },
         }
     }
