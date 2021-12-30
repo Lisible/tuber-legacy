@@ -14,6 +14,7 @@ pub struct TextureData {
     pub identifier: String,
     pub size: TextureSize,
     pub bytes: Vec<u8>,
+    pub srgb: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
@@ -93,6 +94,7 @@ pub(crate) fn texture_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
         identifier: asset_metadata.identifier.clone(),
         size: image.dimensions(),
         bytes: image.to_vec(),
+        srgb: true
     })
 }
 pub(crate) fn texture_atlas_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
@@ -121,6 +123,7 @@ pub(crate) fn create_white_texture() -> TextureData {
         identifier: WHITE_TEXTURE_IDENTIFIER.into(),
         size: (1, 1),
         bytes: vec![0xFF, 0xFF, 0xFF, 0xFF],
+        srgb: true,
     }
 }
 
@@ -135,6 +138,7 @@ pub(crate) fn create_placeholder_texture() -> TextureData {
         identifier: DEFAULT_TEXTURE_IDENTIFIER.into(),
         size: image.dimensions(),
         bytes: image.to_vec(),
+        srgb: true,
     }
 }
 
@@ -144,5 +148,6 @@ pub(crate) fn create_normal_map_texture() -> TextureData {
         identifier: DEFAULT_NORMAL_MAP_IDENTIFIER.into(),
         size: (1, 1),
         bytes: vec![0x80, 0x80, 0xFF, 0xFF],
+        srgb: false
     }
 }

@@ -19,6 +19,7 @@ pub(crate) fn create_texture_from_data(
         &texture_data.identifier,
         texture_data.size,
         &texture_data.bytes,
+        texture_data.srgb
     )
 }
 
@@ -28,6 +29,7 @@ fn create_texture(
     identifier: &str,
     size: TextureSize,
     data: &[u8],
+    srgb: bool
 ) -> wgpu::Texture {
     let texture_identifier = create_wgpu_texture_identifier(identifier);
     let texture_size = wgpu::Extent3d {
@@ -42,7 +44,7 @@ fn create_texture(
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8Unorm,
+        format: if srgb { wgpu::TextureFormat::Rgba8UnormSrgb } else { wgpu::TextureFormat::Rgba8Unorm },
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
     });
     queue.write_texture(
