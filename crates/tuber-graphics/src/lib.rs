@@ -189,7 +189,7 @@ impl Graphics {
     ) -> Result<(), GraphicsError> {
         self.load_texture_in_vram_if_required(
             asset_manager,
-            &sprite.material.albedo_map.identifier,
+            dbg!(&sprite.material.albedo_map.identifier),
         );
 
         let texture_metadata = self

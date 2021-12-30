@@ -1,4 +1,5 @@
 use crate::geometry::Vertex;
+use crate::texture::create_texture_bind_group_layout;
 use crate::DrawRange::VertexIndexRange;
 use crate::{DrawCommand, DrawCommandData, QuadDrawCommand};
 use nalgebra::Matrix4;
@@ -26,8 +27,6 @@ pub(crate) struct QuadRenderer {
     quad_uniform_buffer: wgpu::Buffer,
     _quad_bind_group_layout: wgpu::BindGroupLayout,
     quad_bind_group: wgpu::BindGroup,
-    texture_bind_group_layout: wgpu::BindGroupLayout,
-    texture_bind_groups: HashMap<String, wgpu::BindGroup>,
     render_pipeline: wgpu::RenderPipeline,
     quad_uniform_alignment: wgpu::BufferAddress,
     pending_quad_count: usize,
@@ -49,13 +48,11 @@ impl QuadRenderer {
         let quad_bind_group_layout = Self::create_quad_bind_group_layout(device);
         let quad_bind_group =
             Self::create_quad_bind_group(device, &quad_bind_group_layout, &quad_uniform_buffer);
-        let texture_bind_group_layout = Self::create_texture_bind_group_layout(device);
         let render_pipeline = Self::create_render_pipeline(
             device,
             surface_texture_format,
             &global_bind_group_layout,
             &quad_bind_group_layout,
-            &texture_bind_group_layout,
         );
 
         Self {
@@ -66,9 +63,6 @@ impl QuadRenderer {
             quad_uniform_buffer,
             _quad_bind_group_layout: quad_bind_group_layout,
             quad_bind_group,
-            texture_bind_group_layout,
-            // FIXME: Maybe this should be shared across all renderers
-            texture_bind_groups: HashMap::new(),
             render_pipeline,
             quad_uniform_alignment,
             pending_quad_count: 0usize,
@@ -77,40 +71,22 @@ impl QuadRenderer {
 
     pub fn prepare(
         &mut self,
-        device: &wgpu::Device,
         queue: &wgpu::Queue,
         quad: &QuadDescription,
         transform: &Transform2D,
-        textures: &HashMap<String, wgpu::Texture>,
+        texture_bind_groups: &HashMap<String, wgpu::BindGroup>,
     ) -> DrawCommand {
         assert!(self.pending_quad_count < MAX_QUAD_COUNT);
 
         let (texture_identifier, normalized_texture_region) = if let Some(texture) = &quad.texture {
-            if !self.texture_bind_groups.contains_key(&texture.identifier) {
-                let view = if let Some(wgpu_texture) = textures.get(&texture.identifier) {
-                    wgpu_texture.create_view(&wgpu::TextureViewDescriptor::default())
-                } else {
-                    textures[DEFAULT_TEXTURE_IDENTIFIER]
-                        .create_view(&wgpu::TextureViewDescriptor::default())
-                };
-
-                let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-                    label: None,
-                    address_mode_u: wgpu::AddressMode::ClampToEdge,
-                    address_mode_v: wgpu::AddressMode::ClampToEdge,
-                    address_mode_w: wgpu::AddressMode::ClampToEdge,
-                    mag_filter: wgpu::FilterMode::Nearest,
-                    min_filter: wgpu::FilterMode::Nearest,
-                    mipmap_filter: wgpu::FilterMode::Nearest,
-                    ..Default::default()
-                });
-
-                self.texture_bind_groups.insert(
-                    texture.identifier.clone(),
-                    self.create_texture_bind_group(device, &view, &sampler),
-                );
+            if texture_bind_groups.contains_key(&texture.identifier) {
+                (texture.identifier.as_str(), texture.texture_region)
+            } else {
+                (
+                    DEFAULT_TEXTURE_IDENTIFIER,
+                    TextureRegion::new(0.0, 0.0, 1.0, 1.0),
+                )
             }
-            (texture.identifier.as_str(), texture.texture_region)
         } else {
             (
                 WHITE_TEXTURE_IDENTIFIER,
@@ -197,6 +173,7 @@ impl QuadRenderer {
         &'rpass self,
         render_pass: &mut wgpu::RenderPass<'pass>,
         draw_command: &QuadDrawCommand,
+        texture_bind_groups: &'rpass HashMap<String, wgpu::BindGroup>,
     ) {
         let vertex_index_range = draw_command
             .draw_range
@@ -206,7 +183,7 @@ impl QuadRenderer {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.global_bind_group, &[]);
         render_pass.set_bind_group(1, &self.quad_bind_group, &[draw_command.uniform_offset]);
-        render_pass.set_bind_group(2, &self.texture_bind_groups[&draw_command.texture], &[]);
+        render_pass.set_bind_group(2, &texture_bind_groups[dbg!(&draw_command.texture)], &[]);
 
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.draw(vertex_index_range.clone(), 0..1);
@@ -356,61 +333,11 @@ impl QuadRenderer {
         })
     }
 
-    fn create_texture_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("quad_renderer_texture_bind_group_layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler {
-                        filtering: true,
-                        comparison: false,
-                    },
-                    count: None,
-                },
-            ],
-        })
-    }
-
-    fn create_texture_bind_group(
-        &self,
-        device: &wgpu::Device,
-        diffuse_texture_view: &wgpu::TextureView,
-        diffuse_texture_sampler: &wgpu::Sampler,
-    ) -> wgpu::BindGroup {
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &self.texture_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(diffuse_texture_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(diffuse_texture_sampler),
-                },
-            ],
-        })
-    }
-
     fn create_render_pipeline(
         device: &wgpu::Device,
         surface_texture_format: wgpu::TextureFormat,
         global_bind_group_layout: &wgpu::BindGroupLayout,
         quad_bind_group_layout: &wgpu::BindGroupLayout,
-        texture_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> wgpu::RenderPipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("quad_renderer_shader_module"),
@@ -422,7 +349,7 @@ impl QuadRenderer {
             bind_group_layouts: &[
                 global_bind_group_layout,
                 quad_bind_group_layout,
-                texture_bind_group_layout,
+                &create_texture_bind_group_layout(device),
             ],
             push_constant_ranges: &[],
         });

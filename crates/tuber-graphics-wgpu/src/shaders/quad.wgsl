@@ -41,7 +41,20 @@ var t_diffuse: texture_2d<f32>;
 [[group(2), binding(1)]]
 var s_diffuse: sampler;
 
+[[group(3), binding(0)]]
+var t_normal: texture_2d<f32>;
+[[group(3), binding(1)]]
+var s_normal: sampler;
+
+
+struct FragmentStageOutput {
+    [[location(0)]] albedo: vec4<f32>;
+    [[location(1)]] normal: vec4<f32>;
+};
+
 [[stage(fragment)]]
-fn fs_main(input: VertexStageOutput) -> [[location(0)]] vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, input.texture_coordinates);
+fn fs_main(input: VertexStageOutput) -> FragmentStageOutput {
+    var output: FragmentStageOutput;
+    output.albedo = textureSample(t_diffuse, s_diffuse, input.texture_coordinates);
+    return output;
 }

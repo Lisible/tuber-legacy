@@ -1,6 +1,7 @@
 use crate::composition::Compositor;
 use crate::g_buffer::GBuffer;
 use crate::quad_renderer::QuadRenderer;
+use crate::texture::{create_texture_bind_group, create_texture_bind_group_layout};
 use crate::{DrawCommand, DrawCommandData, DrawType, TuberGraphicsWGPUError};
 use futures::executor::block_on;
 use std::collections::HashMap;
@@ -21,7 +22,9 @@ pub struct WGPUState {
     quad_renderer: QuadRenderer,
     compositor: Compositor,
     pending_draw_commands: Vec<DrawCommand>,
+    texture_bind_group_layout: wgpu::BindGroupLayout,
     textures_in_vram: HashMap<String, wgpu::Texture>,
+    texture_bind_groups: HashMap<String, wgpu::BindGroup>,
 }
 
 impl WGPUState {
@@ -57,6 +60,7 @@ impl WGPUState {
 
         let quad_renderer = QuadRenderer::new(&device, surface_configuration.format);
         let compositor = Compositor::new(&device, surface_configuration.format);
+        let texture_bind_group_layout = create_texture_bind_group_layout(&device);
 
         Self {
             surface,
@@ -67,7 +71,9 @@ impl WGPUState {
             quad_renderer,
             compositor,
             textures_in_vram: HashMap::new(),
+            texture_bind_groups: HashMap::new(),
             pending_draw_commands: vec![],
+            texture_bind_group_layout,
         }
     }
 
@@ -198,7 +204,11 @@ impl WGPUState {
                 draw_command_data, ..
             } if draw_command.draw_type() == DrawType::Quad => {
                 if let DrawCommandData::QuadDrawCommand(draw_command_data) = draw_command_data {
-                    self.quad_renderer.render(render_pass, draw_command_data);
+                    self.quad_renderer.render(
+                        render_pass,
+                        draw_command_data,
+                        &self.texture_bind_groups,
+                    );
                 }
             }
             _ => {}
@@ -211,11 +221,10 @@ impl WGPUState {
         transform: &Transform2D,
     ) {
         self.pending_draw_commands.push(self.quad_renderer.prepare(
-            &self.device,
             &self.queue,
             quad_description,
             transform,
-            &self.textures_in_vram,
+            &self.texture_bind_groups,
         ));
     }
 
@@ -232,6 +241,28 @@ impl WGPUState {
     pub(crate) fn load_texture_in_vram(&mut self, texture_data: &TextureData) {
         use crate::texture;
         let texture = texture::create_texture_from_data(&self.device, &self.queue, &texture_data);
+
+        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let texture_sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
+            label: None,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let texture_bind_group = create_texture_bind_group(
+            &self.device,
+            &self.texture_bind_group_layout,
+            &texture_view,
+            &texture_sampler,
+        );
+
+        self.texture_bind_groups
+            .insert(dbg!(texture_data.identifier.clone()), texture_bind_group);
         self.textures_in_vram
             .insert(texture_data.identifier.clone(), texture);
     }
