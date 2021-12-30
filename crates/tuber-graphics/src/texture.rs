@@ -143,6 +143,6 @@ pub(crate) fn create_normal_map_texture() -> TextureData {
     TextureData {
         identifier: DEFAULT_NORMAL_MAP_IDENTIFIER.into(),
         size: (1, 1),
-        bytes: vec![0x77, 0x77, 0xFF, 0xFF],
+        bytes: vec![0x80, 0x80, 0xFF, 0xFF],
     }
 }
