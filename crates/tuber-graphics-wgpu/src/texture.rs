@@ -2,6 +2,12 @@ use tuber_graphics::texture::{TextureData, TextureSize};
 
 const BYTES_PER_PIXEL: usize = 4;
 
+pub(crate) struct TextureBindGroup {
+    pub identifier: String,
+    pub size: TextureSize,
+    pub bind_group: wgpu::BindGroup,
+}
+
 pub(crate) fn create_texture_from_data(
     device: &wgpu::Device,
     queue: &wgpu::Queue,

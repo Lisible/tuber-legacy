@@ -137,3 +137,12 @@ pub(crate) fn create_placeholder_texture() -> TextureData {
         bytes: image.to_vec(),
     }
 }
+
+pub const DEFAULT_NORMAL_MAP_IDENTIFIER: &'static str = "_normal_map";
+pub(crate) fn create_normal_map_texture() -> TextureData {
+    TextureData {
+        identifier: DEFAULT_NORMAL_MAP_IDENTIFIER.into(),
+        size: (1, 1),
+        bytes: vec![0x77, 0x77, 0xFF, 0xFF],
+    }
+}

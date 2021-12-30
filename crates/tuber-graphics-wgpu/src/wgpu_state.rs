@@ -1,7 +1,9 @@
 use crate::composition::Compositor;
 use crate::g_buffer::GBuffer;
 use crate::quad_renderer::QuadRenderer;
-use crate::texture::{create_texture_bind_group, create_texture_bind_group_layout};
+use crate::texture::{
+    create_texture_bind_group, create_texture_bind_group_layout, TextureBindGroup,
+};
 use crate::{DrawCommand, DrawCommandData, DrawType, TuberGraphicsWGPUError};
 use futures::executor::block_on;
 use std::collections::HashMap;
@@ -24,7 +26,7 @@ pub struct WGPUState {
     pending_draw_commands: Vec<DrawCommand>,
     texture_bind_group_layout: wgpu::BindGroupLayout,
     textures_in_vram: HashMap<String, wgpu::Texture>,
-    texture_bind_groups: HashMap<String, wgpu::BindGroup>,
+    texture_bind_groups: HashMap<String, TextureBindGroup>,
 }
 
 impl WGPUState {
@@ -144,9 +146,9 @@ impl WGPUState {
         Ok(output)
     }
 
-    fn geometry_pass(&mut self, encoder: &mut wgpu::CommandEncoder) -> GBuffer {
-        let albedo_texture_descriptor = wgpu::TextureDescriptor {
-            label: Some("g_buffer_albedo_texture"),
+    fn create_g_buffer_texture_descriptor(&self, label: &'static str) -> wgpu::TextureDescriptor {
+        wgpu::TextureDescriptor {
+            label: Some(label),
             size: wgpu::Extent3d {
                 width: self.size.0,
                 height: self.size.1,
@@ -159,28 +161,53 @@ impl WGPUState {
             usage: wgpu::TextureUsages::COPY_SRC
                 | wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING,
-        };
+        }
+    }
 
-        let albedo_texture = self.device.create_texture(&albedo_texture_descriptor);
+    fn geometry_pass(&mut self, encoder: &mut wgpu::CommandEncoder) -> GBuffer {
+        let albedo_map_texture_descriptor =
+            self.create_g_buffer_texture_descriptor("albedo_map_texture");
+        let albedo_map_texture = self.device.create_texture(&albedo_map_texture_descriptor);
+        let albedo_map_view =
+            albedo_map_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let view = albedo_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let normal_map_texture_descriptor =
+            self.create_g_buffer_texture_descriptor("normal_map_texture");
+        let normal_map_texture = self.device.create_texture(&normal_map_texture_descriptor);
+        let normal_map_view =
+            normal_map_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("geometry_pass"),
-                color_attachments: &[wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.0,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 1.0,
-                        }),
-                        store: true,
+                color_attachments: &[
+                    wgpu::RenderPassColorAttachment {
+                        view: &albedo_map_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.0,
+                                g: 0.0,
+                                b: 0.0,
+                                a: 1.0,
+                            }),
+                            store: true,
+                        },
                     },
-                }],
+                    wgpu::RenderPassColorAttachment {
+                        view: &normal_map_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.0,
+                                g: 0.0,
+                                b: 0.0,
+                                a: 1.0,
+                            }),
+                            store: true,
+                        },
+                    },
+                ],
                 depth_stencil_attachment: None,
             });
 
@@ -190,7 +217,8 @@ impl WGPUState {
         }
 
         GBuffer {
-            albedo: albedo_texture,
+            albedo: albedo_map_texture,
+            normal: normal_map_texture,
         }
     }
 
@@ -254,15 +282,21 @@ impl WGPUState {
             ..Default::default()
         });
 
-        let texture_bind_group = create_texture_bind_group(
+        let bind_group = create_texture_bind_group(
             &self.device,
             &self.texture_bind_group_layout,
             &texture_view,
             &texture_sampler,
         );
 
+        let texture_bind_group = TextureBindGroup {
+            identifier: texture_data.identifier.to_string(),
+            size: texture_data.size,
+            bind_group,
+        };
+
         self.texture_bind_groups
-            .insert(dbg!(texture_data.identifier.clone()), texture_bind_group);
+            .insert(texture_data.identifier.clone(), texture_bind_group);
         self.textures_in_vram
             .insert(texture_data.identifier.clone(), texture);
     }

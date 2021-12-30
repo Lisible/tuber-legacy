@@ -139,12 +139,15 @@ impl DrawCommand {
 pub struct QuadDrawCommand {
     pub draw_range: DrawRange,
     pub uniform_offset: wgpu::DynamicOffset,
-    pub texture: String,
+    pub albedo_map_identifier: String,
+    pub normal_map_identifier: String,
 }
 
 impl Ord for QuadDrawCommand {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.texture.cmp(&other.texture)
+        self.albedo_map_identifier
+            .cmp(&other.albedo_map_identifier)
+            .then(self.normal_map_identifier.cmp(&other.normal_map_identifier))
     }
 }
 

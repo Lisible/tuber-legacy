@@ -1,5 +1,5 @@
 use crate::geometry::Vertex;
-use crate::texture::create_texture_bind_group_layout;
+use crate::texture::{create_texture_bind_group_layout, TextureBindGroup};
 use crate::DrawRange::VertexIndexRange;
 use crate::{DrawCommand, DrawCommandData, QuadDrawCommand};
 use nalgebra::Matrix4;
@@ -8,7 +8,8 @@ use tuber_core::transform::{IntoMatrix4, Transform2D};
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::low_level::QuadDescription;
 use tuber_graphics::texture::{
-    TextureRegion, DEFAULT_TEXTURE_IDENTIFIER, WHITE_TEXTURE_IDENTIFIER,
+    TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER, DEFAULT_TEXTURE_IDENTIFIER,
+    WHITE_TEXTURE_IDENTIFIER,
 };
 use wgpu::{
     BindGroupLayoutDescriptor, BufferDescriptor, PipelineLayoutDescriptor, RenderPipelineDescriptor,
@@ -74,25 +75,28 @@ impl QuadRenderer {
         queue: &wgpu::Queue,
         quad: &QuadDescription,
         transform: &Transform2D,
-        texture_bind_groups: &HashMap<String, wgpu::BindGroup>,
+        texture_bind_groups: &HashMap<String, TextureBindGroup>,
     ) -> DrawCommand {
         assert!(self.pending_quad_count < MAX_QUAD_COUNT);
 
-        let (texture_identifier, normalized_texture_region) = if let Some(texture) = &quad.texture {
-            if texture_bind_groups.contains_key(&texture.identifier) {
-                (texture.identifier.as_str(), texture.texture_region)
+        let (albedo_map_identifier, normalized_texture_region) =
+            if let Some(texture) = &quad.material.albedo_map_description {
+                if texture_bind_groups.contains_key(&texture.identifier) {
+                    (texture.identifier.as_str(), texture.texture_region)
+                } else {
+                    (
+                        DEFAULT_TEXTURE_IDENTIFIER,
+                        TextureRegion::new(0.0, 0.0, 1.0, 1.0),
+                    )
+                }
             } else {
                 (
-                    DEFAULT_TEXTURE_IDENTIFIER,
+                    WHITE_TEXTURE_IDENTIFIER,
                     TextureRegion::new(0.0, 0.0, 1.0, 1.0),
                 )
-            }
-        } else {
-            (
-                WHITE_TEXTURE_IDENTIFIER,
-                TextureRegion::new(0.0, 0.0, 1.0, 1.0),
-            )
-        };
+            };
+
+        let normal_map_identifier = DEFAULT_NORMAL_MAP_IDENTIFIER;
 
         self.add_uniform_to_buffer(
             queue,
@@ -163,7 +167,8 @@ impl QuadRenderer {
                 ),
                 uniform_offset: ((self.pending_quad_count - 1)
                     * self.quad_uniform_alignment as usize) as _,
-                texture: texture_identifier.to_string(),
+                albedo_map_identifier: albedo_map_identifier.to_string(),
+                normal_map_identifier: normal_map_identifier.to_string(),
             }),
             z_order: transform.translation.2,
         }
@@ -173,7 +178,7 @@ impl QuadRenderer {
         &'rpass self,
         render_pass: &mut wgpu::RenderPass<'pass>,
         draw_command: &QuadDrawCommand,
-        texture_bind_groups: &'rpass HashMap<String, wgpu::BindGroup>,
+        texture_bind_groups: &'rpass HashMap<String, TextureBindGroup>,
     ) {
         let vertex_index_range = draw_command
             .draw_range
@@ -183,7 +188,16 @@ impl QuadRenderer {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.global_bind_group, &[]);
         render_pass.set_bind_group(1, &self.quad_bind_group, &[draw_command.uniform_offset]);
-        render_pass.set_bind_group(2, &texture_bind_groups[dbg!(&draw_command.texture)], &[]);
+        render_pass.set_bind_group(
+            2,
+            &texture_bind_groups[&draw_command.albedo_map_identifier].bind_group,
+            &[],
+        );
+        render_pass.set_bind_group(
+            3,
+            &texture_bind_groups[&draw_command.normal_map_identifier].bind_group,
+            &[],
+        );
 
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.draw(vertex_index_range.clone(), 0..1);
@@ -350,6 +364,7 @@ impl QuadRenderer {
                 global_bind_group_layout,
                 quad_bind_group_layout,
                 &create_texture_bind_group_layout(device),
+                &create_texture_bind_group_layout(device),
             ],
             push_constant_ranges: &[],
         });
@@ -365,11 +380,18 @@ impl QuadRenderer {
             fragment: Some(wgpu::FragmentState {
                 module: &shader_module,
                 entry_point: "fs_main",
-                targets: &[wgpu::ColorTargetState {
-                    format: surface_texture_format,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL,
-                }],
+                targets: &[
+                    wgpu::ColorTargetState {
+                        format: surface_texture_format,
+                        blend: Some(wgpu::BlendState::REPLACE),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    },
+                    wgpu::ColorTargetState {
+                        format: surface_texture_format,
+                        blend: Some(wgpu::BlendState::REPLACE),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    },
+                ],
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,

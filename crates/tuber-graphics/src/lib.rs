@@ -76,6 +76,7 @@ impl Graphics {
             .initialize(window, window_size, asset_store);
         self.load_texture_in_vram(&texture::create_white_texture());
         self.load_texture_in_vram(&texture::create_placeholder_texture());
+        self.load_texture_in_vram(&texture::create_normal_map_texture());
     }
 
     pub fn render(&mut self) {
@@ -93,7 +94,7 @@ impl Graphics {
                 width: rectangle.width,
                 height: rectangle.height,
                 color: rectangle.color,
-                texture: None,
+                material: MaterialDescription::default(),
             },
             transform,
             apply_view_transform,
@@ -135,10 +136,13 @@ impl Graphics {
                 width: animated_sprite.width,
                 height: animated_sprite.height,
                 color: (1.0, 1.0, 1.0),
-                texture: Some(TextureDescription {
-                    identifier: animated_sprite.texture_identifier.clone(),
-                    texture_region: normalized_texture_region,
-                }),
+                material: MaterialDescription {
+                    albedo_map_description: Some(TextureDescription {
+                        identifier: animated_sprite.texture_identifier.clone(),
+                        texture_region: normalized_texture_region,
+                    }),
+                    normal_map_description: None,
+                },
             },
             transform,
             apply_view_transform,
@@ -189,7 +193,7 @@ impl Graphics {
     ) -> Result<(), GraphicsError> {
         self.load_texture_in_vram_if_required(
             asset_manager,
-            dbg!(&sprite.material.albedo_map.identifier),
+            &sprite.material.albedo_map.identifier,
         );
 
         let texture_metadata = self
@@ -222,15 +226,18 @@ impl Graphics {
                 width: sprite.width,
                 height: sprite.height,
                 color: (1.0, 1.0, 1.0),
-                texture: Some(TextureDescription {
-                    identifier: sprite.material.albedo_map.identifier.clone(),
-                    texture_region: TextureRegion {
-                        x: sprite.material.albedo_map.region.x / texture_width,
-                        y: sprite.material.albedo_map.region.y / texture_height,
-                        width: sprite.material.albedo_map.region.width / texture_width,
-                        height: sprite.material.albedo_map.region.height / texture_height,
-                    },
-                }),
+                material: MaterialDescription {
+                    albedo_map_description: Some(TextureDescription {
+                        identifier: sprite.material.albedo_map.identifier.clone(),
+                        texture_region: TextureRegion {
+                            x: sprite.material.albedo_map.region.x / texture_width,
+                            y: sprite.material.albedo_map.region.y / texture_height,
+                            width: sprite.material.albedo_map.region.width / texture_width,
+                            height: sprite.material.albedo_map.region.height / texture_height,
+                        },
+                    }),
+                    normal_map_description: None,
+                },
             },
             &effective_transform,
             apply_view_transform,
@@ -324,15 +331,18 @@ impl Graphics {
                     width: glyph_region.width,
                     height: glyph_region.height,
                     color: (0.0, 0.0, 0.0),
-                    texture: Some(TextureDescription {
-                        identifier: font_texture.clone().into(),
-                        texture_region: TextureRegion {
-                            x: (font_region.x + glyph_region.x) / texture.width as f32,
-                            y: (font_region.y + glyph_region.y) / texture.height as f32,
-                            width: glyph_region.width / texture.width as f32,
-                            height: glyph_region.height / texture.height as f32,
-                        },
-                    }),
+                    material: MaterialDescription {
+                        albedo_map_description: Some(TextureDescription {
+                            identifier: font_texture.clone().into(),
+                            texture_region: TextureRegion {
+                                x: (font_region.x + glyph_region.x) / texture.width as f32,
+                                y: (font_region.y + glyph_region.y) / texture.height as f32,
+                                width: glyph_region.width / texture.width as f32,
+                                height: glyph_region.height / texture.height as f32,
+                            },
+                        }),
+                        normal_map_description: None,
+                    },
                 },
                 &glyph_transform,
                 apply_view_transform,

@@ -62,8 +62,14 @@ pub struct QuadDescription {
     pub height: f32,
     /// The color used for the quad's vertices
     pub color: Color,
-    /// The texture of the quad
-    pub texture: Option<TextureDescription>,
+    /// The material of the quad
+    pub material: MaterialDescription,
+}
+
+#[derive(Default)]
+pub struct MaterialDescription {
+    pub albedo_map_description: Option<TextureDescription>,
+    pub normal_map_description: Option<TextureDescription>,
 }
 
 /// Describes a mesh for the low-leven renderer
