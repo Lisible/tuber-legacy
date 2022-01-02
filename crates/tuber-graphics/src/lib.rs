@@ -15,11 +15,12 @@ use crate::bitmap_font::BitmapFont;
 use crate::camera::{Active, OrthographicCamera};
 use crate::g_buffer::GBufferComponent;
 use crate::low_level::*;
-use crate::material::{Material, MaterialTexture};
+use crate::material::Material;
 use crate::shape::RectangleShape;
 use crate::sprite::{AnimatedSprite, Sprite};
 use crate::texture::{
-    texture_atlas_loader, texture_loader, TextureAtlas, TextureData, TextureMetadata, TextureRegion,
+    texture_atlas_loader, texture_loader, TextureAtlas, TextureData, TextureMetadata,
+    TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
 use crate::tilemap::TilemapRender;
 use crate::ui::{Frame, Image, NoViewTransform, Text};
@@ -109,11 +110,11 @@ impl Graphics {
         apply_view_transform: bool,
         asset_store: &mut AssetStore,
     ) -> Result<(), GraphicsError> {
-        self.load_texture_in_vram_if_required(asset_store, &animated_sprite.texture_identifier);
+        self.load_material_in_vram_if_required(asset_store, &animated_sprite.material);
 
         let TextureMetadata { width, height } = self
             .texture_metadata
-            .get(&animated_sprite.texture_identifier)
+            .get(&animated_sprite.material.albedo_map)
             .ok_or(GraphicsError::TextureMetadataNotFound)?;
 
         let (texture_width, texture_height) = (*width as f32, *height as f32);
@@ -139,10 +140,17 @@ impl Graphics {
                 color: (1.0, 1.0, 1.0),
                 material: MaterialDescription {
                     albedo_map_description: Some(TextureDescription {
-                        identifier: animated_sprite.texture_identifier.clone(),
+                        identifier: animated_sprite.material.albedo_map.clone(),
                         texture_region: normalized_texture_region,
                     }),
-                    normal_map_description: None,
+                    normal_map_description: Some(TextureDescription {
+                        identifier: animated_sprite
+                            .material
+                            .normal_map
+                            .clone()
+                            .unwrap_or(DEFAULT_NORMAL_MAP_IDENTIFIER.into()),
+                        texture_region: normalized_texture_region,
+                    }),
                 },
             },
             transform,
@@ -150,6 +158,17 @@ impl Graphics {
         );
 
         Ok(())
+    }
+
+    fn load_material_in_vram_if_required(
+        &mut self,
+        asset_manager: &mut AssetStore,
+        material: &Material,
+    ) {
+        self.load_texture_in_vram_if_required(asset_manager, &material.albedo_map);
+        if let Some(normal_map) = &material.normal_map {
+            self.load_texture_in_vram_if_required(asset_manager, normal_map);
+        }
     }
 
     fn load_texture_in_vram_if_required(
@@ -192,14 +211,9 @@ impl Graphics {
         apply_view_transform: bool,
         asset_manager: &mut AssetStore,
     ) -> Result<(), GraphicsError> {
-        self.load_texture_in_vram_if_required(
-            asset_manager,
-            &sprite.material.albedo_map.identifier,
-        );
+        self.load_texture_in_vram_if_required(asset_manager, &sprite.material.albedo_map);
 
-        let texture_metadata = self
-            .texture_metadata
-            .get(&sprite.material.albedo_map.identifier);
+        let texture_metadata = self.texture_metadata.get(&sprite.material.albedo_map);
         let texture_metadata = match texture_metadata {
             Some(metadata) => metadata,
             None => &TextureMetadata {
@@ -229,12 +243,12 @@ impl Graphics {
                 color: (1.0, 1.0, 1.0),
                 material: MaterialDescription {
                     albedo_map_description: Some(TextureDescription {
-                        identifier: sprite.material.albedo_map.identifier.clone(),
+                        identifier: sprite.material.albedo_map.clone(),
                         texture_region: TextureRegion {
-                            x: sprite.material.albedo_map.region.x / texture_width,
-                            y: sprite.material.albedo_map.region.y / texture_height,
-                            width: sprite.material.albedo_map.region.width / texture_width,
-                            height: sprite.material.albedo_map.region.height / texture_height,
+                            x: sprite.texture_region.x / texture_width,
+                            y: sprite.texture_region.y / texture_height,
+                            width: sprite.texture_region.width / texture_width,
+                            height: sprite.texture_region.height / texture_height,
                         },
                     }),
                     normal_map_description: None,
@@ -413,11 +427,9 @@ impl Graphics {
                 width: image.width,
                 height: image.height,
                 offset: (0.0, 0.0, 0),
+                texture_region: image.texture_region,
                 material: Material {
-                    albedo_map: MaterialTexture {
-                        identifier: image.texture_identifier.clone(),
-                        region: image.texture_region,
-                    },
+                    albedo_map: image.texture_identifier.clone(),
                     ..Default::default()
                 },
             };

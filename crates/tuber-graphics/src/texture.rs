@@ -1,3 +1,4 @@
+use crate::texture::TextureUsage::{Albedo, Normal};
 use crate::GraphicsError;
 use crate::GraphicsError::{ImageDecodeError, TextureFileOpenError};
 use nalgebra::Vector4;
@@ -6,6 +7,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
+use std::str::FromStr;
 use tuber_core::asset::AssetMetadata;
 
 pub type TextureSize = (u32, u32);
@@ -90,11 +92,20 @@ pub(crate) fn texture_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
         .unwrap();
     let image = image.as_rgba8().unwrap();
 
+    let usage: TextureUsage = asset_metadata
+        .metadata
+        .get("usage")
+        .cloned()
+        .unwrap_or("albedo".to_string())
+        .parse()
+        .unwrap();
+
+    let mut srgb = usage == TextureUsage::Albedo;
     Box::new(TextureData {
         identifier: asset_metadata.identifier.clone(),
         size: image.dimensions(),
         bytes: image.to_vec(),
-        srgb: true
+        srgb,
     })
 }
 pub(crate) fn texture_atlas_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
@@ -114,6 +125,23 @@ pub(crate) fn texture_atlas_loader(asset_metadata: &AssetMetadata) -> Box<dyn An
         .unwrap();
 
     Box::new(texture_atlas)
+}
+
+#[derive(Eq, PartialEq)]
+pub enum TextureUsage {
+    Albedo,
+    Normal,
+}
+
+impl FromStr for TextureUsage {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "normal" => Normal,
+            _ => Albedo,
+        })
+    }
 }
 
 pub const WHITE_TEXTURE_IDENTIFIER: &'static str = "_white";
@@ -148,6 +176,6 @@ pub(crate) fn create_normal_map_texture() -> TextureData {
         identifier: DEFAULT_NORMAL_MAP_IDENTIFIER.into(),
         size: (1, 1),
         bytes: vec![0x80, 0x80, 0xFF, 0xFF],
-        srgb: false
+        srgb: false,
     }
 }

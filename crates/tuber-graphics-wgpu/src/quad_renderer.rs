@@ -96,7 +96,10 @@ impl QuadRenderer {
                 )
             };
 
-        let normal_map_identifier = DEFAULT_NORMAL_MAP_IDENTIFIER;
+        let normal_map_identifier = match &quad.material.normal_map_description {
+            Some(normal_map_description) => normal_map_description.identifier.clone(),
+            _ => DEFAULT_NORMAL_MAP_IDENTIFIER.to_string(),
+        };
 
         self.add_uniform_to_buffer(
             queue,

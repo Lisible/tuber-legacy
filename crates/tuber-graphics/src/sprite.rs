@@ -1,12 +1,12 @@
 use crate::material::Material;
 use crate::texture::TextureRegion;
-use crate::MaterialTexture;
 use std::time::Instant;
 
 pub struct Sprite {
     pub width: f32,
     pub height: f32,
     pub offset: (f32, f32, i32),
+    pub texture_region: TextureRegion,
     pub material: Material,
 }
 
@@ -16,11 +16,14 @@ impl Default for Sprite {
             width: 32.0,
             height: 32.0,
             offset: (0.0, 0.0, 0),
+            texture_region: TextureRegion {
+                x: 0.0,
+                y: 0.0,
+                width: 32.0,
+                height: 32.0,
+            },
             material: Material {
-                albedo_map: MaterialTexture {
-                    identifier: "texture".to_string(),
-                    region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
-                },
+                albedo_map: "texture".to_string(),
                 normal_map: None,
             },
         }
@@ -30,7 +33,7 @@ impl Default for Sprite {
 pub struct AnimatedSprite {
     pub width: f32,
     pub height: f32,
-    pub texture_identifier: String,
+    pub material: Material,
     pub animation_state: AnimationState,
 }
 
