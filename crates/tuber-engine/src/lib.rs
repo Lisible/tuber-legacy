@@ -25,7 +25,7 @@ impl Default for EngineSettings {
 pub struct Engine {
     state_stack: StateStack,
     ecs: Ecs,
-    system_bundles: Vec<SystemBundle>,
+    system_bundles: Vec<SystemBundle<()>>,
     graphics: Option<Graphics>,
     application_title: String,
     asset_store: AssetStore,

@@ -62,7 +62,7 @@ impl StateStack {
         let state = self.states.last_mut().expect("Expected current state");
         state.update(state_context);
         for system_bundle in &mut *state_context.system_bundles {
-            system_bundle.step(&mut state_context.ecs).unwrap();
+            system_bundle.step(&mut state_context.ecs, &mut ()).unwrap();
         }
 
         let mut reqs = state.stack_requests();
@@ -95,6 +95,6 @@ pub enum StateStackRequest {
 
 pub struct StateContext<'engine> {
     pub ecs: &'engine mut Ecs,
-    pub system_bundles: &'engine mut Vec<SystemBundle>,
+    pub system_bundles: &'engine mut Vec<SystemBundle<()>>,
     pub asset_store: &'engine mut AssetStore,
 }

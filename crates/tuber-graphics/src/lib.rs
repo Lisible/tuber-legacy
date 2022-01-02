@@ -417,7 +417,7 @@ impl Graphics {
             .update_camera(camera_id, camera, transform);
     }
 
-    pub fn default_system_bundle() -> SystemBundle {
+    pub fn default_system_bundle() -> SystemBundle<()> {
         let mut system_bundle = SystemBundle::new();
         system_bundle.add_system(sprite_animation_step_system);
         system_bundle

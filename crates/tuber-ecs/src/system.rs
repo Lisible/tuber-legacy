@@ -1,49 +1,74 @@
 use crate::ecs::Ecs;
 use std::error::Error;
 
-type BoxedSystem = Box<dyn FnMut(&mut Ecs) -> SystemResult>;
+type BoxedSystem<AD> = Box<dyn FnMut(&mut Ecs, &mut AD) -> SystemResult>;
 pub type SystemResult = Result<(), Box<dyn Error>>;
 
-pub struct SystemBundle {
-    systems: Vec<BoxedSystem>,
+pub struct SystemBundle<AD> {
+    systems: Vec<BoxedSystem<AD>>,
 }
 
-impl SystemBundle {
+impl<AD> SystemBundle<AD> {
     pub fn new() -> Self {
         SystemBundle { systems: vec![] }
     }
 
-    pub fn add_system<T, S: IntoSystem<T>>(&mut self, system: S) {
+    pub fn add_system<T, S: IntoSystem<T, AD>>(&mut self, system: S) {
         self.systems.push(system.into_system());
     }
 
-    pub fn step(&mut self, ecs: &mut Ecs) -> Result<(), Box<dyn Error>> {
+    pub fn step(&mut self, ecs: &mut Ecs, additional_data: &mut AD) -> Result<(), Box<dyn Error>> {
         for system in &mut self.systems {
-            (system)(ecs)?;
+            (system)(ecs, additional_data)?;
         }
 
         Ok(())
     }
 }
 
-pub trait IntoSystem<T> {
-    fn into_system(self) -> BoxedSystem;
+pub trait IntoSystem<T, AD> {
+    fn into_system(self) -> BoxedSystem<AD>;
 }
 
-impl<F> IntoSystem<F> for F
+impl<F, AD> IntoSystem<F, AD> for F
 where
-    F: 'static + FnMut(&mut Ecs) -> SystemResult,
+    F: 'static + FnMut(&mut Ecs, &mut AD) -> SystemResult,
 {
-    fn into_system(self) -> BoxedSystem {
+    fn into_system(self) -> BoxedSystem<AD> {
         Box::new(self)
     }
 }
-impl<F> IntoSystem<(F,)> for F
-where
-    F: 'static + FnMut(&mut Ecs) -> (),
+
+
+
+impl<F> IntoSystem<(F, (), ()), ()> for F
+    where
+        F: 'static + FnMut(&mut Ecs) -> SystemResult,
 {
-    fn into_system(mut self) -> BoxedSystem {
-        Box::new(move |ecs: &mut Ecs| {
+    fn into_system(mut self) -> BoxedSystem<()> {
+        Box::new(move |ecs: &mut Ecs, _: &mut ()| (self)(ecs) )
+    }
+}
+
+impl<F, AD> IntoSystem<(F,), AD> for F
+where
+    F: 'static + FnMut(&mut Ecs, &mut AD) -> (),
+{
+    fn into_system(mut self) -> BoxedSystem<AD> {
+        Box::new(move |ecs: &mut Ecs, additional_data: &mut AD| {
+            (self)(ecs, additional_data);
+            Ok(())
+        })
+    }
+}
+
+
+impl<F> IntoSystem<(F, ()), ()> for F
+    where
+        F: 'static + FnMut(&mut Ecs) -> (),
+{
+    fn into_system(mut self) -> BoxedSystem<()> {
+        Box::new(move |ecs: &mut Ecs, _: &mut ()| {
             (self)(ecs);
             Ok(())
         })
@@ -71,8 +96,8 @@ mod tests {
         let mut system = (|_: &mut Ecs| Err(Box::new(AtrociousFailure) as _)).into_system();
         let mut second_system = (|_: &mut Ecs| {}).into_system();
 
-        let result = (system)(&mut ecs);
-        let second_result = (second_system)(&mut ecs);
+        let result = (system)(&mut ecs, &mut ());
+        let second_result = (second_system)(&mut ecs, &mut ());
 
         assert!(result.is_err());
         assert!(second_result.is_ok());
@@ -114,10 +139,35 @@ mod tests {
             Ok(())
         });
 
-        let _ = system_bundle.step(&mut ecs);
+        let _ = system_bundle.step(&mut ecs, &mut ());
         let query_result = ecs.query::<(R<Value>,)>();
         let result_set: HashSet<Value> = query_result.map(|result| *result.1 .0).collect();
         assert!(result_set.contains(&Value(41)));
         assert!(result_set.contains(&Value(47)));
+    }
+
+    #[test]
+    fn system_bundle_with_additional_data() {
+        struct ComponentA;
+        struct ComponentB;
+
+        struct AdditionalData {
+            some_value: i32
+        }
+
+        let mut additional_data = AdditionalData {
+            some_value: 0
+        };
+
+        let mut ecs = Ecs::new();
+        ecs.insert((ComponentA, ComponentB));
+        ecs.insert((ComponentB,));
+
+        let mut system_bundle = SystemBundle::new();
+        system_bundle.add_system(|_ecs: &mut Ecs, additional_data: &mut AdditionalData| { additional_data.some_value += 1 });
+
+        let _ = system_bundle.step(&mut ecs, &mut additional_data);
+        let _ = system_bundle.step(&mut ecs, &mut additional_data);
+        assert_eq!(additional_data.some_value, 2);
     }
 }
