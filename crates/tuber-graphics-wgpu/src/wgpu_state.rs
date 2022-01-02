@@ -10,12 +10,14 @@ use std::collections::HashMap;
 use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
+use tuber_graphics::g_buffer::GBufferComponent;
 use tuber_graphics::low_level::QuadDescription;
 use tuber_graphics::texture::TextureData;
-use tuber_graphics::{Window, WindowSize};
+use tuber_graphics::{Color, Window, WindowSize};
 use wgpu::SurfaceTexture;
 
 pub struct WGPUState {
+    clear_color: Color,
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -65,6 +67,7 @@ impl WGPUState {
         let texture_bind_group_layout = create_texture_bind_group_layout(&device);
 
         Self {
+            clear_color: (0.0, 0.0, 0.0),
             surface,
             device,
             queue,
@@ -107,6 +110,15 @@ impl WGPUState {
         self.pending_draw_commands.clear();
         self.quad_renderer.clear_pending_quads();
         Ok(())
+    }
+
+    pub fn set_clear_color(&mut self, color: Color) {
+        self.clear_color = color;
+    }
+
+    pub fn set_rendered_g_buffer_component(&mut self, g_buffer_component: GBufferComponent) {
+        self.compositor
+            .set_rendered_g_buffer_component(&self.queue, g_buffer_component);
     }
 
     fn composition_pass(
@@ -186,9 +198,9 @@ impl WGPUState {
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 0.0,
-                                g: 0.0,
-                                b: 0.0,
+                                r: self.clear_color.0 as f64,
+                                g: self.clear_color.1 as f64,
+                                b: self.clear_color.2 as f64,
                                 a: 1.0,
                             }),
                             store: true,

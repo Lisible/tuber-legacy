@@ -16,8 +16,8 @@ use wgpu::{
 };
 
 const MAX_QUAD_COUNT: usize = 1000;
-const QUAD_UNIFORM_SIZE: usize = std::mem::size_of::<QuadUniform>();
-const GLOBAL_UNIFORM_SIZE: usize = std::mem::size_of::<GlobalUniform>();
+const QUAD_UNIFORM_SIZE: u64 = std::mem::size_of::<QuadUniform>() as u64;
+const GLOBAL_UNIFORM_SIZE: u64 = std::mem::size_of::<GlobalUniform>() as u64;
 const VERTEX_PER_QUAD: usize = 6;
 
 pub(crate) struct QuadRenderer {
@@ -262,7 +262,7 @@ impl QuadRenderer {
     fn create_global_uniform_buffer(device: &wgpu::Device) -> wgpu::Buffer {
         device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("quad_renderer_global_uniform_buffer"),
-            size: GLOBAL_UNIFORM_SIZE as wgpu::BufferAddress,
+            size: GLOBAL_UNIFORM_SIZE,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         })
@@ -277,7 +277,7 @@ impl QuadRenderer {
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size: wgpu::BufferSize::new(GLOBAL_UNIFORM_SIZE as u64),
+                    min_binding_size: wgpu::BufferSize::new(GLOBAL_UNIFORM_SIZE),
                 },
                 count: None,
             }],
@@ -303,7 +303,7 @@ impl QuadRenderer {
         device: &wgpu::Device,
         quad_uniform_alignment: wgpu::BufferAddress,
     ) -> wgpu::Buffer {
-        assert!(QUAD_UNIFORM_SIZE as wgpu::BufferAddress <= quad_uniform_alignment);
+        assert!(QUAD_UNIFORM_SIZE <= quad_uniform_alignment);
         device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("quad_renderer_quad_uniform_buffer"),
             size: (MAX_QUAD_COUNT * quad_uniform_alignment as usize) as wgpu::BufferAddress,
@@ -321,7 +321,7 @@ impl QuadRenderer {
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: true,
-                    min_binding_size: wgpu::BufferSize::new(QUAD_UNIFORM_SIZE as u64),
+                    min_binding_size: wgpu::BufferSize::new(QUAD_UNIFORM_SIZE),
                 },
                 count: None,
             }],
@@ -341,7 +341,7 @@ impl QuadRenderer {
                 resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                     buffer: &quad_uniform_buffer,
                     offset: 0,
-                    size: wgpu::BufferSize::new(QUAD_UNIFORM_SIZE as u64),
+                    size: wgpu::BufferSize::new(QUAD_UNIFORM_SIZE),
                 }),
             }],
         })

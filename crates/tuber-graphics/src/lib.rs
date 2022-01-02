@@ -13,6 +13,7 @@ use tuber_ecs::EntityIndex;
 
 use crate::bitmap_font::BitmapFont;
 use crate::camera::{Active, OrthographicCamera};
+use crate::g_buffer::GBufferComponent;
 use crate::low_level::*;
 use crate::material::{Material, MaterialTexture};
 use crate::shape::RectangleShape;
@@ -25,6 +26,7 @@ use crate::ui::{Frame, Image, NoViewTransform, Text};
 
 pub mod bitmap_font;
 pub mod camera;
+pub mod g_buffer;
 pub mod low_level;
 pub mod material;
 pub mod shape;
@@ -438,6 +440,11 @@ impl Graphics {
 
     pub fn set_clear_color(&mut self, clear_color: Color) {
         self.graphics_impl.set_clear_color(clear_color);
+    }
+
+    pub fn set_rendered_g_buffer_component(&mut self, g_buffer_component: GBufferComponent) {
+        self.graphics_impl
+            .set_rendered_g_buffer_component(g_buffer_component);
     }
 
     pub fn on_window_resized(&mut self, width: u32, height: u32) {

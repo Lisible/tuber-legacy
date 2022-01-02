@@ -16,6 +16,7 @@ use tuber_core::input::keyboard::Key;
 use tuber_core::DeltaTime;
 use tuber_ecs::ecs::Ecs;
 use tuber_engine::engine_context::EngineContext;
+use tuber_graphics::g_buffer::GBufferComponent;
 
 pub(crate) struct GameState {
     do_exit: bool,
@@ -70,9 +71,19 @@ impl State for GameState {
 fn switch_rendered_g_buffer_component(_ecs: &mut Ecs, engine_context: &mut EngineContext) {
     let input_state = &engine_context.input_state;
     if input_state.is(Input::KeyDown(Key::F1)) {
-        println!("Switch to diffuse GBuffer component");
+        println!("Switch to albedo GBuffer component");
+        engine_context
+            .graphics
+            .as_mut()
+            .unwrap()
+            .set_rendered_g_buffer_component(GBufferComponent::Albedo);
     } else if input_state.is(Input::KeyDown(Key::F2)) {
         println!("Switch to normal GBuffer component");
+        engine_context
+            .graphics
+            .as_mut()
+            .unwrap()
+            .set_rendered_g_buffer_component(GBufferComponent::Normal);
     }
 }
 

@@ -13,6 +13,7 @@ use tuber_core::tilemap::Tilemap;
 use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
+use tuber_graphics::g_buffer::GBufferComponent;
 use tuber_graphics::low_level::{LowLevelGraphicsAPI, QuadDescription};
 use tuber_graphics::texture::TextureData;
 use tuber_graphics::tilemap::TilemapRender;
@@ -107,7 +108,15 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
             .update_camera(camera_id, camera, transform);
     }
 
-    fn set_clear_color(&mut self, _color: Color) {}
+    fn set_clear_color(&mut self, color: Color) {
+        self.state.assume_initialized_mut().set_clear_color(color);
+    }
+
+    fn set_rendered_g_buffer_component(&mut self, g_buffer_component: GBufferComponent) {
+        self.state
+            .assume_initialized_mut()
+            .set_rendered_g_buffer_component(g_buffer_component);
+    }
 
     fn on_window_resized(&mut self, size: WindowSize) {
         self.state.assume_initialized_mut().resize(size);

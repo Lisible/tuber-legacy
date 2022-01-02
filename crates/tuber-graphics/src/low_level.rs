@@ -34,6 +34,7 @@ pub trait LowLevelGraphicsAPI {
     );
 
     fn set_clear_color(&mut self, color: Color);
+    fn set_rendered_g_buffer_component(&mut self, g_buffer_component: GBufferComponent);
     fn on_window_resized(&mut self, size: WindowSize);
 }
 
