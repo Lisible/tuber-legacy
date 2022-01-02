@@ -29,4 +29,5 @@ var s_normal: sampler;
 [[stage(fragment)]]
 fn fs_main(input: VertexStageOutput) -> [[location(0)]] vec4<f32> {
     return textureSample(t_diffuse, s_diffuse, input.texture_coordinates);
+    //return textureSample(t_normal, s_normal, input.texture_coordinates);
 }

@@ -9,7 +9,6 @@ use tuber_core::tilemap::Tilemap;
 use tuber_core::transform::Transform2D;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::query::accessors::{R, W};
-use tuber_ecs::system::SystemBundle;
 use tuber_ecs::EntityIndex;
 
 use crate::bitmap_font::BitmapFont;
@@ -17,7 +16,7 @@ use crate::camera::{Active, OrthographicCamera};
 use crate::low_level::*;
 use crate::material::{Material, MaterialTexture};
 use crate::shape::RectangleShape;
-use crate::sprite::{sprite_animation_step_system, AnimatedSprite, Sprite};
+use crate::sprite::{AnimatedSprite, Sprite};
 use crate::texture::{
     texture_atlas_loader, texture_loader, TextureAtlas, TextureData, TextureMetadata, TextureRegion,
 };
@@ -435,12 +434,6 @@ impl Graphics {
     ) {
         self.graphics_impl
             .update_camera(camera_id, camera, transform);
-    }
-
-    pub fn default_system_bundle() -> SystemBundle<()> {
-        let mut system_bundle = SystemBundle::new();
-        system_bundle.add_system(sprite_animation_step_system);
-        system_bundle
     }
 
     pub fn set_clear_color(&mut self, clear_color: Color) {

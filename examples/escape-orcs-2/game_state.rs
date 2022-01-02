@@ -10,11 +10,12 @@ use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
 use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::SystemBundle;
-use tuber::engine::state::{State, StateContext, StateStackRequest};
+use tuber::engine::state::{State, StateStackRequest};
 use tuber::graphics::camera::{Active, OrthographicCamera};
-use tuber::graphics::Graphics;
+use tuber_core::input::keyboard::Key;
 use tuber_core::DeltaTime;
 use tuber_ecs::ecs::Ecs;
+use tuber_engine::engine_context::EngineContext;
 
 pub(crate) struct GameState {
     do_exit: bool,
@@ -28,32 +29,30 @@ impl GameState {
 struct RandomNumberGenerator(ThreadRng);
 
 impl State for GameState {
-    fn initialize(&mut self, state_context: &mut StateContext) {
-        state_context
-            .ecs
-            .insert_shared_resource(RandomNumberGenerator(rand::thread_rng()));
+    fn initialize(
+        &mut self,
+        ecs: &mut Ecs,
+        system_bundles: &mut Vec<SystemBundle<EngineContext>>,
+        engine_context: &mut EngineContext,
+    ) {
+        ecs.insert_shared_resource(RandomNumberGenerator(rand::thread_rng()));
 
-        state_context.ecs.insert(create_camera());
-        state_context
-            .ecs
-            .insert(create_player(state_context.asset_store));
-        state_context
-            .ecs
-            .insert(create_orc(state_context.asset_store));
-        state_context.ecs.insert(create_terrain());
-        state_context
-            .system_bundles
-            .push(Graphics::default_system_bundle());
+        ecs.insert(create_camera());
+        ecs.insert(create_player(&mut engine_context.asset_store));
+        ecs.insert(create_orc(&mut engine_context.asset_store));
+        ecs.insert(create_terrain());
+        system_bundles.push(tuber::engine::system_bundle::graphics::default_system_bundle());
 
-        let mut system_bundle = SystemBundle::new();
+        let mut system_bundle = SystemBundle::<EngineContext>::new();
         system_bundle.add_system(move_player);
         system_bundle.add_system(update_character_position);
         system_bundle.add_system(update_camera_position);
-        state_context.system_bundles.push(system_bundle);
+        system_bundle.add_system(switch_rendered_g_buffer_component);
+        system_bundles.push(system_bundle);
     }
 
-    fn update(&mut self, state_context: &mut StateContext) {
-        let input_state = state_context.ecs.shared_resource::<InputState>().unwrap();
+    fn update(&mut self, _ecs: &mut Ecs, engine_context: &mut EngineContext) {
+        let input_state = &engine_context.input_state;
         if input_state.is(Input::ActionDown("exit_game".into())) {
             self.do_exit = true;
         }
@@ -65,6 +64,15 @@ impl State for GameState {
         }
 
         vec![]
+    }
+}
+
+fn switch_rendered_g_buffer_component(_ecs: &mut Ecs, engine_context: &mut EngineContext) {
+    let input_state = &engine_context.input_state;
+    if input_state.is(Input::KeyDown(Key::F1)) {
+        println!("Switch to diffuse GBuffer component");
+    } else if input_state.is(Input::KeyDown(Key::F2)) {
+        println!("Switch to normal GBuffer component");
     }
 }
 
@@ -86,7 +94,7 @@ fn create_camera() -> impl EntityDefinition {
     )
 }
 
-pub(crate) fn update_camera_position(ecs: &mut Ecs) {
+pub(crate) fn update_camera_position(ecs: &mut Ecs, _: &mut EngineContext) {
     let (_, (_, player_transform)) = ecs.query_one::<(R<Player>, R<Transform2D>)>().unwrap();
     let (_, (_, mut camera_transform)) = ecs
         .query_one::<(R<OrthographicCamera>, W<Transform2D>)>()
@@ -105,9 +113,9 @@ pub(crate) enum Movement {
     Idle,
 }
 
-fn move_player(ecs: &mut Ecs) {
+fn move_player(ecs: &mut Ecs, engine_context: &mut EngineContext) {
     let player_movement = {
-        let input_state = ecs.shared_resource::<InputState>().unwrap();
+        let input_state = &engine_context.input_state;
         let player_movement = if input_state.is(Input::ActionDown("move_up".into())) {
             Movement::Up
         } else if input_state.is(Input::ActionDown("move_down".into())) {
@@ -160,7 +168,7 @@ fn move_orcs(ecs: &mut Ecs) {
     }
 }
 
-fn update_character_position(ecs: &mut Ecs) {
+fn update_character_position(ecs: &mut Ecs, _: &mut EngineContext) {
     const ANIMATION_SPEED: f32 = 2f32;
     let delta_time = ecs.shared_resource::<DeltaTime>().unwrap().0 as f32;
 
@@ -195,7 +203,6 @@ fn update_character_position(ecs: &mut Ecs) {
         };
 
         if character.animation_time >= 1f32 && character.movement != Movement::Idle {
-            println!("animation_time reached one");
             transform.translation.0 = target_position.0 as f32 * TILE_SIZE as f32;
             transform.translation.1 = target_position.1 as f32 * TILE_SIZE as f32;
             character.movement = Movement::Idle;
