@@ -2,6 +2,7 @@
   "identifier": "normal_spritesheet",
   "kind": "texture",
   "metadata": {
-    "texture_data": "normal_spritesheet.png"
+    "texture_data": "normal_spritesheet.png",
+    "usage": "normal"
   }
 }

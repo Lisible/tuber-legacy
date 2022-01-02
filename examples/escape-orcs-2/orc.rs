@@ -6,7 +6,7 @@ use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
 use tuber::graphics::sprite::{AnimatedSprite, AnimationState, Sprite};
 use tuber::graphics::texture::TextureAtlas;
-use tuber_graphics::material::{Material, MaterialTexture};
+use tuber_graphics::material::Material;
 
 pub(crate) struct Orc;
 pub(crate) fn create_orc(asset_store: &mut AssetStore) -> impl EntityDefinition {
@@ -26,7 +26,10 @@ pub(crate) fn create_orc(asset_store: &mut AssetStore) -> impl EntityDefinition 
         AnimatedSprite {
             width: 64.0,
             height: 64.0,
-            texture_identifier: "spritesheet".to_string(),
+            material: Material {
+                albedo_map: "spritesheet".to_string(),
+                normal_map: Some("normal_spritesheet".to_string()),
+            },
             animation_state: AnimationState {
                 keyframes: vec![
                     atlas.texture_region("orc_1").unwrap(),
@@ -42,11 +45,9 @@ pub(crate) fn create_orc(asset_store: &mut AssetStore) -> impl EntityDefinition 
             width: 48.0,
             height: 14.0,
             offset: (6.0, 55.0, -1),
+            texture_region: atlas.texture_region("shadow").unwrap(),
             material: Material {
-                albedo_map: MaterialTexture {
-                    identifier: "spritesheet".to_string(),
-                    region: atlas.texture_region("shadow").unwrap(),
-                },
+                albedo_map: "spritesheet".to_string(),
                 normal_map: None,
             },
         },

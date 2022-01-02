@@ -5,7 +5,7 @@ use crate::terrain::{create_terrain, TILE_SIZE};
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::f32::consts::PI;
-use tuber::core::input::{Input, InputState};
+use tuber::core::input::Input;
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
 use tuber::ecs::query::accessors::{R, W};
