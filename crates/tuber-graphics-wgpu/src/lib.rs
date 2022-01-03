@@ -9,14 +9,13 @@ use crate::wgpu_state::WGPUState;
 use std::cmp::Ordering;
 use std::ops::Range;
 use tuber_core::asset::AssetStore;
-use tuber_core::tilemap::Tilemap;
 use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::g_buffer::GBufferComponent;
 use tuber_graphics::low_level::{LowLevelGraphicsAPI, QuadDescription};
 use tuber_graphics::texture::TextureData;
-use tuber_graphics::tilemap::TilemapRender;
+use tuber_graphics::tilemap::Tilemap;
 use tuber_graphics::{Color, Window, WindowSize};
 
 #[derive(Debug)]
@@ -76,15 +75,6 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
             .prepare_quad(quad_description, transform);
     }
 
-    fn prepare_tilemap(
-        &mut self,
-        _tilemap: &Tilemap,
-        _tilemap_render: &TilemapRender,
-        _transform: &Transform2D,
-        _asset_store: &AssetStore,
-    ) {
-    }
-
     fn is_texture_in_vram(&self, texture_identifier: &str) -> bool {
         self.state
             .assume_initialized()
@@ -132,14 +122,12 @@ pub struct DrawCommand {
 #[derive(Eq, PartialEq, Ord, PartialOrd)]
 pub enum DrawCommandData {
     QuadDrawCommand(QuadDrawCommand),
-    TilemapDrawCommand(TilemapDrawCommand),
 }
 
 impl DrawCommand {
     pub fn draw_type(&self) -> DrawType {
         match self.draw_command_data {
             DrawCommandData::QuadDrawCommand(_) => DrawType::Quad,
-            DrawCommandData::TilemapDrawCommand(_) => DrawType::Tilemap,
         }
     }
 }
@@ -163,17 +151,6 @@ impl Ord for QuadDrawCommand {
 impl PartialOrd for QuadDrawCommand {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(&other))
-    }
-}
-
-#[derive(Eq, PartialEq, PartialOrd)]
-pub struct TilemapDrawCommand {
-    pub tilemap_identifier: String,
-}
-
-impl Ord for TilemapDrawCommand {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.tilemap_identifier.cmp(&other.tilemap_identifier)
     }
 }
 

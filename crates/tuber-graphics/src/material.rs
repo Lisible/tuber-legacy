@@ -1,5 +1,6 @@
 use crate::TextureRegion;
 
+#[derive(Clone)]
 pub struct Material {
     pub albedo_map: String,
     pub normal_map: Option<String>,

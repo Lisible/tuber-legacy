@@ -14,13 +14,6 @@ pub trait LowLevelGraphicsAPI {
         transform: &Transform2D,
         apply_view_transform: bool,
     );
-    fn prepare_tilemap(
-        &mut self,
-        tilemap: &Tilemap,
-        tilemap_render: &TilemapRender,
-        transform: &Transform2D,
-        asset_store: &AssetStore,
-    );
 
     fn is_texture_in_vram(&self, texture_identifier: &str) -> bool;
     fn load_texture_in_vram(&mut self, texture_data: &TextureData);

@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use std::default::Default;
 
 use tuber_core::asset::{AssetMetadata, AssetStore, GenericLoader};
-use tuber_core::tilemap::Tilemap;
 use tuber_core::transform::Transform2D;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::query::accessors::{R, W};
@@ -22,7 +21,7 @@ use crate::texture::{
     texture_atlas_loader, texture_loader, TextureAtlas, TextureData, TextureMetadata,
     TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
-use crate::tilemap::TilemapRender;
+use crate::tilemap::Tilemap;
 use crate::ui::{Frame, Image, NoViewTransform, Text};
 
 pub mod bitmap_font;
@@ -260,27 +259,6 @@ impl Graphics {
         Ok(())
     }
 
-    pub fn prepare_tilemap(
-        &mut self,
-        tilemap: &Tilemap,
-        tilemap_render: &TilemapRender,
-        transform: &Transform2D,
-        asset_store: &mut AssetStore,
-    ) {
-        {
-            asset_store
-                .load::<TextureAtlas>(&tilemap_render.texture_atlas_identifier)
-                .unwrap();
-            asset_store
-                .load::<TextureData>(&tilemap_render.texture_identifier)
-                .unwrap();
-            self.load_texture_in_vram_if_required(asset_store, &tilemap_render.texture_identifier);
-        }
-
-        self.graphics_impl
-            .prepare_tilemap(tilemap, tilemap_render, transform, asset_store);
-    }
-
     pub fn prepare_text(
         &mut self,
         text: &str,
@@ -373,12 +351,6 @@ impl Graphics {
             .expect("There is no camera");
         self.update_camera(camera_id, &camera, &camera_transform);
 
-        for (_, (tilemap, tilemap_render, transform)) in
-            ecs.query::<(R<Tilemap>, R<TilemapRender>, R<Transform2D>)>()
-        {
-            self.prepare_tilemap(&tilemap, &tilemap_render, &transform, asset_store);
-        }
-
         for (_, (rectangle_shape, transform)) in ecs.query::<(R<RectangleShape>, R<Transform2D>)>()
         {
             self.prepare_rectangle(&rectangle_shape, &transform, true);
@@ -391,10 +363,6 @@ impl Graphics {
         {
             self.prepare_animated_sprite(&animated_sprite, &transform, true, asset_store)
                 .unwrap();
-        }
-
-        for (_, (mut tilemap_render,)) in ecs.query::<(W<TilemapRender>,)>() {
-            tilemap_render.dirty = false;
         }
 
         for (id, (frame, transform)) in ecs.query::<(R<Frame>, R<Transform2D>)>() {

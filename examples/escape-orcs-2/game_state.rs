@@ -1,29 +1,57 @@
 use crate::character::Character;
 use crate::orc::{create_orc, Orc};
 use crate::player::{create_player, Player};
-use crate::terrain::{create_terrain, TILE_SIZE};
+use crate::terrain::TILE_SIZE;
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::f32::consts::PI;
+use tuber::core::input::keyboard::Key;
 use tuber::core::input::Input;
 use tuber::core::transform::Transform2D;
+use tuber::core::DeltaTime;
+use tuber::ecs::ecs::Ecs;
 use tuber::ecs::ecs::EntityDefinition;
 use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::SystemBundle;
+use tuber::engine::engine_context::EngineContext;
 use tuber::engine::state::{State, StateStackRequest};
 use tuber::graphics::camera::{Active, OrthographicCamera};
-use tuber_core::input::keyboard::Key;
-use tuber_core::DeltaTime;
-use tuber_ecs::ecs::Ecs;
-use tuber_engine::engine_context::EngineContext;
-use tuber_graphics::g_buffer::GBufferComponent;
+use tuber::graphics::g_buffer::GBufferComponent;
+use tuber::graphics::tilemap::{Tile, Tilemap};
+use tuber_graphics::material::Material;
+use tuber_graphics::texture::TextureRegion;
+use tuber_graphics::tilemap::TileDescription;
 
 pub(crate) struct GameState {
+    tilemap: Tilemap,
     do_exit: bool,
 }
 impl GameState {
     pub(crate) fn new() -> Self {
-        Self { do_exit: false }
+        let mut tilemap = Tilemap::new(
+            10,
+            10,
+            Material {
+                albedo_map: "spritesheet".to_string(),
+                normal_map: None,
+            },
+            None,
+        );
+
+        let tile = Tile::Tile(TileDescription {
+            texture_region: TextureRegion {
+                x: 0.0,
+                y: 0.0,
+                width: 32.0,
+                height: 32.0,
+            },
+        });
+        tilemap.set_tile(0, 0, Some(tile));
+
+        Self {
+            tilemap,
+            do_exit: false,
+        }
     }
 }
 
@@ -41,7 +69,6 @@ impl State for GameState {
         ecs.insert(create_camera());
         ecs.insert(create_player(&mut engine_context.asset_store));
         ecs.insert(create_orc(&mut engine_context.asset_store));
-        ecs.insert(create_terrain());
         system_bundles.push(tuber::engine::system_bundle::graphics::default_system_bundle());
 
         let mut system_bundle = SystemBundle::<EngineContext>::new();

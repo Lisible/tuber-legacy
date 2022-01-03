@@ -1,6 +1,5 @@
 pub mod asset;
 pub mod input;
-pub mod tilemap;
 pub mod transform;
 
 pub type CoreResult<T> = Result<T, CoreError>;
