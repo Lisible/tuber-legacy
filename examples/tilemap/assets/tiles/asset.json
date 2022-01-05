@@ -1,7 +1,0 @@
-{
-  "identifier": "tiles",
-  "kind": "texture_atlas",
-  "metadata": {
-    "texture_atlas_description": "tiles.json"
-  }
-}
