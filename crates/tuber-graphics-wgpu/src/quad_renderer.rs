@@ -11,10 +11,6 @@ use tuber_graphics::texture::{
     TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER, DEFAULT_TEXTURE_IDENTIFIER,
     WHITE_TEXTURE_IDENTIFIER,
 };
-use wgpu::{
-    BindGroupLayoutDescriptor, BlendComponent, BufferDescriptor, PipelineLayoutDescriptor,
-    RenderPipelineDescriptor,
-};
 
 const MAX_QUAD_COUNT: usize = 1000;
 const QUAD_UNIFORM_SIZE: u64 = std::mem::size_of::<QuadUniform>() as u64;
@@ -254,7 +250,7 @@ impl QuadRenderer {
     }
 
     fn create_vertex_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-        device.create_buffer(&BufferDescriptor {
+        device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("quad_renderer_vertex_buffer"),
             size: (std::mem::size_of::<Vertex>() * VERTEX_PER_QUAD * MAX_QUAD_COUNT)
                 as wgpu::BufferAddress,
@@ -273,7 +269,7 @@ impl QuadRenderer {
     }
 
     fn create_global_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("quad_renderer_global_bind_group_layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -317,7 +313,7 @@ impl QuadRenderer {
     }
 
     fn create_quad_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("quad_renderer_quad_bind_group_layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -362,18 +358,19 @@ impl QuadRenderer {
             source: wgpu::ShaderSource::Wgsl(include_str!("./shaders/quad.wgsl").into()),
         });
 
-        let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("quad_renderer_render_pipeline_layout"),
-            bind_group_layouts: &[
-                global_bind_group_layout,
-                quad_bind_group_layout,
-                &create_texture_bind_group_layout(device),
-                &create_texture_bind_group_layout(device),
-            ],
-            push_constant_ranges: &[],
-        });
+        let render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("quad_renderer_render_pipeline_layout"),
+                bind_group_layouts: &[
+                    global_bind_group_layout,
+                    quad_bind_group_layout,
+                    &create_texture_bind_group_layout(device),
+                    &create_texture_bind_group_layout(device),
+                ],
+                push_constant_ranges: &[],
+            });
 
-        device.create_render_pipeline(&RenderPipelineDescriptor {
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("quad_renderer_render_pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
