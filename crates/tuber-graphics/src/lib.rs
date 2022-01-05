@@ -79,7 +79,7 @@ impl Graphics {
         self.graphics_impl.render();
     }
 
-    pub fn prepare_rectangle(
+    pub fn draw_rectangle(
         &mut self,
         rectangle: &RectangleShape,
         transform: &Transform2D,
@@ -97,7 +97,63 @@ impl Graphics {
         );
     }
 
-    pub fn prepare_animated_sprite(
+    pub fn draw_sprite(
+        &mut self,
+        sprite: &Sprite,
+        transform: &Transform2D,
+        apply_view_transform: bool,
+        asset_manager: &mut AssetStore,
+    ) -> Result<(), GraphicsError> {
+        self.load_texture_in_vram_if_required(asset_manager, &sprite.material.albedo_map);
+
+        let texture_metadata = self.texture_metadata.get(&sprite.material.albedo_map);
+        let texture_metadata = match texture_metadata {
+            Some(metadata) => metadata,
+            None => &TextureMetadata {
+                width: 32,
+                height: 32,
+            },
+        };
+
+        let (texture_width, texture_height) = (
+            texture_metadata.width as f32,
+            texture_metadata.height as f32,
+        );
+
+        let effective_transform = Transform2D {
+            translation: (
+                transform.translation.0 + sprite.offset.0,
+                transform.translation.1 + sprite.offset.1,
+                transform.translation.2 + sprite.offset.2,
+            ),
+            ..*transform
+        };
+
+        self.graphics_impl.prepare_quad(
+            &QuadDescription {
+                width: sprite.width,
+                height: sprite.height,
+                color: (1.0, 1.0, 1.0),
+                material: MaterialDescription {
+                    albedo_map_description: Some(TextureDescription {
+                        identifier: sprite.material.albedo_map.clone(),
+                        texture_region: TextureRegion {
+                            x: sprite.texture_region.x / texture_width,
+                            y: sprite.texture_region.y / texture_height,
+                            width: sprite.texture_region.width / texture_width,
+                            height: sprite.texture_region.height / texture_height,
+                        },
+                    }),
+                    normal_map_description: None,
+                },
+            },
+            &effective_transform,
+            apply_view_transform,
+        );
+        Ok(())
+    }
+
+    pub fn draw_animated_sprite(
         &mut self,
         animated_sprite: &AnimatedSprite,
         transform: &Transform2D,
@@ -154,107 +210,7 @@ impl Graphics {
         Ok(())
     }
 
-    fn load_material_in_vram_if_required(
-        &mut self,
-        asset_manager: &mut AssetStore,
-        material: &Material,
-    ) {
-        self.load_texture_in_vram_if_required(asset_manager, &material.albedo_map);
-        if let Some(normal_map) = &material.normal_map {
-            self.load_texture_in_vram_if_required(asset_manager, normal_map);
-        }
-    }
-
-    fn load_texture_in_vram_if_required(
-        &mut self,
-        asset_manager: &mut AssetStore,
-        texture_identifier: &str,
-    ) {
-        if !self.graphics_impl.is_texture_in_vram(texture_identifier) {
-            self.load_texture_from_asset_in_vram(asset_manager, texture_identifier);
-        }
-    }
-
-    fn load_texture_from_asset_in_vram(
-        &mut self,
-        asset_manager: &mut AssetStore,
-        texture_identifier: &str,
-    ) {
-        let texture = asset_manager.asset::<TextureData>(texture_identifier);
-        if let Ok(texture) = texture {
-            self.load_texture_in_vram(texture);
-        }
-    }
-
-    fn load_texture_in_vram(&mut self, texture: &TextureData) {
-        self.texture_metadata.insert(
-            texture.identifier.clone(),
-            TextureMetadata {
-                width: texture.size.0,
-                height: texture.size.1,
-            },
-        );
-
-        self.graphics_impl.load_texture_in_vram(texture);
-    }
-
-    pub fn prepare_sprite(
-        &mut self,
-        sprite: &Sprite,
-        transform: &Transform2D,
-        apply_view_transform: bool,
-        asset_manager: &mut AssetStore,
-    ) -> Result<(), GraphicsError> {
-        self.load_texture_in_vram_if_required(asset_manager, &sprite.material.albedo_map);
-
-        let texture_metadata = self.texture_metadata.get(&sprite.material.albedo_map);
-        let texture_metadata = match texture_metadata {
-            Some(metadata) => metadata,
-            None => &TextureMetadata {
-                width: 32,
-                height: 32,
-            },
-        };
-
-        let (texture_width, texture_height) = (
-            texture_metadata.width as f32,
-            texture_metadata.height as f32,
-        );
-
-        let effective_transform = Transform2D {
-            translation: (
-                transform.translation.0 + sprite.offset.0,
-                transform.translation.1 + sprite.offset.1,
-                transform.translation.2 + sprite.offset.2,
-            ),
-            ..*transform
-        };
-
-        self.graphics_impl.prepare_quad(
-            &QuadDescription {
-                width: sprite.width,
-                height: sprite.height,
-                color: (1.0, 1.0, 1.0),
-                material: MaterialDescription {
-                    albedo_map_description: Some(TextureDescription {
-                        identifier: sprite.material.albedo_map.clone(),
-                        texture_region: TextureRegion {
-                            x: sprite.texture_region.x / texture_width,
-                            y: sprite.texture_region.y / texture_height,
-                            width: sprite.texture_region.width / texture_width,
-                            height: sprite.texture_region.height / texture_height,
-                        },
-                    }),
-                    normal_map_description: None,
-                },
-            },
-            &effective_transform,
-            apply_view_transform,
-        );
-        Ok(())
-    }
-
-    pub fn prepare_text(
+    pub fn draw_text(
         &mut self,
         text: &str,
         font_identifier: &str,
@@ -340,6 +296,50 @@ impl Graphics {
         }
     }
 
+    fn load_material_in_vram_if_required(
+        &mut self,
+        asset_manager: &mut AssetStore,
+        material: &Material,
+    ) {
+        self.load_texture_in_vram_if_required(asset_manager, &material.albedo_map);
+        if let Some(normal_map) = &material.normal_map {
+            self.load_texture_in_vram_if_required(asset_manager, normal_map);
+        }
+    }
+
+    fn load_texture_in_vram_if_required(
+        &mut self,
+        asset_manager: &mut AssetStore,
+        texture_identifier: &str,
+    ) {
+        if !self.graphics_impl.is_texture_in_vram(texture_identifier) {
+            self.load_texture_from_asset_in_vram(asset_manager, texture_identifier);
+        }
+    }
+
+    fn load_texture_from_asset_in_vram(
+        &mut self,
+        asset_manager: &mut AssetStore,
+        texture_identifier: &str,
+    ) {
+        let texture = asset_manager.asset::<TextureData>(texture_identifier);
+        if let Ok(texture) = texture {
+            self.load_texture_in_vram(texture);
+        }
+    }
+
+    fn load_texture_in_vram(&mut self, texture: &TextureData) {
+        self.texture_metadata.insert(
+            texture.identifier.clone(),
+            TextureMetadata {
+                width: texture.size.0,
+                height: texture.size.1,
+            },
+        );
+
+        self.graphics_impl.load_texture_in_vram(texture);
+    }
+
     pub fn render_scene(&mut self, ecs: &Ecs, asset_store: &mut AssetStore) {
         let (camera_id, (camera, _, camera_transform)) = ecs
             .query_one::<(R<OrthographicCamera>, R<Active>, R<Transform2D>)>()
@@ -348,15 +348,15 @@ impl Graphics {
 
         for (_, (rectangle_shape, transform)) in ecs.query::<(R<RectangleShape>, R<Transform2D>)>()
         {
-            self.prepare_rectangle(&rectangle_shape, &transform, true);
+            self.draw_rectangle(&rectangle_shape, &transform, true);
         }
         for (_, (sprite, transform)) in ecs.query::<(R<Sprite>, R<Transform2D>)>() {
-            self.prepare_sprite(&sprite, &transform, true, asset_store)
+            self.draw_sprite(&sprite, &transform, true, asset_store)
                 .unwrap();
         }
         for (_, (animated_sprite, transform)) in ecs.query::<(R<AnimatedSprite>, R<Transform2D>)>()
         {
-            self.prepare_animated_sprite(&animated_sprite, &transform, true, asset_store)
+            self.draw_animated_sprite(&animated_sprite, &transform, true, asset_store)
                 .unwrap();
         }
 
