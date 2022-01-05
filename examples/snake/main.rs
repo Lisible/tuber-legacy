@@ -1,19 +1,21 @@
 use rand::{thread_rng, Rng};
 use std::collections::VecDeque;
 use tuber::core::input::Input::ActionDown;
-use tuber::core::input::InputState;
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::{SystemBundle, SystemResult};
 use tuber::ecs::EntityIndex;
-use tuber::engine::state::{State, StateContext};
+use tuber::engine::state::State;
 use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
-use tuber::graphics::sprite::Sprite;
 use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::WinitTuberRunner;
+use tuber_engine::engine_context::EngineContext;
+use tuber_engine::system_bundle;
+use tuber_graphics::material::Material;
+use tuber_graphics::renderable::sprite::Sprite;
 use tuber_graphics::texture::TextureRegion;
 
 const WINDOW_WIDTH: u32 = 800;
@@ -58,8 +60,13 @@ fn main() -> Result<()> {
 
 struct MainState;
 impl State for MainState {
-    fn initialize(&mut self, state_context: &mut StateContext) {
-        state_context.ecs.insert((
+    fn initialize(
+        &mut self,
+        ecs: &mut Ecs,
+        system_bundles: &mut Vec<SystemBundle<EngineContext>>,
+        _engine_context: &mut EngineContext,
+    ) {
+        ecs.insert((
             OrthographicCamera {
                 left: 0.0,
                 right: 800.0,
@@ -75,27 +82,23 @@ impl State for MainState {
             Active,
         ));
 
-        state_context
-            .ecs
-            .insert_shared_resource(PivotList(VecDeque::new()));
-        state_context.ecs.insert_shared_resource(Score(0));
+        ecs.insert_shared_resource(PivotList(VecDeque::new()));
+        ecs.insert_shared_resource(Score(0));
 
-        spawn_snake(&mut state_context.ecs);
-        spawn_apple(&mut state_context.ecs);
+        spawn_snake(ecs);
+        spawn_apple(ecs);
 
         let mut bundle = SystemBundle::new();
         bundle.add_system(move_head_system);
         bundle.add_system(move_body_parts_system);
         bundle.add_system(eat_apple_system);
         bundle.add_system(check_collision_with_body_system);
-        state_context.system_bundles.push(bundle);
-        state_context
-            .system_bundles
-            .push(Graphics::default_system_bundle());
+        system_bundles.push(bundle);
+        system_bundles.push(system_bundle::graphics::default_system_bundle());
     }
 }
 
-fn check_collision_with_body_system(ecs: &mut Ecs) -> SystemResult {
+fn check_collision_with_body_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     let mut is_game_over = false;
     {
         let (head_id, (_, head_body_part, head_transform)) = ecs
@@ -135,9 +138,9 @@ fn check_collision_with_body_system(ecs: &mut Ecs) -> SystemResult {
     Ok(())
 }
 
-fn move_head_system(ecs: &mut Ecs) -> SystemResult {
+fn move_head_system(ecs: &mut Ecs, engine_context: &mut EngineContext) -> SystemResult {
     let is_game_over = {
-        let input_state = ecs.shared_resource::<InputState>().unwrap();
+        let input_state = &engine_context.input_state;
         let (_, (_, mut velocity, mut transform)) = ecs
             .query_one::<(R<SnakeHead>, W<Velocity>, W<Transform2D>)>()
             .unwrap();
@@ -204,7 +207,10 @@ fn spawn_apple(ecs: &mut Ecs) {
         Sprite {
             width: 64.0,
             height: 64.0,
-            texture_identifier: "apple_texture".into(),
+            material: Material {
+                albedo_map: "apple_texture".into(),
+                ..Default::default()
+            },
             texture_region: TextureRegion {
                 x: 0.0,
                 y: 0.0,
@@ -227,7 +233,10 @@ fn spawn_snake(ecs: &mut Ecs) {
         Sprite {
             width: BODY_PART_SIZE,
             height: BODY_PART_SIZE,
-            texture_identifier: "snake_tail_texture".into(),
+            material: Material {
+                albedo_map: "snake_tail_texture".into(),
+                ..Default::default()
+            },
             texture_region: TextureRegion {
                 x: 0.0,
                 y: 0.0,
@@ -254,7 +263,10 @@ fn spawn_snake(ecs: &mut Ecs) {
         Sprite {
             width: BODY_PART_SIZE,
             height: BODY_PART_SIZE,
-            texture_identifier: "snake_face_texture".into(),
+            material: Material {
+                albedo_map: "snake_face_texture".into(),
+                ..Default::default()
+            },
             texture_region: TextureRegion {
                 x: 0.0,
                 y: 0.0,
@@ -274,7 +286,7 @@ fn spawn_snake(ecs: &mut Ecs) {
     ));
 }
 
-fn move_body_parts_system(ecs: &mut Ecs) -> SystemResult {
+fn move_body_parts_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     let (head_id, _) = ecs.query_one::<(R<SnakeHead>,)>().unwrap();
     let (tail_id, _) = ecs.query_one::<(R<SnakeTail>,)>().unwrap();
     let mut pivots = ecs.shared_resource_mut::<PivotList>().unwrap();
@@ -307,7 +319,7 @@ fn move_body_parts_system(ecs: &mut Ecs) -> SystemResult {
     Ok(())
 }
 
-fn eat_apple_system(ecs: &mut Ecs) -> SystemResult {
+fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     let mut grow_snake = false;
     {
         let (_, (_, head_transform, head_sprite)) = ecs
@@ -363,7 +375,10 @@ fn eat_apple_system(ecs: &mut Ecs) -> SystemResult {
                 Sprite {
                     width: 64.0,
                     height: 64.0,
-                    texture_identifier: "snake_tail_texture".into(),
+                    material: Material {
+                        albedo_map: "snake_tail_texture".into(),
+                        ..Default::default()
+                    },
                     texture_region: TextureRegion {
                         x: 0.0,
                         y: 0.0,
@@ -386,7 +401,10 @@ fn eat_apple_system(ecs: &mut Ecs) -> SystemResult {
                     .query_one_by_id::<(W<SnakeBodyPart>, W<Sprite>)>(old_tail_id)
                     .unwrap();
                 old_tail_body_part.next_body_part = Some(new_tail_id);
-                sprite.texture_identifier = "snake_body_texture".into();
+                sprite.material = Material {
+                    albedo_map: "snake_body_texture".into(),
+                    ..sprite.material.clone()
+                };
             }
             ecs.remove_component::<SnakeTail>(old_tail_id);
         }

@@ -4,13 +4,15 @@ use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::{SystemBundle, SystemResult};
-use tuber::engine::state::{State, StateContext};
+use tuber::engine::state::State;
 use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
-use tuber::graphics::shape::RectangleShape;
+use tuber::graphics::renderable::shape::RectangleShape;
 use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::WinitTuberRunner;
+use tuber_engine::engine_context::EngineContext;
+use tuber_engine::system_bundle;
 
 const BALL_COUNT: usize = 20;
 const PADDLE_WIDTH: f32 = 20.0;
@@ -42,8 +44,13 @@ fn main() -> Result<()> {
 
 struct MainState;
 impl State for MainState {
-    fn initialize(&mut self, state_context: &mut StateContext) {
-        state_context.ecs.insert((
+    fn initialize(
+        &mut self,
+        ecs: &mut Ecs,
+        system_bundles: &mut Vec<SystemBundle<EngineContext>>,
+        _engine_context: &mut EngineContext,
+    ) {
+        ecs.insert((
             OrthographicCamera {
                 left: 0.0,
                 right: 800.0,
@@ -59,7 +66,7 @@ impl State for MainState {
             Active,
         ));
 
-        let _left_paddle = state_context.ecs.insert((
+        let _left_paddle = ecs.insert((
             RectangleShape {
                 width: PADDLE_WIDTH,
                 height: PADDLE_HEIGHT,
@@ -73,7 +80,7 @@ impl State for MainState {
             Player,
         ));
 
-        let _right_paddle = state_context.ecs.insert((
+        let _right_paddle = ecs.insert((
             RectangleShape {
                 width: PADDLE_WIDTH,
                 height: PADDLE_HEIGHT,
@@ -89,7 +96,7 @@ impl State for MainState {
         use rand::Rng;
         let mut rng = rand::thread_rng();
         for _ in 0..BALL_COUNT {
-            let _ball = state_context.ecs.insert((
+            let _ball = ecs.insert((
                 RectangleShape {
                     width: BALL_SIZE,
                     height: BALL_SIZE,
@@ -116,15 +123,13 @@ impl State for MainState {
         bundle.add_system(move_ball_system);
         bundle.add_system(move_paddle_system);
         bundle.add_system(collision_system);
-        state_context
-            .system_bundles
-            .push(Graphics::default_system_bundle());
-        state_context.system_bundles.push(bundle);
+        system_bundles.push(system_bundle::graphics::default_system_bundle());
+        system_bundles.push(bundle);
     }
 }
 
-fn move_paddle_system(ecs: &mut Ecs) -> SystemResult {
-    let input_state = ecs.shared_resource::<InputState>().unwrap();
+fn move_paddle_system(ecs: &mut Ecs, engine_context: &mut EngineContext) -> SystemResult {
+    let input_state = &engine_context.input_state;
     for (_id, (mut transform, _)) in ecs.query::<(W<Transform2D>, R<Player>)>() {
         if input_state.is(Input::KeyDown(Key::Z)) {
             transform.translation.1 -= 5.0;
@@ -136,7 +141,7 @@ fn move_paddle_system(ecs: &mut Ecs) -> SystemResult {
     Ok(())
 }
 
-fn move_ball_system(ecs: &mut Ecs) -> SystemResult {
+fn move_ball_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     for (_id, (rectangle_shape, mut transform, mut velocity)) in
         ecs.query::<(R<RectangleShape>, W<Transform2D>, W<Velocity>)>()
     {
@@ -160,7 +165,7 @@ fn move_ball_system(ecs: &mut Ecs) -> SystemResult {
     Ok(())
 }
 
-fn collision_system(ecs: &mut Ecs) -> SystemResult {
+fn collision_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     {
         for (_paddle_id, (paddle_transform, paddle_shape, _)) in
             ecs.query::<(R<Transform2D>, R<RectangleShape>, R<Paddle>)>()

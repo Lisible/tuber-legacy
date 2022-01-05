@@ -4,7 +4,7 @@ use std::time::Instant;
 use tuber::core::asset::AssetStore;
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
-use tuber::graphics::sprite::{AnimatedSprite, AnimationState, Sprite};
+use tuber::graphics::renderable::sprite::{AnimatedSprite, AnimationState, Sprite};
 use tuber::graphics::texture::TextureAtlas;
 use tuber_graphics::material::Material;
 

@@ -2,7 +2,7 @@ use crate::engine_context::EngineContext;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::query::accessors::W;
 use tuber_ecs::system::{SystemBundle, SystemResult};
-use tuber_graphics::sprite::AnimatedSprite;
+use tuber_graphics::renderable::sprite::AnimatedSprite;
 
 pub fn default_system_bundle() -> SystemBundle<EngineContext> {
     let mut system_bundle = SystemBundle::<EngineContext>::new();

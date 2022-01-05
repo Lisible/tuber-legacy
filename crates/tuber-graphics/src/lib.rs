@@ -15,23 +15,20 @@ use crate::camera::{Active, OrthographicCamera};
 use crate::g_buffer::GBufferComponent;
 use crate::low_level::*;
 use crate::material::Material;
-use crate::shape::RectangleShape;
-use crate::sprite::{AnimatedSprite, Sprite};
+use crate::renderable::shape::RectangleShape;
+use crate::renderable::sprite::{AnimatedSprite, Sprite};
 use crate::texture::{
     texture_atlas_loader, texture_loader, TextureAtlas, TextureData, TextureMetadata,
     TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
-use crate::ui::{Frame, Image, NoViewTransform, Text};
 
 pub mod bitmap_font;
 pub mod camera;
 pub mod g_buffer;
 pub mod low_level;
 pub mod material;
-pub mod shape;
-pub mod sprite;
+pub mod renderable;
 pub mod texture;
-pub mod ui;
 
 #[derive(Debug)]
 pub enum GraphicsError {
@@ -363,46 +360,6 @@ impl Graphics {
                 .unwrap();
         }
 
-        for (id, (frame, transform)) in ecs.query::<(R<Frame>, R<Transform2D>)>() {
-            let apply_view_transform = !ecs.query_one_by_id::<(R<NoViewTransform>,)>(id).is_some();
-            self.prepare_rectangle(
-                &RectangleShape {
-                    width: frame.width,
-                    height: frame.height,
-                    color: frame.color,
-                },
-                &transform,
-                apply_view_transform,
-            );
-        }
-
-        for (id, (text, transform)) in ecs.query::<(R<Text>, R<Transform2D>)>() {
-            let apply_view_transform = !ecs.query_one_by_id::<(R<NoViewTransform>,)>(id).is_some();
-            self.prepare_text(
-                text.text(),
-                text.font(),
-                &transform,
-                apply_view_transform,
-                asset_store,
-            );
-        }
-
-        for (id, (image, transform)) in ecs.query::<(R<Image>, R<Transform2D>)>() {
-            let apply_view_transform = !ecs.query_one_by_id::<(R<NoViewTransform>,)>(id).is_some();
-            let sprite = Sprite {
-                width: image.width,
-                height: image.height,
-                offset: (0.0, 0.0, 0),
-                texture_region: image.texture_region,
-                material: Material {
-                    albedo_map: image.texture_identifier.clone(),
-                    ..Default::default()
-                },
-            };
-
-            self.prepare_sprite(&sprite, &transform, apply_view_transform, asset_store)
-                .unwrap();
-        }
         self.render();
     }
 

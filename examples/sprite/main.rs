@@ -1,14 +1,18 @@
 use std::time::Instant;
 use tuber::core::transform::Transform2D;
-use tuber::engine::state::{State, StateContext};
+use tuber::engine::state::State;
 use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
-use tuber::graphics::sprite::{AnimatedSprite, AnimationState, Sprite};
+use tuber::graphics::renderable::sprite::{AnimatedSprite, AnimationState, Sprite};
 use tuber::graphics::texture::TextureRegion;
 use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::WinitTuberRunner;
-use tuber_graphics::material::{Material, MaterialTexture};
+use tuber_ecs::ecs::Ecs;
+use tuber_ecs::system::SystemBundle;
+use tuber_engine::engine_context::EngineContext;
+use tuber_engine::system_bundle;
+use tuber_graphics::material::Material;
 use tuber_graphics::texture::TextureAtlas;
 
 fn main() -> Result<()> {
@@ -25,8 +29,13 @@ fn main() -> Result<()> {
 
 struct MainState;
 impl State for MainState {
-    fn initialize(&mut self, state_context: &mut StateContext) {
-        state_context.ecs.insert((
+    fn initialize(
+        &mut self,
+        ecs: &mut Ecs,
+        system_bundles: &mut Vec<SystemBundle<EngineContext>>,
+        engine_context: &mut EngineContext,
+    ) {
+        ecs.insert((
             OrthographicCamera {
                 left: 0.0,
                 right: 800.0,
@@ -42,7 +51,7 @@ impl State for MainState {
             Active,
         ));
 
-        state_context.ecs.insert((
+        ecs.insert((
             Transform2D {
                 translation: (375.0, 275.0, 0),
                 ..Default::default()
@@ -50,18 +59,16 @@ impl State for MainState {
             Sprite {
                 width: 50.0,
                 height: 50.0,
+                texture_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
                 material: Material {
-                    albedo_map: MaterialTexture {
-                        identifier: "sprite".to_string(),
-                        region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
-                    },
+                    albedo_map: "sprite".to_string(),
                     normal_map: None,
                 },
                 ..Default::default()
             },
         ));
 
-        state_context.ecs.insert((
+        ecs.insert((
             Transform2D {
                 translation: (500.0, 275.0, 0),
                 ..Default::default()
@@ -69,18 +76,16 @@ impl State for MainState {
             Sprite {
                 width: 50.0,
                 height: 50.0,
+                texture_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
                 material: Material {
-                    albedo_map: MaterialTexture {
-                        identifier: "sprite".to_string(),
-                        region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
-                    },
+                    albedo_map: "sprite".to_string(),
                     normal_map: None,
                 },
                 ..Default::default()
             },
         ));
 
-        state_context.ecs.insert((
+        ecs.insert((
             Transform2D {
                 translation: (250.0, 275.0, 0),
                 ..Default::default()
@@ -88,18 +93,16 @@ impl State for MainState {
             Sprite {
                 width: 50.0,
                 height: 50.0,
+                texture_region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
                 material: Material {
-                    albedo_map: MaterialTexture {
-                        identifier: "dfhgfhfh".to_string(),
-                        region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
-                    },
+                    albedo_map: "dfhgfhfh".to_string(),
                     normal_map: None,
                 },
                 ..Default::default()
             },
         ));
 
-        state_context.ecs.insert((
+        ecs.insert((
             Transform2D {
                 translation: (250.0, 350.0, 0),
                 ..Default::default()
@@ -107,22 +110,20 @@ impl State for MainState {
             Sprite {
                 width: 100.0,
                 height: 100.0,
+                texture_region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
                 material: Material {
-                    albedo_map: MaterialTexture {
-                        identifier: "dfhgfhfh".to_string(),
-                        region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
-                    },
+                    albedo_map: "dfhgfhfh".to_string(),
                     normal_map: None,
                 },
                 ..Default::default()
             },
         ));
 
-        let texture_atlas = state_context
+        let texture_atlas = engine_context
             .asset_store
             .asset::<TextureAtlas>("atlas")
             .unwrap();
-        state_context.ecs.insert((
+        ecs.insert((
             Transform2D {
                 translation: (375.0, 350.0, 0),
                 ..Default::default()
@@ -130,18 +131,16 @@ impl State for MainState {
             Sprite {
                 width: 100.0,
                 height: 100.0,
+                texture_region: texture_atlas.texture_region("tree").unwrap(),
                 material: Material {
-                    albedo_map: MaterialTexture {
-                        identifier: "atlas_texture".to_string(),
-                        region: texture_atlas.texture_region("tree").unwrap(),
-                    },
+                    albedo_map: "atlas_texture".to_string(),
                     normal_map: None,
                 },
                 ..Default::default()
             },
         ));
 
-        state_context.ecs.insert((
+        ecs.insert((
             Transform2D {
                 translation: (475.0, 400.0, 0),
                 ..Default::default()
@@ -149,18 +148,16 @@ impl State for MainState {
             Sprite {
                 width: 50.0,
                 height: 50.0,
+                texture_region: texture_atlas.texture_region("house").unwrap(),
                 material: Material {
-                    albedo_map: MaterialTexture {
-                        identifier: "atlas_texture".to_string(),
-                        region: texture_atlas.texture_region("house").unwrap(),
-                    },
+                    albedo_map: "atlas_texture".to_string(),
                     normal_map: None,
                 },
                 ..Default::default()
             },
         ));
 
-        state_context.ecs.insert((
+        ecs.insert((
             Transform2D {
                 translation: (0.0, 0.0, 0),
                 ..Default::default()
@@ -168,8 +165,10 @@ impl State for MainState {
             AnimatedSprite {
                 width: 100.0,
                 height: 100.0,
-                texture_identifier: "animated_sprite".into(),
-
+                material: Material {
+                    albedo_map: "animated_sprite".into(),
+                    normal_map: None,
+                },
                 animation_state: AnimationState {
                     keyframes: vec![
                         TextureRegion::new(0.0, 0.0, 16.0, 16.0),
@@ -187,8 +186,6 @@ impl State for MainState {
             },
         ));
 
-        state_context
-            .system_bundles
-            .push(Graphics::default_system_bundle());
+        system_bundles.push(system_bundle::graphics::default_system_bundle());
     }
 }
