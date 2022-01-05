@@ -1,7 +1,0 @@
-{
-  "identifier": "font_atlas_texture",
-  "kind": "texture",
-  "metadata": {
-    "texture_data": "font_atlas.png"
-  }
-}
