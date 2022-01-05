@@ -1,4 +1,4 @@
-use crate::Color;
+use crate::types::Color;
 
 pub struct RectangleShape {
     pub width: f32,

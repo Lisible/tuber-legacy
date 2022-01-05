@@ -1,5 +1,5 @@
 use tuber::core::input::keyboard::Key;
-use tuber::core::input::{Input, InputState};
+use tuber::core::input::Input;
 use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
@@ -13,6 +13,7 @@ use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::WinitTuberRunner;
 use tuber_engine::engine_context::EngineContext;
 use tuber_engine::system_bundle;
+use tuber_graphics::types::Color;
 
 const BALL_COUNT: usize = 20;
 const PADDLE_WIDTH: f32 = 20.0;
@@ -70,7 +71,7 @@ impl State for MainState {
             RectangleShape {
                 width: PADDLE_WIDTH,
                 height: PADDLE_HEIGHT,
-                color: (1.0, 1.0, 1.0),
+                color: Color::WHITE,
             },
             Transform2D {
                 translation: LEFT_PADDLE_INITIAL_POSITION,
@@ -84,7 +85,7 @@ impl State for MainState {
             RectangleShape {
                 width: PADDLE_WIDTH,
                 height: PADDLE_HEIGHT,
-                color: (1.0, 1.0, 1.0),
+                color: Color::WHITE,
             },
             Transform2D {
                 translation: RIGHT_PADDLE_INITIAL_POSITION,
@@ -104,7 +105,8 @@ impl State for MainState {
                         rng.gen_range(0.0..=1.0),
                         rng.gen_range(0.0..=1.0),
                         rng.gen_range(0.0..=1.0),
-                    ),
+                    )
+                        .into(),
                 },
                 Velocity {
                     x: rng.gen_range(-10.0..=-5.0),

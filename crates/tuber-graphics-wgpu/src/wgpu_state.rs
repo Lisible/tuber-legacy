@@ -11,9 +11,10 @@ use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::g_buffer::GBufferComponent;
-use tuber_graphics::low_level::QuadDescription;
+use tuber_graphics::low_level::primitives::QuadDescription;
 use tuber_graphics::texture::TextureData;
-use tuber_graphics::{Color, Window, WindowSize};
+use tuber_graphics::types::{Color, WindowSize};
+use tuber_graphics::Window;
 use wgpu::SurfaceTexture;
 
 pub struct WGPUState {
@@ -67,7 +68,7 @@ impl WGPUState {
         let texture_bind_group_layout = create_texture_bind_group_layout(&device);
 
         Self {
-            clear_color: (0.0, 0.0, 0.0),
+            clear_color: Color::BLACK.into(),
             surface,
             device,
             queue,
@@ -198,9 +199,9 @@ impl WGPUState {
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: self.clear_color.0 as f64,
-                                g: self.clear_color.1 as f64,
-                                b: self.clear_color.2 as f64,
+                                r: self.clear_color.r(),
+                                g: self.clear_color.g(),
+                                b: self.clear_color.b(),
                                 a: 1.0,
                             }),
                             store: true,

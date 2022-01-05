@@ -4,6 +4,7 @@ use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::default::Default;
 
+use crate::api::LowLevelGraphicsAPI;
 use tuber_core::asset::{AssetMetadata, AssetStore, GenericLoader};
 use tuber_core::transform::Transform2D;
 use tuber_ecs::ecs::Ecs;
@@ -15,12 +16,14 @@ use crate::camera::{Active, OrthographicCamera};
 use crate::g_buffer::GBufferComponent;
 use crate::low_level::*;
 use crate::material::Material;
+use crate::primitives::{MaterialDescription, QuadDescription, TextureDescription};
 use crate::renderable::shape::RectangleShape;
 use crate::renderable::sprite::{AnimatedSprite, Sprite};
 use crate::texture::{
     texture_atlas_loader, texture_loader, TextureAtlas, TextureData, TextureMetadata,
     TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
+use crate::types::{Color, Size2};
 
 pub mod bitmap_font;
 pub mod camera;
@@ -29,6 +32,7 @@ pub mod low_level;
 pub mod material;
 pub mod renderable;
 pub mod texture;
+pub mod types;
 
 #[derive(Debug)]
 pub enum GraphicsError {
@@ -38,16 +42,6 @@ pub enum GraphicsError {
     ImageDecodeError(ImageError),
     SerdeError(serde_json::error::Error),
     BitmapFontFileReadError(std::io::Error),
-}
-
-pub type Color = (f32, f32, f32);
-
-pub type WindowSize = (u32, u32);
-pub struct Window<'a>(pub Box<&'a dyn HasRawWindowHandle>);
-unsafe impl HasRawWindowHandle for Window<'_> {
-    fn raw_window_handle(&self) -> RawWindowHandle {
-        self.0.raw_window_handle()
-    }
 }
 
 pub struct Graphics {
@@ -87,9 +81,8 @@ impl Graphics {
     ) {
         self.graphics_impl.prepare_quad(
             &QuadDescription {
-                width: rectangle.width,
-                height: rectangle.height,
-                color: rectangle.color,
+                size: Size2::new(rectangle.width, rectangle.height),
+                color: rectangle.color.into(),
                 material: MaterialDescription::default(),
             },
             transform,
@@ -131,9 +124,8 @@ impl Graphics {
 
         self.graphics_impl.prepare_quad(
             &QuadDescription {
-                width: sprite.width,
-                height: sprite.height,
-                color: (1.0, 1.0, 1.0),
+                size: Size2::new(sprite.width, sprite.height),
+                color: Color::WHITE.into(),
                 material: MaterialDescription {
                     albedo_map_description: Some(TextureDescription {
                         identifier: sprite.material.albedo_map.clone(),
@@ -185,9 +177,8 @@ impl Graphics {
 
         self.graphics_impl.prepare_quad(
             &QuadDescription {
-                width: animated_sprite.width,
-                height: animated_sprite.height,
-                color: (1.0, 1.0, 1.0),
+                size: Size2::new(animated_sprite.width, animated_sprite.height),
+                color: Color::WHITE.into(),
                 material: MaterialDescription {
                     albedo_map_description: Some(TextureDescription {
                         identifier: animated_sprite.material.albedo_map.clone(),
@@ -272,9 +263,8 @@ impl Graphics {
 
             self.graphics_impl.prepare_quad(
                 &QuadDescription {
-                    width: glyph_region.width,
-                    height: glyph_region.height,
-                    color: (0.0, 0.0, 0.0),
+                    size: Size2::new(glyph_region.width, glyph_region.height),
+                    color: Color::BLACK.into(),
                     material: MaterialDescription {
                         albedo_map_description: Some(TextureDescription {
                             identifier: font_texture.clone().into(),
@@ -399,4 +389,11 @@ fn font_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
     let mut font_file_path = asset_metadata.asset_path.clone();
     font_file_path.push(&asset_metadata.metadata["font_data"]);
     Box::new(BitmapFont::from_file(&font_file_path).unwrap())
+}
+
+pub struct Window<'a>(pub Box<&'a dyn HasRawWindowHandle>);
+unsafe impl HasRawWindowHandle for Window<'_> {
+    fn raw_window_handle(&self) -> RawWindowHandle {
+        self.0.raw_window_handle()
+    }
 }

@@ -13,9 +13,10 @@ use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::g_buffer::GBufferComponent;
-use tuber_graphics::low_level::{LowLevelGraphicsAPI, QuadDescription};
+use tuber_graphics::low_level::{api::LowLevelGraphicsAPI, primitives::QuadDescription};
 use tuber_graphics::texture::TextureData;
-use tuber_graphics::{Color, Window, WindowSize};
+use tuber_graphics::types::WindowSize;
+use tuber_graphics::{types::Color, Window};
 
 #[derive(Debug)]
 pub enum TuberGraphicsWGPUError {

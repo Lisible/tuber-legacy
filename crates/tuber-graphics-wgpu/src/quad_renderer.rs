@@ -6,7 +6,7 @@ use nalgebra::Matrix4;
 use std::collections::HashMap;
 use tuber_core::transform::{IntoMatrix4, Transform2D};
 use tuber_graphics::camera::OrthographicCamera;
-use tuber_graphics::low_level::QuadDescription;
+use tuber_graphics::low_level::primitives::QuadDescription;
 use tuber_graphics::texture::{
     TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER, DEFAULT_TEXTURE_IDENTIFIER,
     WHITE_TEXTURE_IDENTIFIER,
@@ -105,7 +105,7 @@ impl QuadRenderer {
             },
         );
 
-        let color = [quad.color.0, quad.color.1, quad.color.2];
+        let color = [quad.color.r(), quad.color.g(), quad.color.b()];
         self.add_vertices_to_buffer(
             queue,
             &[
@@ -115,7 +115,7 @@ impl QuadRenderer {
                     tex_coords: [normalized_texture_region.x, normalized_texture_region.y],
                 },
                 Vertex {
-                    position: [0.0, quad.height, 0.0],
+                    position: [0.0, quad.size.height(), 0.0],
                     color,
                     tex_coords: [
                         normalized_texture_region.x,
@@ -123,7 +123,7 @@ impl QuadRenderer {
                     ],
                 },
                 Vertex {
-                    position: [quad.width, 0.0, 0.0],
+                    position: [quad.size.width(), 0.0, 0.0],
                     color,
                     tex_coords: [
                         normalized_texture_region.x + normalized_texture_region.width,
@@ -131,7 +131,7 @@ impl QuadRenderer {
                     ],
                 },
                 Vertex {
-                    position: [quad.width, 0.0, 0.0],
+                    position: [quad.size.width(), 0.0, 0.0],
                     color,
                     tex_coords: [
                         normalized_texture_region.x + normalized_texture_region.width,
@@ -139,7 +139,7 @@ impl QuadRenderer {
                     ],
                 },
                 Vertex {
-                    position: [0.0, quad.height, 0.0],
+                    position: [0.0, quad.size.height(), 0.0],
                     color,
                     tex_coords: [
                         normalized_texture_region.x,
@@ -147,7 +147,7 @@ impl QuadRenderer {
                     ],
                 },
                 Vertex {
-                    position: [quad.width, quad.height, 0.0],
+                    position: [quad.size.width(), quad.size.height(), 0.0],
                     color,
                     tex_coords: [
                         normalized_texture_region.x + normalized_texture_region.width,
