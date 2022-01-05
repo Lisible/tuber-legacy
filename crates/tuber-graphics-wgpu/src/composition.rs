@@ -15,7 +15,6 @@ pub(crate) struct Compositor {
     g_buffer_bind_group: Option<wgpu::BindGroup>,
     global_uniform: GlobalUniform,
     global_uniform_buffer: wgpu::Buffer,
-    global_uniform_bind_group_layout: wgpu::BindGroupLayout,
     global_uniform_bind_group: wgpu::BindGroup,
     render_pipeline: wgpu::RenderPipeline,
 }
@@ -51,7 +50,6 @@ impl Compositor {
             global_uniform,
             global_uniform_buffer,
             global_uniform_bind_group,
-            global_uniform_bind_group_layout,
             render_pipeline,
         }
     }

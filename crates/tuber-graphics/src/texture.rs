@@ -100,7 +100,7 @@ pub(crate) fn texture_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
         .parse()
         .unwrap();
 
-    let mut srgb = usage == TextureUsage::Albedo;
+    let srgb = usage == TextureUsage::Albedo;
     Box::new(TextureData {
         identifier: asset_metadata.identifier.clone(),
         size: image.dimensions(),

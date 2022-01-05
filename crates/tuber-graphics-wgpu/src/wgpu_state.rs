@@ -301,11 +301,7 @@ impl WGPUState {
             &texture_sampler,
         );
 
-        let texture_bind_group = TextureBindGroup {
-            identifier: texture_data.identifier.to_string(),
-            size: texture_data.size,
-            bind_group,
-        };
+        let texture_bind_group = TextureBindGroup { bind_group };
 
         self.texture_bind_groups
             .insert(texture_data.identifier.clone(), texture_bind_group);

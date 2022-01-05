@@ -15,7 +15,6 @@ use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::g_buffer::GBufferComponent;
 use tuber_graphics::low_level::{LowLevelGraphicsAPI, QuadDescription};
 use tuber_graphics::texture::TextureData;
-use tuber_graphics::tilemap::Tilemap;
 use tuber_graphics::{Color, Window, WindowSize};
 
 #[derive(Debug)]

@@ -7,7 +7,7 @@ use std::default::Default;
 use tuber_core::asset::{AssetMetadata, AssetStore, GenericLoader};
 use tuber_core::transform::Transform2D;
 use tuber_ecs::ecs::Ecs;
-use tuber_ecs::query::accessors::{R, W};
+use tuber_ecs::query::accessors::R;
 use tuber_ecs::EntityIndex;
 
 use crate::bitmap_font::BitmapFont;
@@ -21,7 +21,6 @@ use crate::texture::{
     texture_atlas_loader, texture_loader, TextureAtlas, TextureData, TextureMetadata,
     TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
-use crate::tilemap::Tilemap;
 use crate::ui::{Frame, Image, NoViewTransform, Text};
 
 pub mod bitmap_font;
@@ -32,7 +31,6 @@ pub mod material;
 pub mod shape;
 pub mod sprite;
 pub mod texture;
-pub mod tilemap;
 pub mod ui;
 
 #[derive(Debug)]

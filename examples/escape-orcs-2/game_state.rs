@@ -17,41 +17,13 @@ use tuber::engine::engine_context::EngineContext;
 use tuber::engine::state::{State, StateStackRequest};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::g_buffer::GBufferComponent;
-use tuber::graphics::tilemap::{Tile, Tilemap};
-use tuber_graphics::material::Material;
-use tuber_graphics::texture::TextureRegion;
-use tuber_graphics::tilemap::TileDescription;
 
 pub(crate) struct GameState {
-    tilemap: Tilemap,
     do_exit: bool,
 }
 impl GameState {
     pub(crate) fn new() -> Self {
-        let mut tilemap = Tilemap::new(
-            10,
-            10,
-            Material {
-                albedo_map: "spritesheet".to_string(),
-                normal_map: None,
-            },
-            None,
-        );
-
-        let tile = Tile::Tile(TileDescription {
-            texture_region: TextureRegion {
-                x: 0.0,
-                y: 0.0,
-                width: 32.0,
-                height: 32.0,
-            },
-        });
-        tilemap.set_tile(0, 0, Some(tile));
-
-        Self {
-            tilemap,
-            do_exit: false,
-        }
+        Self { do_exit: false }
     }
 }
 
