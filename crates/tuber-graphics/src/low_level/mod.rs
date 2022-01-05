@@ -1,4 +1,9 @@
-use crate::*;
+use crate::{
+    Color, GBufferComponent, OrthographicCamera, TextureData, TextureRegion, Window, WindowSize,
+};
+use tuber_core::asset::AssetStore;
+use tuber_core::transform::Transform2D;
+use tuber_ecs::EntityIndex;
 
 /// The low level API
 pub trait LowLevelGraphicsAPI {
@@ -72,10 +77,3 @@ pub struct MeshDescription {
     pub vertices: Vec<VertexDescription>,
     pub texture: TextureDescription,
 }
-
-pub struct TilemapDescription {
-    pub tiles: Vec<Vec<Option<TileDescription>>>,
-    pub texture: TextureDescription,
-}
-
-pub struct TileDescription;

@@ -12,7 +12,8 @@ use tuber_graphics::texture::{
     WHITE_TEXTURE_IDENTIFIER,
 };
 use wgpu::{
-    BindGroupLayoutDescriptor, BufferDescriptor, PipelineLayoutDescriptor, RenderPipelineDescriptor,
+    BindGroupLayoutDescriptor, BlendComponent, BufferDescriptor, PipelineLayoutDescriptor,
+    RenderPipelineDescriptor,
 };
 
 const MAX_QUAD_COUNT: usize = 1000;
@@ -386,7 +387,14 @@ impl QuadRenderer {
                 targets: &[
                     wgpu::ColorTargetState {
                         format: surface_texture_format,
-                        blend: Some(wgpu::BlendState::REPLACE),
+                        blend: Some(wgpu::BlendState {
+                            color: wgpu::BlendComponent {
+                                src_factor: wgpu::BlendFactor::SrcAlpha,
+                                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                                operation: wgpu::BlendOperation::Add,
+                            },
+                            alpha: Default::default(),
+                        }),
                         write_mask: wgpu::ColorWrites::ALL,
                     },
                     wgpu::ColorTargetState {
