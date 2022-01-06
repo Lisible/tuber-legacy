@@ -19,7 +19,7 @@ pub struct TextureData {
     pub srgb: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
 pub struct TextureRegion {
     pub x: f32,
     pub y: f32,

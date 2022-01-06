@@ -1,8 +1,8 @@
+use image::imageops::tile;
 use image::ImageError;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
-use std::default::Default;
 
 use crate::api::LowLevelGraphicsAPI;
 use tuber_core::asset::{AssetMetadata, AssetStore, GenericLoader};
@@ -19,6 +19,7 @@ use crate::material::Material;
 use crate::primitives::{MaterialDescription, QuadDescription, TextureDescription};
 use crate::renderable::shape::RectangleShape;
 use crate::renderable::sprite::{AnimatedSprite, Sprite};
+use crate::renderable::tilemap::Tilemap;
 use crate::texture::{
     texture_atlas_loader, texture_loader, TextureAtlas, TextureData, TextureMetadata,
     TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER,
@@ -186,6 +187,49 @@ impl Graphics {
         });
 
         Ok(())
+    }
+
+    pub fn draw_tilemap(&mut self, tilemap: &mut Tilemap) {
+        let tile_size = tilemap.tile_size();
+        let tilemap_material = tilemap.material();
+
+        let mut quads = vec![];
+        for (tile_index, tile) in tilemap.tiles().iter().enumerate() {
+            let tile_x = tile_index % tilemap.size().width();
+            let tile_y = tile_index / tilemap.size().height();
+            if let Some(tile) = tile {
+                let tile_texture_region = tile.texture_region().clone();
+                quads.push(QuadDescription {
+                    size: Size2::new(tile_size.width() as f32, tile_size.height() as f32),
+                    color: Color::WHITE,
+                    material: MaterialDescription {
+                        albedo_map_description: Some(TextureDescription {
+                            identifier: tilemap_material.albedo_map.clone(),
+                            texture_region: tile_texture_region,
+                        }),
+                        normal_map_description: match &tilemap_material.normal_map {
+                            Some(normal_map_identifier) => Some(TextureDescription {
+                                identifier: normal_map_identifier.clone(),
+                                texture_region: tile_texture_region,
+                            }),
+                            None => None,
+                        },
+                    },
+                    transform: Transform2D {
+                        translation: (
+                            (tile_x * tile_size.width() as usize) as f32,
+                            (tile_y * tile_size.height() as usize) as f32,
+                            0,
+                        ),
+                        ..Default::default()
+                    },
+                })
+            }
+        }
+
+        // Pre render quads
+
+        // Render quad
     }
 
     pub fn draw_text(

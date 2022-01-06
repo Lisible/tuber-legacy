@@ -17,11 +17,8 @@ pub struct VertexDescription {
 
 /// Describes a quad for the low-level renderer
 pub struct QuadDescription {
-    /// Width in Normalized Device Coordinates
     pub size: Size2,
-    /// The color used for the quad's vertices
     pub color: Color,
-    /// The material of the quad
     pub material: MaterialDescription,
     pub transform: Transform2D,
 }

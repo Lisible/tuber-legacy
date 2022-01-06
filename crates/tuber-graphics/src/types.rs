@@ -1,5 +1,6 @@
 pub type WindowSize = (u32, u32);
 
+#[derive(Copy, Clone)]
 pub struct Size2<T = f32> {
     width: T,
     height: T,
@@ -16,6 +17,15 @@ impl<T: Copy> Size2<T> {
 
     pub fn height(&self) -> T {
         self.height
+    }
+}
+
+impl<T: Copy> From<(T, T)> for Size2<T> {
+    fn from(size: (T, T)) -> Self {
+        Self {
+            width: size.0,
+            height: size.1,
+        }
     }
 }
 

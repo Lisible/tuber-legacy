@@ -4,6 +4,15 @@ pub struct Material {
     pub normal_map: Option<String>,
 }
 
+impl Material {
+    pub fn new(albedo_map: &str, normal_map: Option<&str>) -> Self {
+        Self {
+            albedo_map: albedo_map.into(),
+            normal_map: normal_map.map(|v| v.to_string()),
+        }
+    }
+}
+
 impl Default for Material {
     fn default() -> Self {
         Self {
