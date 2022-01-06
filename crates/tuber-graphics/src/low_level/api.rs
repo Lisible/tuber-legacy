@@ -8,16 +8,8 @@ use tuber_ecs::EntityIndex;
 pub trait LowLevelGraphicsAPI {
     /// Initializes the API for a given window
     fn initialize(&mut self, window: Window, window_size: WindowSize, asset_store: &AssetStore);
-    /// Renders
-    fn render(&mut self);
 
-    /// Prepares the render of a quad
-    fn prepare_quad(
-        &mut self,
-        quad_description: &QuadDescription,
-        transform: &Transform2D,
-        apply_view_transform: bool,
-    );
+    fn draw_quads(&mut self, quads: &[QuadDescription]);
 
     fn is_texture_in_vram(&self, texture_identifier: &str) -> bool;
     fn load_texture_in_vram(&mut self, texture_data: &TextureData);

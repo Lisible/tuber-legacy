@@ -1,33 +1,33 @@
 use crate::geometry::Vertex;
 use crate::texture::{create_texture_bind_group_layout, TextureBindGroup};
-use crate::DrawRange::VertexIndexRange;
-use crate::{DrawCommand, DrawCommandData, QuadDrawCommand};
 use nalgebra::Matrix4;
 use std::collections::HashMap;
 use tuber_core::transform::{IntoMatrix4, Transform2D};
 use tuber_graphics::camera::OrthographicCamera;
-use tuber_graphics::low_level::primitives::QuadDescription;
-use tuber_graphics::texture::{
-    TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER, DEFAULT_TEXTURE_IDENTIFIER,
-    WHITE_TEXTURE_IDENTIFIER,
-};
+use tuber_graphics::low_level::primitives::{QuadDescription, TextureDescription};
+use wgpu::{BufferDescriptor, CommandEncoderDescriptor};
 
-const MAX_QUAD_COUNT: usize = 1000;
 const QUAD_UNIFORM_SIZE: u64 = std::mem::size_of::<QuadUniform>() as u64;
 const GLOBAL_UNIFORM_SIZE: u64 = std::mem::size_of::<GlobalUniform>() as u64;
-const VERTEX_PER_QUAD: usize = 6;
+const VERTEX_SIZE: u64 = std::mem::size_of::<Vertex>() as u64;
+const MIN_BUFFER_QUAD_COUNT: u64 = 1000;
+const VERTEX_PER_QUAD: u64 = 6;
+const QUAD_SIZE: u64 = VERTEX_PER_QUAD * VERTEX_SIZE;
+const MIN_BUFFER_SIZE: u64 = MIN_BUFFER_QUAD_COUNT * QUAD_SIZE;
 
 pub(crate) struct QuadRenderer {
+    vertex_buffer_size: u64,
     vertex_buffer: wgpu::Buffer,
     global_uniform_buffer: wgpu::Buffer,
     _global_bind_group_layout: wgpu::BindGroupLayout,
     global_bind_group: wgpu::BindGroup,
+    quad_uniform_buffer_size: u64,
     quad_uniform_buffer: wgpu::Buffer,
     _quad_bind_group_layout: wgpu::BindGroupLayout,
     quad_bind_group: wgpu::BindGroup,
     render_pipeline: wgpu::RenderPipeline,
     quad_uniform_alignment: wgpu::BufferAddress,
-    pending_quad_count: usize,
+    quad_metadata: Vec<QuadMetadata>,
 }
 
 impl QuadRenderer {
@@ -54,54 +54,55 @@ impl QuadRenderer {
         );
 
         Self {
+            vertex_buffer_size: MIN_BUFFER_SIZE,
             vertex_buffer,
             global_uniform_buffer,
             _global_bind_group_layout: global_bind_group_layout,
             global_bind_group,
+            quad_uniform_buffer_size: MIN_BUFFER_QUAD_COUNT * quad_uniform_alignment,
             quad_uniform_buffer,
             _quad_bind_group_layout: quad_bind_group_layout,
             quad_bind_group,
             render_pipeline,
             quad_uniform_alignment,
-            pending_quad_count: 0usize,
+            quad_metadata: vec![],
         }
     }
 
     pub fn prepare(
         &mut self,
+        device: &wgpu::Device,
         queue: &wgpu::Queue,
-        quad: &QuadDescription,
-        transform: &Transform2D,
-        texture_bind_groups: &HashMap<String, TextureBindGroup>,
-    ) -> DrawCommand {
-        assert!(self.pending_quad_count < MAX_QUAD_COUNT);
+        quads: &[QuadDescription],
+    ) {
+        while quads.len() as u64 * QUAD_SIZE > self.vertex_buffer_size {
+            self.reallocate_buffers(device, queue);
+        }
 
-        let (albedo_map_identifier, normalized_texture_region) =
-            if let Some(texture) = &quad.material.albedo_map_description {
-                if texture_bind_groups.contains_key(&texture.identifier) {
-                    (texture.identifier.as_str(), texture.texture_region)
-                } else {
-                    (
-                        DEFAULT_TEXTURE_IDENTIFIER,
-                        TextureRegion::new(0.0, 0.0, 1.0, 1.0),
-                    )
-                }
+        for quad in quads {
+            self.prepare_quad(queue, quad);
+        }
+    }
+
+    pub fn prepare_quad(&mut self, queue: &wgpu::Queue, quad: &QuadDescription) {
+        let albedo_map_description =
+            if let Some(albedo_map_description) = &quad.material.albedo_map_description {
+                albedo_map_description.clone()
             } else {
-                (
-                    WHITE_TEXTURE_IDENTIFIER,
-                    TextureRegion::new(0.0, 0.0, 1.0, 1.0),
-                )
+                TextureDescription::default_albedo_map_description()
             };
-
-        let normal_map_identifier = match &quad.material.normal_map_description {
-            Some(normal_map_description) => normal_map_description.identifier.clone(),
-            _ => DEFAULT_NORMAL_MAP_IDENTIFIER.to_string(),
-        };
+        let normal_map_description =
+            if let Some(normal_map_description) = &quad.material.normal_map_description {
+                normal_map_description.clone()
+            } else {
+                TextureDescription::default_normal_map_description()
+            };
+        let texture_region = &albedo_map_description.texture_region;
 
         self.add_uniform_to_buffer(
             queue,
             QuadUniform {
-                model: transform.clone().into_matrix4().into(),
+                model: quad.transform.clone().into_matrix4().into(),
             },
         );
 
@@ -112,99 +113,127 @@ impl QuadRenderer {
                 Vertex {
                     position: [0.0, 0.0, 0.0],
                     color,
-                    tex_coords: [normalized_texture_region.x, normalized_texture_region.y],
+                    tex_coords: [texture_region.x, texture_region.y],
                 },
                 Vertex {
                     position: [0.0, quad.size.height(), 0.0],
                     color,
-                    tex_coords: [
-                        normalized_texture_region.x,
-                        normalized_texture_region.y + normalized_texture_region.height,
-                    ],
+                    tex_coords: [texture_region.x, texture_region.y + texture_region.height],
                 },
                 Vertex {
                     position: [quad.size.width(), 0.0, 0.0],
                     color,
-                    tex_coords: [
-                        normalized_texture_region.x + normalized_texture_region.width,
-                        normalized_texture_region.y,
-                    ],
+                    tex_coords: [texture_region.x + texture_region.width, texture_region.y],
                 },
                 Vertex {
                     position: [quad.size.width(), 0.0, 0.0],
                     color,
-                    tex_coords: [
-                        normalized_texture_region.x + normalized_texture_region.width,
-                        normalized_texture_region.y,
-                    ],
+                    tex_coords: [texture_region.x + texture_region.width, texture_region.y],
                 },
                 Vertex {
                     position: [0.0, quad.size.height(), 0.0],
                     color,
-                    tex_coords: [
-                        normalized_texture_region.x,
-                        normalized_texture_region.y + normalized_texture_region.height,
-                    ],
+                    tex_coords: [texture_region.x, texture_region.y + texture_region.height],
                 },
                 Vertex {
                     position: [quad.size.width(), quad.size.height(), 0.0],
                     color,
                     tex_coords: [
-                        normalized_texture_region.x + normalized_texture_region.width,
-                        normalized_texture_region.y + normalized_texture_region.height,
+                        texture_region.x + texture_region.width,
+                        texture_region.y + texture_region.height,
                     ],
                 },
             ],
         );
 
-        self.pending_quad_count += 1;
+        self.quad_metadata.push(QuadMetadata {
+            albedo_map_identifier: albedo_map_description.identifier.clone(),
+            normal_map_identifier: normal_map_description.identifier.clone(),
+            uniform_offset: self.quad_metadata.len() as u32 * self.quad_uniform_alignment as u32,
+        });
+    }
 
-        DrawCommand {
-            draw_command_data: DrawCommandData::QuadDrawCommand(QuadDrawCommand {
-                draw_range: VertexIndexRange(
-                    ((self.pending_quad_count - 1) * VERTEX_PER_QUAD) as u32
-                        ..(self.pending_quad_count * VERTEX_PER_QUAD) as u32,
-                ),
-                uniform_offset: ((self.pending_quad_count - 1)
-                    * self.quad_uniform_alignment as usize) as _,
-                albedo_map_identifier: albedo_map_identifier.to_string(),
-                normal_map_identifier: normal_map_identifier.to_string(),
-            }),
-            z_order: transform.translation.2,
-        }
+    pub fn reallocate_buffers(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let new_vertex_buffer_size = self.vertex_buffer_size * 2;
+        let new_vertex_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("quad_renderer_vertex_buffer"),
+            size: new_vertex_buffer_size,
+            usage: wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::VERTEX,
+            mapped_at_creation: false,
+        });
+
+        let new_quad_uniform_buffer_size = self.quad_uniform_buffer_size * 2;
+        let new_quad_uniform_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("quad_renderer_quad_uniform_buffer"),
+            size: new_quad_uniform_buffer_size,
+            usage: wgpu::BufferUsages::UNIFORM
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("quad_renderer_reallocate_vertex_buffer_encoder"),
+        });
+        encoder.copy_buffer_to_buffer(
+            &self.vertex_buffer,
+            0,
+            &new_vertex_buffer,
+            0,
+            self.vertex_buffer_size,
+        );
+        encoder.copy_buffer_to_buffer(
+            &self.quad_uniform_buffer,
+            0,
+            &new_quad_uniform_buffer,
+            0,
+            self.quad_uniform_buffer_size,
+        );
+        queue.submit(std::iter::once(encoder.finish()));
+
+        self.vertex_buffer_size = new_vertex_buffer_size;
+        self.vertex_buffer = new_vertex_buffer;
+
+        self.quad_uniform_buffer_size = new_quad_uniform_buffer_size;
+        self.quad_uniform_buffer = new_quad_uniform_buffer;
     }
 
     pub fn render<'rpass: 'pass, 'pass>(
         &'rpass self,
         render_pass: &mut wgpu::RenderPass<'pass>,
-        draw_command: &QuadDrawCommand,
         texture_bind_groups: &'rpass HashMap<String, TextureBindGroup>,
     ) {
-        let vertex_index_range = draw_command
-            .draw_range
-            .vertex_index_range()
-            .expect("Vertex index range expected");
-
-        render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.global_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.quad_bind_group, &[draw_command.uniform_offset]);
-        render_pass.set_bind_group(
-            2,
-            &texture_bind_groups[&draw_command.albedo_map_identifier].bind_group,
-            &[],
-        );
-        render_pass.set_bind_group(
-            3,
-            &texture_bind_groups[&draw_command.normal_map_identifier].bind_group,
-            &[],
-        );
-
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.draw(vertex_index_range.clone(), 0..1);
+        for (i, quad_metadata) in self.quad_metadata.iter().enumerate() {
+            let i = i as u32;
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(0, &self.global_bind_group, &[]);
+            render_pass.set_bind_group(
+                1,
+                &self.quad_bind_group,
+                &[quad_metadata.uniform_offset.into()],
+            );
+            render_pass.set_bind_group(
+                2,
+                &texture_bind_groups[&quad_metadata.albedo_map_identifier].bind_group,
+                &[],
+            );
+            render_pass.set_bind_group(
+                3,
+                &texture_bind_groups[&quad_metadata.normal_map_identifier].bind_group,
+                &[],
+            );
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.draw(
+                i * VERTEX_PER_QUAD as u32..(i + 1) * VERTEX_PER_QUAD as u32,
+                0..1,
+            );
+        }
     }
 
     pub fn clear_pending_quads(&mut self) {
-        self.pending_quad_count = 0;
+        self.quad_metadata.clear();
     }
 
     pub fn set_camera(
@@ -235,7 +264,8 @@ impl QuadRenderer {
     fn add_uniform_to_buffer(&mut self, queue: &wgpu::Queue, quad_uniform: QuadUniform) {
         queue.write_buffer(
             &self.quad_uniform_buffer,
-            (self.pending_quad_count * self.quad_uniform_alignment as usize) as wgpu::BufferAddress,
+            (self.quad_metadata.len() * self.quad_uniform_alignment as usize)
+                as wgpu::BufferAddress,
             bytemuck::cast_slice(&[quad_uniform]),
         );
     }
@@ -243,8 +273,7 @@ impl QuadRenderer {
     fn add_vertices_to_buffer(&mut self, queue: &wgpu::Queue, vertices: &[Vertex]) {
         queue.write_buffer(
             &self.vertex_buffer,
-            (self.pending_quad_count * VERTEX_PER_QUAD * std::mem::size_of::<Vertex>())
-                as wgpu::BufferAddress,
+            self.quad_metadata.len() as u64 * VERTEX_PER_QUAD * VERTEX_SIZE,
             bytemuck::cast_slice(vertices),
         );
     }
@@ -252,9 +281,10 @@ impl QuadRenderer {
     fn create_vertex_buffer(device: &wgpu::Device) -> wgpu::Buffer {
         device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("quad_renderer_vertex_buffer"),
-            size: (std::mem::size_of::<Vertex>() * VERTEX_PER_QUAD * MAX_QUAD_COUNT)
-                as wgpu::BufferAddress,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            size: MIN_BUFFER_SIZE,
+            usage: wgpu::BufferUsages::VERTEX
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         })
     }
@@ -263,7 +293,9 @@ impl QuadRenderer {
         device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("quad_renderer_global_uniform_buffer"),
             size: GLOBAL_UNIFORM_SIZE,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::UNIFORM
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         })
     }
@@ -306,7 +338,7 @@ impl QuadRenderer {
         assert!(QUAD_UNIFORM_SIZE <= quad_uniform_alignment);
         device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("quad_renderer_quad_uniform_buffer"),
-            size: (MAX_QUAD_COUNT * quad_uniform_alignment as usize) as wgpu::BufferAddress,
+            size: (MIN_BUFFER_QUAD_COUNT * quad_uniform_alignment) as wgpu::BufferAddress,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         })
@@ -418,6 +450,12 @@ impl QuadRenderer {
             },
         })
     }
+}
+
+struct QuadMetadata {
+    albedo_map_identifier: String,
+    normal_map_identifier: String,
+    uniform_offset: u32,
 }
 
 #[repr(C)]

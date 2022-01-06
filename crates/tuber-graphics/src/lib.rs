@@ -47,6 +47,7 @@ pub enum GraphicsError {
 pub struct Graphics {
     graphics_impl: Box<dyn LowLevelGraphicsAPI>,
     texture_metadata: HashMap<String, TextureMetadata>,
+    pending_quads: Vec<QuadDescription>,
 }
 
 impl Graphics {
@@ -54,6 +55,7 @@ impl Graphics {
         Self {
             graphics_impl,
             texture_metadata: HashMap::new(),
+            pending_quads: vec![],
         }
     }
     pub fn initialize(
@@ -70,31 +72,23 @@ impl Graphics {
     }
 
     pub fn render(&mut self) {
-        self.graphics_impl.render();
+        self.graphics_impl.draw_quads(&self.pending_quads);
+        self.pending_quads.clear();
     }
 
-    pub fn draw_rectangle(
-        &mut self,
-        rectangle: &RectangleShape,
-        transform: &Transform2D,
-        apply_view_transform: bool,
-    ) {
-        self.graphics_impl.prepare_quad(
-            &QuadDescription {
-                size: Size2::new(rectangle.width, rectangle.height),
-                color: rectangle.color.into(),
-                material: MaterialDescription::default(),
-            },
-            transform,
-            apply_view_transform,
-        );
+    pub fn draw_rectangle(&mut self, rectangle: &RectangleShape, transform: &Transform2D) {
+        self.pending_quads.push(QuadDescription {
+            size: Size2::new(rectangle.width, rectangle.height),
+            color: rectangle.color.into(),
+            material: MaterialDescription::default(),
+            transform: transform.clone(),
+        });
     }
 
     pub fn draw_sprite(
         &mut self,
         sprite: &Sprite,
         transform: &Transform2D,
-        apply_view_transform: bool,
         asset_manager: &mut AssetStore,
     ) -> Result<(), GraphicsError> {
         self.load_texture_in_vram_if_required(asset_manager, &sprite.material.albedo_map);
@@ -122,26 +116,23 @@ impl Graphics {
             ..*transform
         };
 
-        self.graphics_impl.prepare_quad(
-            &QuadDescription {
-                size: Size2::new(sprite.width, sprite.height),
-                color: Color::WHITE.into(),
-                material: MaterialDescription {
-                    albedo_map_description: Some(TextureDescription {
-                        identifier: sprite.material.albedo_map.clone(),
-                        texture_region: TextureRegion {
-                            x: sprite.texture_region.x / texture_width,
-                            y: sprite.texture_region.y / texture_height,
-                            width: sprite.texture_region.width / texture_width,
-                            height: sprite.texture_region.height / texture_height,
-                        },
-                    }),
-                    normal_map_description: None,
-                },
+        self.pending_quads.push(QuadDescription {
+            size: Size2::new(sprite.width, sprite.height),
+            color: Color::WHITE.into(),
+            material: MaterialDescription {
+                albedo_map_description: Some(TextureDescription {
+                    identifier: sprite.material.albedo_map.clone(),
+                    texture_region: TextureRegion {
+                        x: sprite.texture_region.x / texture_width,
+                        y: sprite.texture_region.y / texture_height,
+                        width: sprite.texture_region.width / texture_width,
+                        height: sprite.texture_region.height / texture_height,
+                    },
+                }),
+                normal_map_description: None,
             },
-            &effective_transform,
-            apply_view_transform,
-        );
+            transform: effective_transform.clone(),
+        });
         Ok(())
     }
 
@@ -149,7 +140,6 @@ impl Graphics {
         &mut self,
         animated_sprite: &AnimatedSprite,
         transform: &Transform2D,
-        apply_view_transform: bool,
         asset_store: &mut AssetStore,
     ) -> Result<(), GraphicsError> {
         self.load_material_in_vram_if_required(asset_store, &animated_sprite.material);
@@ -175,28 +165,25 @@ impl Graphics {
             normalized_texture_region = normalized_texture_region.flip_x();
         }
 
-        self.graphics_impl.prepare_quad(
-            &QuadDescription {
-                size: Size2::new(animated_sprite.width, animated_sprite.height),
-                color: Color::WHITE.into(),
-                material: MaterialDescription {
-                    albedo_map_description: Some(TextureDescription {
-                        identifier: animated_sprite.material.albedo_map.clone(),
-                        texture_region: normalized_texture_region,
-                    }),
-                    normal_map_description: Some(TextureDescription {
-                        identifier: animated_sprite
-                            .material
-                            .normal_map
-                            .clone()
-                            .unwrap_or(DEFAULT_NORMAL_MAP_IDENTIFIER.into()),
-                        texture_region: normalized_texture_region,
-                    }),
-                },
+        self.pending_quads.push(QuadDescription {
+            size: Size2::new(animated_sprite.width, animated_sprite.height),
+            color: Color::WHITE.into(),
+            material: MaterialDescription {
+                albedo_map_description: Some(TextureDescription {
+                    identifier: animated_sprite.material.albedo_map.clone(),
+                    texture_region: normalized_texture_region,
+                }),
+                normal_map_description: Some(TextureDescription {
+                    identifier: animated_sprite
+                        .material
+                        .normal_map
+                        .clone()
+                        .unwrap_or(DEFAULT_NORMAL_MAP_IDENTIFIER.into()),
+                    texture_region: normalized_texture_region,
+                }),
             },
-            transform,
-            apply_view_transform,
-        );
+            transform: transform.clone(),
+        });
 
         Ok(())
     }
@@ -206,7 +193,6 @@ impl Graphics {
         text: &str,
         font_identifier: &str,
         transform: &Transform2D,
-        apply_view_transform: bool,
         asset_store: &mut AssetStore,
     ) {
         let (font_atlas, font_texture) = {
@@ -261,26 +247,23 @@ impl Graphics {
             glyph_transform.translation.1 = offset_y;
             glyph_transform.rotation_center = (-offset_x, -offset_y);
 
-            self.graphics_impl.prepare_quad(
-                &QuadDescription {
-                    size: Size2::new(glyph_region.width, glyph_region.height),
-                    color: Color::BLACK.into(),
-                    material: MaterialDescription {
-                        albedo_map_description: Some(TextureDescription {
-                            identifier: font_texture.clone().into(),
-                            texture_region: TextureRegion {
-                                x: (font_region.x + glyph_region.x) / texture.width as f32,
-                                y: (font_region.y + glyph_region.y) / texture.height as f32,
-                                width: glyph_region.width / texture.width as f32,
-                                height: glyph_region.height / texture.height as f32,
-                            },
-                        }),
-                        normal_map_description: None,
-                    },
+            self.pending_quads.push(QuadDescription {
+                size: Size2::new(glyph_region.width, glyph_region.height),
+                color: Color::BLACK.into(),
+                material: MaterialDescription {
+                    albedo_map_description: Some(TextureDescription {
+                        identifier: font_texture.clone().into(),
+                        texture_region: TextureRegion {
+                            x: (font_region.x + glyph_region.x) / texture.width as f32,
+                            y: (font_region.y + glyph_region.y) / texture.height as f32,
+                            width: glyph_region.width / texture.width as f32,
+                            height: glyph_region.height / texture.height as f32,
+                        },
+                    }),
+                    normal_map_description: None,
                 },
-                &glyph_transform,
-                apply_view_transform,
-            );
+                transform: glyph_transform.clone(),
+            });
 
             offset_x += glyph_region.width + font.letter_spacing() as f32;
         }
@@ -338,15 +321,14 @@ impl Graphics {
 
         for (_, (rectangle_shape, transform)) in ecs.query::<(R<RectangleShape>, R<Transform2D>)>()
         {
-            self.draw_rectangle(&rectangle_shape, &transform, true);
+            self.draw_rectangle(&rectangle_shape, &transform);
         }
         for (_, (sprite, transform)) in ecs.query::<(R<Sprite>, R<Transform2D>)>() {
-            self.draw_sprite(&sprite, &transform, true, asset_store)
-                .unwrap();
+            self.draw_sprite(&sprite, &transform, asset_store).unwrap();
         }
         for (_, (animated_sprite, transform)) in ecs.query::<(R<AnimatedSprite>, R<Transform2D>)>()
         {
-            self.draw_animated_sprite(&animated_sprite, &transform, true, asset_store)
+            self.draw_animated_sprite(&animated_sprite, &transform, asset_store)
                 .unwrap();
         }
 

@@ -37,6 +37,15 @@ impl TextureRegion {
         }
     }
 
+    pub fn one_pixel() -> Self {
+        Self {
+            x: 0.0,
+            y: 0.0,
+            width: 1.0,
+            height: 1.0,
+        }
+    }
+
     pub fn normalize(self, texture_width: u32, texture_height: u32) -> Self {
         let texture_width = texture_width as f32;
         let texture_height = texture_height as f32;
@@ -155,15 +164,20 @@ pub(crate) fn create_white_texture() -> TextureData {
     }
 }
 
-pub const DEFAULT_TEXTURE_IDENTIFIER: &'static str = "_placeholder";
-pub const DEFAULT_TEXTURE_SIZE: (f32, f32) = (32.0, 32.0);
+pub const MISSING_TEXTURE_IDENTIFIER: &'static str = "_placeholder";
+pub const MISSING_TEXTURE_REGION: TextureRegion = TextureRegion {
+    x: 0.0,
+    y: 0.0,
+    width: 32.0,
+    height: 32.0,
+};
 pub(crate) fn create_placeholder_texture() -> TextureData {
     let bytes = include_bytes!("../textures/default_texture.png");
     let image = image::load_from_memory(bytes).unwrap();
     let image = image.as_rgba8().unwrap();
 
     TextureData {
-        identifier: DEFAULT_TEXTURE_IDENTIFIER.into(),
+        identifier: MISSING_TEXTURE_IDENTIFIER.into(),
         size: image.dimensions(),
         bytes: image.to_vec(),
         srgb: true,

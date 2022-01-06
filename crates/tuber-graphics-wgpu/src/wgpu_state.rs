@@ -4,7 +4,7 @@ use crate::quad_renderer::QuadRenderer;
 use crate::texture::{
     create_texture_bind_group, create_texture_bind_group_layout, TextureBindGroup,
 };
-use crate::{DrawCommand, DrawCommandData, DrawType, TuberGraphicsWGPUError};
+use crate::TuberGraphicsWGPUError;
 use futures::executor::block_on;
 use std::collections::HashMap;
 use tuber_core::transform::Transform2D;
@@ -26,7 +26,6 @@ pub struct WGPUState {
     size: WindowSize,
     quad_renderer: QuadRenderer,
     compositor: Compositor,
-    pending_draw_commands: Vec<DrawCommand>,
     texture_bind_group_layout: wgpu::BindGroupLayout,
     textures_in_vram: HashMap<String, wgpu::Texture>,
     texture_bind_groups: HashMap<String, TextureBindGroup>,
@@ -78,7 +77,6 @@ impl WGPUState {
             compositor,
             textures_in_vram: HashMap::new(),
             texture_bind_groups: HashMap::new(),
-            pending_draw_commands: vec![],
             texture_bind_group_layout,
         }
     }
@@ -93,14 +91,14 @@ impl WGPUState {
             .configure(&self.device, &self.surface_configuration);
     }
 
-    pub fn render(&mut self) -> Result<(), TuberGraphicsWGPUError> {
+    pub fn draw_quads(&mut self, quads: &[QuadDescription]) {
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("render_encoder"),
+                label: Some("draw_quads_encoder"),
             });
 
-        let g_buffer = self.geometry_pass(&mut encoder);
+        let g_buffer = self.geometry_pass(&mut encoder, quads);
         self.compositor.prepare(&self.device, g_buffer);
         let output = self.composition_pass(&mut encoder).unwrap();
 
@@ -108,9 +106,7 @@ impl WGPUState {
 
         output.present();
 
-        self.pending_draw_commands.clear();
         self.quad_renderer.clear_pending_quads();
-        Ok(())
     }
 
     pub fn set_clear_color(&mut self, color: Color) {
@@ -177,7 +173,11 @@ impl WGPUState {
         }
     }
 
-    fn geometry_pass(&mut self, encoder: &mut wgpu::CommandEncoder) -> GBuffer {
+    fn geometry_pass(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        quads: &[QuadDescription],
+    ) -> GBuffer {
         let albedo_map_texture_descriptor =
             self.create_g_buffer_texture_descriptor("albedo_map_texture");
         let albedo_map_texture = self.device.create_texture(&albedo_map_texture_descriptor);
@@ -189,6 +189,8 @@ impl WGPUState {
         let normal_map_texture = self.device.create_texture(&normal_map_texture_descriptor);
         let normal_map_view =
             normal_map_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        self.quad_renderer.prepare(&self.device, &self.queue, quads);
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -224,49 +226,14 @@ impl WGPUState {
                 depth_stencil_attachment: None,
             });
 
-            for draw_command in &self.pending_draw_commands {
-                self.render_draw_command(&mut render_pass, draw_command);
-            }
+            self.quad_renderer
+                .render(&mut render_pass, &self.texture_bind_groups)
         }
 
         GBuffer {
             albedo: albedo_map_texture,
             normal: normal_map_texture,
         }
-    }
-
-    fn render_draw_command<'rpass>(
-        &'rpass self,
-        render_pass: &mut wgpu::RenderPass<'rpass>,
-        draw_command: &DrawCommand,
-    ) {
-        match draw_command {
-            DrawCommand {
-                draw_command_data, ..
-            } if draw_command.draw_type() == DrawType::Quad => {
-                if let DrawCommandData::QuadDrawCommand(draw_command_data) = draw_command_data {
-                    self.quad_renderer.render(
-                        render_pass,
-                        draw_command_data,
-                        &self.texture_bind_groups,
-                    );
-                }
-            }
-            _ => {}
-        }
-    }
-
-    pub(crate) fn prepare_quad(
-        &mut self,
-        quad_description: &QuadDescription,
-        transform: &Transform2D,
-    ) {
-        self.pending_draw_commands.push(self.quad_renderer.prepare(
-            &self.queue,
-            quad_description,
-            transform,
-            &self.texture_bind_groups,
-        ));
     }
 
     pub(crate) fn update_camera(
