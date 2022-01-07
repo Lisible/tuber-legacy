@@ -111,27 +111,27 @@ impl QuadRenderer {
                     tex_coords: [texture_region.x, texture_region.y],
                 },
                 Vertex {
-                    position: [0.0, quad.size.height(), 0.0],
+                    position: [0.0, quad.size.height, 0.0],
                     color,
                     tex_coords: [texture_region.x, texture_region.y + texture_region.height],
                 },
                 Vertex {
-                    position: [quad.size.width(), 0.0, 0.0],
+                    position: [quad.size.width, 0.0, 0.0],
                     color,
                     tex_coords: [texture_region.x + texture_region.width, texture_region.y],
                 },
                 Vertex {
-                    position: [quad.size.width(), 0.0, 0.0],
+                    position: [quad.size.width, 0.0, 0.0],
                     color,
                     tex_coords: [texture_region.x + texture_region.width, texture_region.y],
                 },
                 Vertex {
-                    position: [0.0, quad.size.height(), 0.0],
+                    position: [0.0, quad.size.height, 0.0],
                     color,
                     tex_coords: [texture_region.x, texture_region.y + texture_region.height],
                 },
                 Vertex {
-                    position: [quad.size.width(), quad.size.height(), 0.0],
+                    position: [quad.size.width, quad.size.height, 0.0],
                     color,
                     tex_coords: [
                         texture_region.x + texture_region.width,
@@ -197,9 +197,13 @@ impl QuadRenderer {
 
     pub fn render<'rpass: 'pass, 'pass>(
         &'rpass self,
+        queue: &wgpu::Queue,
         render_pass: &mut wgpu::RenderPass<'pass>,
         texture_bind_groups: &'rpass Vec<wgpu::BindGroup>,
+        projection_matrix: &Matrix4<f32>,
+        view_transform: &Transform2D,
     ) {
+        self.set_projection_matrix(queue, projection_matrix, view_transform);
         for (i, quad_metadata) in self.quad_metadata.iter().enumerate() {
             let i = i as u32;
             render_pass.set_pipeline(&self.render_pipeline);
@@ -231,8 +235,8 @@ impl QuadRenderer {
         self.quad_metadata.clear();
     }
 
-    pub fn set_projection_matrix(
-        &mut self,
+    fn set_projection_matrix(
+        &self,
         queue: &wgpu::Queue,
         projection_matrix: &Matrix4<f32>,
         transform: &Transform2D,

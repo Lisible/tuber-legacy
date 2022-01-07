@@ -15,7 +15,7 @@ use tuber_graphics::low_level::polygon_mode::PolygonMode;
 use tuber_graphics::low_level::primitives::TextureId;
 use tuber_graphics::low_level::{api::LowLevelGraphicsAPI, primitives::QuadDescription};
 use tuber_graphics::texture::TextureData;
-use tuber_graphics::types::WindowSize;
+use tuber_graphics::types::{Size2, WindowSize};
 use tuber_graphics::{types::Color, Window};
 
 #[derive(Debug)]
@@ -58,6 +58,12 @@ impl GraphicsWGPU {
 impl LowLevelGraphicsAPI for GraphicsWGPU {
     fn initialize(&mut self, window: Window, window_size: WindowSize, _asset_store: &AssetStore) {
         self.state = MaybeUninitialized::Initialized(WGPUState::new(window, window_size));
+    }
+
+    fn pre_draw_quads(&mut self, size: Size2<u32>, quads: &[QuadDescription]) -> QuadDescription {
+        self.state
+            .assume_initialized_mut()
+            .pre_draw_quads(size, quads)
     }
 
     fn draw_quads(&mut self, quads: &[QuadDescription]) {

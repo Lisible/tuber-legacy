@@ -120,8 +120,8 @@ pub fn create_texture_descriptor(label: &'static str, size: Size2<u32>) -> wgpu:
     wgpu::TextureDescriptor {
         label: Some(label),
         size: wgpu::Extent3d {
-            width: size.width(),
-            height: size.height(),
+            width: size.width,
+            height: size.height,
             depth_or_array_layers: 1,
         },
         mip_level_count: 1,

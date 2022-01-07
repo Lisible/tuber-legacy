@@ -1,10 +1,11 @@
-use crate::{Material, Size2, TextureRegion};
+use crate::{Material, RenderId, Size2, TextureRegion};
 
 pub struct Tilemap {
     size: Size2<usize>,
     tile_size: Size2<u32>,
     tiles: Vec<Option<Tile>>,
     material: Material,
+    render_id: Option<RenderId>,
 }
 
 impl Tilemap {
@@ -17,8 +18,9 @@ impl Tilemap {
         Self {
             size,
             tile_size,
-            tiles: vec![default_tile.clone(); size.width() * size.height()],
+            tiles: vec![default_tile.clone(); size.width * size.height],
             material,
+            render_id: None,
         }
     }
 
@@ -35,19 +37,27 @@ impl Tilemap {
     }
 
     pub fn set_tile(&mut self, x: usize, y: usize, tile: Option<Tile>) {
-        assert!(x < self.size.width());
-        assert!(y < self.size.height());
-        self.tiles[x + y * self.size.width()] = tile;
+        assert!(x < self.size.width);
+        assert!(y < self.size.height);
+        self.tiles[x + y * self.size.width] = tile;
     }
 
     pub fn tile(&self, x: usize, y: usize) -> &Option<Tile> {
-        assert!(x < self.size.width());
-        assert!(y < self.size.height());
-        &self.tiles[x + y * self.size.width()]
+        assert!(x < self.size.width);
+        assert!(y < self.size.height);
+        &self.tiles[x + y * self.size.width]
     }
 
     pub fn material(&self) -> &Material {
         &self.material
+    }
+
+    pub fn render_id(&self) -> &Option<RenderId> {
+        &self.render_id
+    }
+
+    pub(crate) fn set_render_id(&mut self, render_id: RenderId) {
+        self.render_id = Some(render_id);
     }
 }
 

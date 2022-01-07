@@ -35,6 +35,7 @@ pub struct VertexDescription {
 }
 
 /// Describes a quad for the low-level renderer
+#[derive(Clone)]
 pub struct QuadDescription {
     pub size: Size2,
     pub color: Color,
@@ -42,6 +43,7 @@ pub struct QuadDescription {
     pub transform: Transform2D,
 }
 
+#[derive(Clone)]
 pub struct MaterialDescription {
     pub albedo_map_description: TextureDescription,
     pub normal_map_description: TextureDescription,

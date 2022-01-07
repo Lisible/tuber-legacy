@@ -49,6 +49,7 @@ pub struct Graphics {
     graphics_impl: Box<dyn LowLevelGraphicsAPI>,
     texture_metadata: HashMap<String, TextureMetadata>,
     pending_quads: Vec<QuadDescription>,
+    tilemap_renders: Vec<QuadDescription>,
 }
 
 impl Graphics {
@@ -57,6 +58,7 @@ impl Graphics {
             graphics_impl,
             texture_metadata: HashMap::new(),
             pending_quads: vec![],
+            tilemap_renders: vec![],
         }
     }
     pub fn initialize(
@@ -73,6 +75,12 @@ impl Graphics {
     }
 
     pub fn render(&mut self) {
+        self.pending_quads.sort_by(|quad, other| {
+            quad.transform
+                .translation
+                .2
+                .cmp(&other.transform.translation.2)
+        });
         self.graphics_impl.draw_quads(&self.pending_quads);
         self.pending_quads.clear();
     }
@@ -206,59 +214,81 @@ impl Graphics {
         Ok(())
     }
 
-    pub fn draw_tilemap(&mut self, asset_store: &mut AssetStore, tilemap: &mut Tilemap) {
-        let tilemap_size = tilemap.size();
-        let tile_size = tilemap.tile_size();
-        let tilemap_material = tilemap.material();
+    pub fn draw_tilemap(
+        &mut self,
+        asset_store: &mut AssetStore,
+        tilemap: &mut Tilemap,
+        transform: &Transform2D,
+    ) {
+        if tilemap.render_id().is_none() {
+            let tilemap_size = tilemap.size();
+            let tile_size = tilemap.tile_size();
+            let tilemap_material = tilemap.material();
 
-        self.load_material_in_vram_if_required(asset_store, tilemap_material);
+            self.load_material_in_vram_if_required(asset_store, tilemap_material);
 
-        let albedo_map_texture_metadata = &self.texture_metadata[&tilemap_material.albedo_map];
+            let albedo_map_texture_metadata = &self.texture_metadata[&tilemap_material.albedo_map];
 
-        let mut quads = vec![];
-        for (tile_index, tile) in tilemap.tiles().iter().enumerate() {
-            let tile_x = tile_index % tilemap_size.width();
-            let tile_y = tile_index / tilemap_size.height();
-            if let Some(tile) = tile {
-                let tile_texture_region = tile.texture_region().clone();
+            let mut quads = vec![];
+            for (tile_index, tile) in tilemap.tiles().iter().enumerate() {
+                let tile_x = tile_index % tilemap_size.width;
+                let tile_y = tile_index / tilemap_size.height;
+                if let Some(tile) = tile {
+                    let tile_texture_region = tile.texture_region().clone();
 
-                quads.push(QuadDescription {
-                    size: Size2::new(tile_size.width() as f32, tile_size.height() as f32),
-                    color: Color::WHITE,
-                    material: MaterialDescription {
-                        albedo_map_description: TextureDescription {
-                            identifier: albedo_map_texture_metadata.texture_id,
-                            texture_region: tile_texture_region.normalize(
-                                albedo_map_texture_metadata.width,
-                                albedo_map_texture_metadata.height,
-                            ),
-                        },
-                        normal_map_description: match &tilemap_material.normal_map {
-                            Some(normal_map_identifier) => TextureDescription {
-                                identifier: self.texture_metadata[normal_map_identifier].texture_id,
+                    quads.push(QuadDescription {
+                        size: Size2::new(tile_size.width as f32, tile_size.height as f32),
+                        color: Color::WHITE,
+                        material: MaterialDescription {
+                            albedo_map_description: TextureDescription {
+                                identifier: albedo_map_texture_metadata.texture_id,
                                 texture_region: tile_texture_region.normalize(
                                     albedo_map_texture_metadata.width,
                                     albedo_map_texture_metadata.height,
                                 ),
                             },
-                            None => TextureDescription::default_normal_map_description(
-                                &self.texture_metadata,
-                            ),
+                            normal_map_description: match &tilemap_material.normal_map {
+                                Some(normal_map_identifier) => TextureDescription {
+                                    identifier: self.texture_metadata[normal_map_identifier]
+                                        .texture_id,
+                                    texture_region: tile_texture_region.normalize(
+                                        albedo_map_texture_metadata.width,
+                                        albedo_map_texture_metadata.height,
+                                    ),
+                                },
+                                None => TextureDescription::default_normal_map_description(
+                                    &self.texture_metadata,
+                                ),
+                            },
                         },
-                    },
-                    transform: Transform2D {
-                        translation: (
-                            (tile_x * tile_size.width() as usize) as f32,
-                            (tile_y * tile_size.height() as usize) as f32,
-                            0,
-                        ),
-                        ..Default::default()
-                    },
-                })
+                        transform: Transform2D {
+                            translation: (
+                                (tile_x * tile_size.width as usize) as f32,
+                                (tile_y * tile_size.height as usize) as f32,
+                                0,
+                            ),
+                            ..Default::default()
+                        },
+                    })
+                }
             }
+
+            let tilemap_size_pixel = Size2::new(
+                tilemap_size.width as u32 * tile_size.width,
+                tilemap_size.height as u32 * tile_size.height,
+            );
+            let quad = self
+                .graphics_impl
+                .pre_draw_quads(tilemap_size_pixel, &quads);
+            let next_render_id = self.tilemap_renders.len();
+            self.tilemap_renders.push(quad);
+            tilemap.set_render_id(RenderId(next_render_id));
         }
 
-        self.pending_quads.append(&mut quads);
+        self.pending_quads.push(QuadDescription {
+            transform: transform.clone(),
+            ..self.tilemap_renders[tilemap.render_id().as_ref().unwrap().0].clone()
+        });
     }
 
     pub fn draw_text(
@@ -460,3 +490,5 @@ unsafe impl HasRawWindowHandle for Window<'_> {
         self.0.raw_window_handle()
     }
 }
+
+pub struct RenderId(pub usize);

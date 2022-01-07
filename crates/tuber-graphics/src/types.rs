@@ -10,14 +10,6 @@ impl<T: Copy> Size2<T> {
     pub fn new(width: T, height: T) -> Self {
         Size2 { width, height }
     }
-
-    pub fn width(&self) -> T {
-        self.width
-    }
-
-    pub fn height(&self) -> T {
-        self.height
-    }
 }
 
 impl<T: Copy> From<(T, T)> for Size2<T> {
