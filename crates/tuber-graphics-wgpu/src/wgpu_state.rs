@@ -1,17 +1,14 @@
 use crate::composition::Compositor;
 use crate::g_buffer::GBuffer;
 use crate::quad_renderer::QuadRenderer;
-use crate::texture::{
-    create_texture_bind_group, create_texture_bind_group_layout, TextureBindGroup,
-};
+use crate::texture::{create_texture_bind_group, create_texture_bind_group_layout};
 use crate::TuberGraphicsWGPUError;
 use futures::executor::block_on;
-use std::collections::HashMap;
 use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::g_buffer::GBufferComponent;
-use tuber_graphics::low_level::primitives::QuadDescription;
+use tuber_graphics::low_level::primitives::{QuadDescription, TextureId};
 use tuber_graphics::texture::TextureData;
 use tuber_graphics::types::{Color, WindowSize};
 use tuber_graphics::Window;
@@ -27,8 +24,7 @@ pub struct WGPUState {
     quad_renderer: QuadRenderer,
     compositor: Compositor,
     texture_bind_group_layout: wgpu::BindGroupLayout,
-    textures_in_vram: HashMap<String, wgpu::Texture>,
-    texture_bind_groups: HashMap<String, TextureBindGroup>,
+    texture_bind_groups: Vec<wgpu::BindGroup>,
 }
 
 impl WGPUState {
@@ -75,8 +71,7 @@ impl WGPUState {
             size: window_size,
             quad_renderer,
             compositor,
-            textures_in_vram: HashMap::new(),
-            texture_bind_groups: HashMap::new(),
+            texture_bind_groups: vec![],
             texture_bind_group_layout,
         }
     }
@@ -246,9 +241,11 @@ impl WGPUState {
             .set_camera(&self.queue, camera, transform);
     }
 
-    pub(crate) fn load_texture_in_vram(&mut self, texture_data: &TextureData) {
+    pub(crate) fn load_texture_in_vram(&mut self, texture_data: &TextureData) -> TextureId {
         use crate::texture;
-        let texture = texture::create_texture_from_data(&self.device, &self.queue, &texture_data);
+        let texture_id = TextureId(self.texture_bind_groups.len());
+        let texture =
+            texture::create_texture_from_data(&self.device, &self.queue, texture_id, &texture_data);
 
         let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let texture_sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
@@ -269,15 +266,11 @@ impl WGPUState {
             &texture_sampler,
         );
 
-        let texture_bind_group = TextureBindGroup { bind_group };
-
-        self.texture_bind_groups
-            .insert(texture_data.identifier.clone(), texture_bind_group);
-        self.textures_in_vram
-            .insert(texture_data.identifier.clone(), texture);
+        self.texture_bind_groups.push(bind_group);
+        texture_id
     }
 
-    pub(crate) fn is_texture_in_vram(&self, texture_identifier: &str) -> bool {
-        self.textures_in_vram.contains_key(texture_identifier)
+    pub(crate) fn is_texture_in_vram(&self, texture_id: TextureId) -> bool {
+        self.texture_bind_groups.len() > texture_id.0
     }
 }

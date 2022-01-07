@@ -1,3 +1,4 @@
+use crate::primitives::TextureId;
 use crate::texture::TextureUsage::{Albedo, Normal};
 use crate::GraphicsError;
 use crate::GraphicsError::{ImageDecodeError, TextureFileOpenError};
@@ -74,6 +75,7 @@ impl From<TextureRegion> for Vector4<f32> {
 }
 
 pub struct TextureMetadata {
+    pub texture_id: TextureId,
     pub width: u32,
     pub height: u32,
 }

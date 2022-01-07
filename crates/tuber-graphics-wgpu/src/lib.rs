@@ -11,6 +11,7 @@ use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::g_buffer::GBufferComponent;
+use tuber_graphics::low_level::primitives::TextureId;
 use tuber_graphics::low_level::{api::LowLevelGraphicsAPI, primitives::QuadDescription};
 use tuber_graphics::texture::TextureData;
 use tuber_graphics::types::WindowSize;
@@ -62,16 +63,16 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         self.state.assume_initialized_mut().draw_quads(quads);
     }
 
-    fn is_texture_in_vram(&self, texture_identifier: &str) -> bool {
+    fn is_texture_in_vram(&self, texture_id: TextureId) -> bool {
         self.state
             .assume_initialized()
-            .is_texture_in_vram(texture_identifier)
+            .is_texture_in_vram(texture_id)
     }
 
-    fn load_texture_in_vram(&mut self, texture_data: &TextureData) {
+    fn load_texture_in_vram(&mut self, texture_data: &TextureData) -> TextureId {
         self.state
             .assume_initialized_mut()
-            .load_texture_in_vram(texture_data);
+            .load_texture_in_vram(texture_data)
     }
 
     fn update_camera(

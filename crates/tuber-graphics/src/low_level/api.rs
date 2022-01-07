@@ -1,3 +1,4 @@
+use crate::primitives::TextureId;
 use crate::types::{Color, WindowSize};
 use crate::{GBufferComponent, OrthographicCamera, QuadDescription, TextureData, Window};
 use tuber_core::asset::AssetStore;
@@ -11,8 +12,8 @@ pub trait LowLevelGraphicsAPI {
 
     fn draw_quads(&mut self, quads: &[QuadDescription]);
 
-    fn is_texture_in_vram(&self, texture_identifier: &str) -> bool;
-    fn load_texture_in_vram(&mut self, texture_data: &TextureData);
+    fn is_texture_in_vram(&self, texture_id: TextureId) -> bool;
+    fn load_texture_in_vram(&mut self, texture_data: &TextureData) -> TextureId;
 
     /// Updates the view/projection matrix
     fn update_camera(

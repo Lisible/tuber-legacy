@@ -2,8 +2,27 @@ use crate::texture::{
     MISSING_TEXTURE_IDENTIFIER, MISSING_TEXTURE_REGION, WHITE_TEXTURE_IDENTIFIER,
 };
 use crate::types::{Color, Size2};
-use crate::{TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER};
+use crate::{TextureMetadata, TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER};
+use std::collections::HashMap;
+use std::ops::Deref;
 use tuber_core::transform::Transform2D;
+
+#[derive(Copy, Clone)]
+pub struct TextureId(pub usize);
+
+impl ToString for TextureId {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
+impl Deref for TextureId {
+    type Target = usize;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 /// Describes a vertex for the low-level renderer
 pub struct VertexDescription {
@@ -23,36 +42,41 @@ pub struct QuadDescription {
     pub transform: Transform2D,
 }
 
-#[derive(Default)]
 pub struct MaterialDescription {
-    pub albedo_map_description: Option<TextureDescription>,
-    pub normal_map_description: Option<TextureDescription>,
+    pub albedo_map_description: TextureDescription,
+    pub normal_map_description: TextureDescription,
 }
 
 #[derive(Clone)]
 pub struct TextureDescription {
     /// The identifier of the texture
-    pub identifier: String,
+    pub identifier: TextureId,
     /// The region of the texture to use
     pub texture_region: TextureRegion,
 }
 
 impl TextureDescription {
-    pub fn not_found_texture_description() -> Self {
+    pub fn not_found_texture_description(
+        texture_metadata: &HashMap<String, TextureMetadata>,
+    ) -> Self {
         Self {
-            identifier: MISSING_TEXTURE_IDENTIFIER.into(),
+            identifier: texture_metadata[MISSING_TEXTURE_IDENTIFIER].texture_id,
             texture_region: MISSING_TEXTURE_REGION,
         }
     }
-    pub fn default_albedo_map_description() -> Self {
+    pub fn default_albedo_map_description(
+        texture_metadata: &HashMap<String, TextureMetadata>,
+    ) -> Self {
         Self {
-            identifier: WHITE_TEXTURE_IDENTIFIER.into(),
+            identifier: texture_metadata[WHITE_TEXTURE_IDENTIFIER].texture_id,
             texture_region: TextureRegion::one_pixel(),
         }
     }
-    pub fn default_normal_map_description() -> Self {
+    pub fn default_normal_map_description(
+        texture_metadata: &HashMap<String, TextureMetadata>,
+    ) -> Self {
         Self {
-            identifier: DEFAULT_NORMAL_MAP_IDENTIFIER.into(),
+            identifier: texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
             texture_region: TextureRegion::one_pixel(),
         }
     }

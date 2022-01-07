@@ -1,20 +1,18 @@
+use tuber_graphics::low_level::primitives::TextureId;
 use tuber_graphics::texture::{TextureData, TextureSize};
 
 const BYTES_PER_PIXEL: usize = 4;
 
-pub(crate) struct TextureBindGroup {
-    pub bind_group: wgpu::BindGroup,
-}
-
 pub(crate) fn create_texture_from_data(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
+    texture_id: TextureId,
     texture_data: &TextureData,
 ) -> wgpu::Texture {
     create_texture(
         device,
         queue,
-        &texture_data.identifier,
+        texture_id,
         texture_data.size,
         &texture_data.bytes,
         texture_data.srgb,
@@ -24,12 +22,12 @@ pub(crate) fn create_texture_from_data(
 fn create_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    identifier: &str,
+    texture_id: TextureId,
     size: TextureSize,
     data: &[u8],
     srgb: bool,
 ) -> wgpu::Texture {
-    let texture_identifier = create_wgpu_texture_identifier(identifier);
+    let texture_label = create_wgpu_texture_label(texture_id);
     let texture_size = wgpu::Extent3d {
         width: size.0,
         height: size.1,
@@ -37,7 +35,7 @@ fn create_texture(
     };
 
     let texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some(&texture_identifier),
+        label: Some(&texture_label),
         size: texture_size,
         mip_level_count: 1,
         sample_count: 1,
@@ -117,6 +115,6 @@ pub fn create_texture_bind_group(
     })
 }
 
-fn create_wgpu_texture_identifier(texture_identifier: &str) -> String {
-    "wgputexture_".to_owned() + texture_identifier
+fn create_wgpu_texture_label(texture_id: TextureId) -> String {
+    "wgputexture_".to_owned() + &*texture_id.to_string()
 }

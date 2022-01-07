@@ -1,10 +1,9 @@
 use crate::geometry::Vertex;
-use crate::texture::{create_texture_bind_group_layout, TextureBindGroup};
+use crate::texture::create_texture_bind_group_layout;
 use nalgebra::Matrix4;
-use std::collections::HashMap;
 use tuber_core::transform::{IntoMatrix4, Transform2D};
 use tuber_graphics::camera::OrthographicCamera;
-use tuber_graphics::low_level::primitives::{QuadDescription, TextureDescription};
+use tuber_graphics::low_level::primitives::{QuadDescription, TextureId};
 use wgpu::{BufferDescriptor, CommandEncoderDescriptor};
 
 const QUAD_UNIFORM_SIZE: u64 = std::mem::size_of::<QuadUniform>() as u64;
@@ -85,18 +84,8 @@ impl QuadRenderer {
     }
 
     pub fn prepare_quad(&mut self, queue: &wgpu::Queue, quad: &QuadDescription) {
-        let albedo_map_description =
-            if let Some(albedo_map_description) = &quad.material.albedo_map_description {
-                albedo_map_description.clone()
-            } else {
-                TextureDescription::default_albedo_map_description()
-            };
-        let normal_map_description =
-            if let Some(normal_map_description) = &quad.material.normal_map_description {
-                normal_map_description.clone()
-            } else {
-                TextureDescription::default_normal_map_description()
-            };
+        let albedo_map_description = &quad.material.albedo_map_description;
+        let normal_map_description = &quad.material.normal_map_description;
         let texture_region = &albedo_map_description.texture_region;
 
         self.add_uniform_to_buffer(
@@ -147,8 +136,8 @@ impl QuadRenderer {
         );
 
         self.quad_metadata.push(QuadMetadata {
-            albedo_map_identifier: albedo_map_description.identifier.clone(),
-            normal_map_identifier: normal_map_description.identifier.clone(),
+            albedo_map_texture_id: albedo_map_description.identifier,
+            normal_map_texture_id: normal_map_description.identifier,
             uniform_offset: self.quad_metadata.len() as u32 * self.quad_uniform_alignment as u32,
         });
     }
@@ -203,7 +192,7 @@ impl QuadRenderer {
     pub fn render<'rpass: 'pass, 'pass>(
         &'rpass self,
         render_pass: &mut wgpu::RenderPass<'pass>,
-        texture_bind_groups: &'rpass HashMap<String, TextureBindGroup>,
+        texture_bind_groups: &'rpass Vec<wgpu::BindGroup>,
     ) {
         for (i, quad_metadata) in self.quad_metadata.iter().enumerate() {
             let i = i as u32;
@@ -216,12 +205,12 @@ impl QuadRenderer {
             );
             render_pass.set_bind_group(
                 2,
-                &texture_bind_groups[&quad_metadata.albedo_map_identifier].bind_group,
+                &texture_bind_groups[quad_metadata.albedo_map_texture_id.0],
                 &[],
             );
             render_pass.set_bind_group(
                 3,
-                &texture_bind_groups[&quad_metadata.normal_map_identifier].bind_group,
+                &texture_bind_groups[quad_metadata.normal_map_texture_id.0],
                 &[],
             );
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
@@ -453,8 +442,8 @@ impl QuadRenderer {
 }
 
 struct QuadMetadata {
-    albedo_map_identifier: String,
-    normal_map_identifier: String,
+    albedo_map_texture_id: TextureId,
+    normal_map_texture_id: TextureId,
     uniform_offset: u32,
 }
 

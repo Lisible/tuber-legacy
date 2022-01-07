@@ -1,4 +1,3 @@
-use image::imageops::tile;
 use image::ImageError;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use std::any::{Any, TypeId};
@@ -22,7 +21,7 @@ use crate::renderable::sprite::{AnimatedSprite, Sprite};
 use crate::renderable::tilemap::Tilemap;
 use crate::texture::{
     texture_atlas_loader, texture_loader, TextureAtlas, TextureData, TextureMetadata,
-    TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER,
+    TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER, MISSING_TEXTURE_IDENTIFIER,
 };
 use crate::types::{Color, Size2};
 
@@ -81,7 +80,14 @@ impl Graphics {
         self.pending_quads.push(QuadDescription {
             size: Size2::new(rectangle.width, rectangle.height),
             color: rectangle.color.into(),
-            material: MaterialDescription::default(),
+            material: MaterialDescription {
+                albedo_map_description: TextureDescription::default_albedo_map_description(
+                    &self.texture_metadata,
+                ),
+                normal_map_description: TextureDescription::default_normal_map_description(
+                    &self.texture_metadata,
+                ),
+            },
             transform: transform.clone(),
         });
     }
@@ -97,10 +103,7 @@ impl Graphics {
         let texture_metadata = self.texture_metadata.get(&sprite.material.albedo_map);
         let texture_metadata = match texture_metadata {
             Some(metadata) => metadata,
-            None => &TextureMetadata {
-                width: 32,
-                height: 32,
-            },
+            None => &self.texture_metadata[MISSING_TEXTURE_IDENTIFIER],
         };
 
         let (texture_width, texture_height) = (
@@ -121,16 +124,18 @@ impl Graphics {
             size: Size2::new(sprite.width, sprite.height),
             color: Color::WHITE.into(),
             material: MaterialDescription {
-                albedo_map_description: Some(TextureDescription {
-                    identifier: sprite.material.albedo_map.clone(),
+                albedo_map_description: TextureDescription {
+                    identifier: self.texture_metadata[&sprite.material.albedo_map].texture_id,
                     texture_region: TextureRegion {
                         x: sprite.texture_region.x / texture_width,
                         y: sprite.texture_region.y / texture_height,
                         width: sprite.texture_region.width / texture_width,
                         height: sprite.texture_region.height / texture_height,
                     },
-                }),
-                normal_map_description: None,
+                },
+                normal_map_description: TextureDescription::default_normal_map_description(
+                    &self.texture_metadata,
+                ),
             },
             transform: effective_transform.clone(),
         });
@@ -145,7 +150,7 @@ impl Graphics {
     ) -> Result<(), GraphicsError> {
         self.load_material_in_vram_if_required(asset_store, &animated_sprite.material);
 
-        let TextureMetadata { width, height } = self
+        let TextureMetadata { width, height, .. } = self
             .texture_metadata
             .get(&animated_sprite.material.albedo_map)
             .ok_or(GraphicsError::TextureMetadataNotFound)?;
@@ -170,18 +175,18 @@ impl Graphics {
             size: Size2::new(animated_sprite.width, animated_sprite.height),
             color: Color::WHITE.into(),
             material: MaterialDescription {
-                albedo_map_description: Some(TextureDescription {
-                    identifier: animated_sprite.material.albedo_map.clone(),
+                albedo_map_description: TextureDescription {
+                    identifier: self.texture_metadata[&animated_sprite.material.albedo_map]
+                        .texture_id,
                     texture_region: normalized_texture_region,
-                }),
-                normal_map_description: Some(TextureDescription {
-                    identifier: animated_sprite
-                        .material
-                        .normal_map
-                        .clone()
-                        .unwrap_or(DEFAULT_NORMAL_MAP_IDENTIFIER.into()),
+                },
+                normal_map_description: TextureDescription {
+                    identifier: match &animated_sprite.material.normal_map {
+                        Some(normal_map) => self.texture_metadata[normal_map].texture_id,
+                        None => self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
+                    },
                     texture_region: normalized_texture_region,
-                }),
+                },
             },
             transform: transform.clone(),
         });
@@ -203,16 +208,19 @@ impl Graphics {
                     size: Size2::new(tile_size.width() as f32, tile_size.height() as f32),
                     color: Color::WHITE,
                     material: MaterialDescription {
-                        albedo_map_description: Some(TextureDescription {
-                            identifier: tilemap_material.albedo_map.clone(),
+                        albedo_map_description: TextureDescription {
+                            identifier: self.texture_metadata[&tilemap_material.albedo_map]
+                                .texture_id,
                             texture_region: tile_texture_region,
-                        }),
+                        },
                         normal_map_description: match &tilemap_material.normal_map {
-                            Some(normal_map_identifier) => Some(TextureDescription {
-                                identifier: normal_map_identifier.clone(),
+                            Some(normal_map_identifier) => TextureDescription {
+                                identifier: self.texture_metadata[normal_map_identifier].texture_id,
                                 texture_region: tile_texture_region,
-                            }),
-                            None => None,
+                            },
+                            None => TextureDescription::default_normal_map_description(
+                                &self.texture_metadata,
+                            ),
                         },
                     },
                     transform: Transform2D {
@@ -295,16 +303,18 @@ impl Graphics {
                 size: Size2::new(glyph_region.width, glyph_region.height),
                 color: Color::BLACK.into(),
                 material: MaterialDescription {
-                    albedo_map_description: Some(TextureDescription {
-                        identifier: font_texture.clone().into(),
+                    albedo_map_description: TextureDescription {
+                        identifier: self.texture_metadata[&font_texture].texture_id,
                         texture_region: TextureRegion {
                             x: (font_region.x + glyph_region.x) / texture.width as f32,
                             y: (font_region.y + glyph_region.y) / texture.height as f32,
                             width: glyph_region.width / texture.width as f32,
                             height: glyph_region.height / texture.height as f32,
                         },
-                    }),
-                    normal_map_description: None,
+                    },
+                    normal_map_description: TextureDescription::default_normal_map_description(
+                        &self.texture_metadata,
+                    ),
                 },
                 transform: glyph_transform.clone(),
             });
@@ -329,7 +339,7 @@ impl Graphics {
         asset_manager: &mut AssetStore,
         texture_identifier: &str,
     ) {
-        if !self.graphics_impl.is_texture_in_vram(texture_identifier) {
+        if !self.texture_metadata.contains_key(texture_identifier) {
             self.load_texture_from_asset_in_vram(asset_manager, texture_identifier);
         }
     }
@@ -346,15 +356,16 @@ impl Graphics {
     }
 
     fn load_texture_in_vram(&mut self, texture: &TextureData) {
+        let texture_id = self.graphics_impl.load_texture_in_vram(texture);
+
         self.texture_metadata.insert(
             texture.identifier.clone(),
             TextureMetadata {
+                texture_id,
                 width: texture.size.0,
                 height: texture.size.1,
             },
         );
-
-        self.graphics_impl.load_texture_in_vram(texture);
     }
 
     pub fn render_scene(&mut self, ecs: &Ecs, asset_store: &mut AssetStore) {
