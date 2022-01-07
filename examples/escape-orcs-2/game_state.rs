@@ -17,6 +17,7 @@ use tuber::engine::engine_context::EngineContext;
 use tuber::engine::state::{State, StateStackRequest};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::g_buffer::GBufferComponent;
+use tuber_graphics::low_level::polygon_mode::PolygonMode;
 use tuber_graphics::renderable::tilemap::Tilemap;
 
 pub(crate) struct GameState {
@@ -55,6 +56,7 @@ impl State for GameState {
         system_bundle.add_system(update_character_position);
         system_bundle.add_system(update_camera_position);
         system_bundle.add_system(switch_rendered_g_buffer_component);
+        system_bundle.add_system(switch_polygon_mode);
         system_bundles.push(system_bundle);
     }
 
@@ -84,19 +86,34 @@ impl State for GameState {
 fn switch_rendered_g_buffer_component(_ecs: &mut Ecs, engine_context: &mut EngineContext) {
     let input_state = &engine_context.input_state;
     if input_state.is(Input::KeyDown(Key::F1)) {
-        println!("Switch to albedo GBuffer component");
         engine_context
             .graphics
             .as_mut()
             .unwrap()
             .set_rendered_g_buffer_component(GBufferComponent::Albedo);
     } else if input_state.is(Input::KeyDown(Key::F2)) {
-        println!("Switch to normal GBuffer component");
         engine_context
             .graphics
             .as_mut()
             .unwrap()
             .set_rendered_g_buffer_component(GBufferComponent::Normal);
+    }
+}
+
+fn switch_polygon_mode(_ecs: &mut Ecs, engine_context: &mut EngineContext) {
+    let input_state = &engine_context.input_state;
+    if input_state.is(Input::KeyDown(Key::F3)) {
+        engine_context
+            .graphics
+            .as_mut()
+            .unwrap()
+            .set_polygon_mode(PolygonMode::Fill);
+    } else if input_state.is(Input::KeyDown(Key::F4)) {
+        engine_context
+            .graphics
+            .as_mut()
+            .unwrap()
+            .set_polygon_mode(PolygonMode::Line);
     }
 }
 
