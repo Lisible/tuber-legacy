@@ -53,7 +53,7 @@ impl Tilemap {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tile {
-    texture_region: TextureRegion,
+    pub texture_region: TextureRegion,
 }
 
 impl Tile {

@@ -74,6 +74,7 @@ impl From<TextureRegion> for Vector4<f32> {
     }
 }
 
+#[derive(Debug)]
 pub struct TextureMetadata {
     pub texture_id: TextureId,
     pub width: u32,

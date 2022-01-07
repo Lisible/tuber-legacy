@@ -5,6 +5,7 @@ use tuber_core::input::{InputState, Keymap};
 use tuber_core::{input, CoreError};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
+use tuber_graphics::types::Size2;
 use tuber_graphics::{Graphics, Window};
 
 pub mod engine_context;
@@ -72,7 +73,7 @@ impl Engine {
         if let Some(graphics) = &mut self.context.graphics {
             graphics.initialize(
                 Window(Box::new(&window)),
-                window_size,
+                Size2::from(window_size),
                 &mut self.context.asset_store,
             );
         }
@@ -113,6 +114,9 @@ impl Engine {
     }
 
     pub fn render(&mut self) {
+        self.state_stack
+            .render_current_state(&mut self.ecs, &mut self.context);
+
         if let Some(graphics) = self.context.graphics.as_mut() {
             graphics.render_scene(&self.ecs, &mut self.context.asset_store);
         }

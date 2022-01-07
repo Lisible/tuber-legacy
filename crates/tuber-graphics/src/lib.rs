@@ -61,7 +61,7 @@ impl Graphics {
     pub fn initialize(
         &mut self,
         window: Window,
-        window_size: (u32, u32),
+        window_size: Size2<u32>,
         asset_store: &mut AssetStore,
     ) {
         self.graphics_impl
@@ -133,9 +133,20 @@ impl Graphics {
                         height: sprite.texture_region.height / texture_height,
                     },
                 },
-                normal_map_description: TextureDescription::default_normal_map_description(
-                    &self.texture_metadata,
-                ),
+                normal_map_description: match &sprite.material.normal_map {
+                    Some(normal_map) => TextureDescription {
+                        identifier: self.texture_metadata[normal_map].texture_id,
+                        texture_region: TextureRegion {
+                            x: sprite.texture_region.x / texture_width,
+                            y: sprite.texture_region.y / texture_height,
+                            width: sprite.texture_region.width / texture_width,
+                            height: sprite.texture_region.height / texture_height,
+                        },
+                    },
+                    None => {
+                        TextureDescription::default_normal_map_description(&self.texture_metadata)
+                    }
+                },
             },
             transform: effective_transform.clone(),
         });
@@ -194,29 +205,40 @@ impl Graphics {
         Ok(())
     }
 
-    pub fn draw_tilemap(&mut self, tilemap: &mut Tilemap) {
+    pub fn draw_tilemap(&mut self, asset_store: &mut AssetStore, tilemap: &mut Tilemap) {
+        let tilemap_size = tilemap.size();
         let tile_size = tilemap.tile_size();
         let tilemap_material = tilemap.material();
 
+        self.load_material_in_vram_if_required(asset_store, tilemap_material);
+
+        let albedo_map_texture_metadata = &self.texture_metadata[&tilemap_material.albedo_map];
+
         let mut quads = vec![];
         for (tile_index, tile) in tilemap.tiles().iter().enumerate() {
-            let tile_x = tile_index % tilemap.size().width();
-            let tile_y = tile_index / tilemap.size().height();
+            let tile_x = tile_index % tilemap_size.width();
+            let tile_y = tile_index / tilemap_size.height();
             if let Some(tile) = tile {
                 let tile_texture_region = tile.texture_region().clone();
+
                 quads.push(QuadDescription {
                     size: Size2::new(tile_size.width() as f32, tile_size.height() as f32),
                     color: Color::WHITE,
                     material: MaterialDescription {
                         albedo_map_description: TextureDescription {
-                            identifier: self.texture_metadata[&tilemap_material.albedo_map]
-                                .texture_id,
-                            texture_region: tile_texture_region,
+                            identifier: albedo_map_texture_metadata.texture_id,
+                            texture_region: tile_texture_region.normalize(
+                                albedo_map_texture_metadata.width,
+                                albedo_map_texture_metadata.height,
+                            ),
                         },
                         normal_map_description: match &tilemap_material.normal_map {
                             Some(normal_map_identifier) => TextureDescription {
                                 identifier: self.texture_metadata[normal_map_identifier].texture_id,
-                                texture_region: tile_texture_region,
+                                texture_region: tile_texture_region.normalize(
+                                    albedo_map_texture_metadata.width,
+                                    albedo_map_texture_metadata.height,
+                                ),
                             },
                             None => TextureDescription::default_normal_map_description(
                                 &self.texture_metadata,
@@ -235,9 +257,7 @@ impl Graphics {
             }
         }
 
-        // Pre render quads
-
-        // Render quad
+        self.pending_quads.append(&mut quads);
     }
 
     pub fn draw_text(
@@ -410,7 +430,8 @@ impl Graphics {
     }
 
     pub fn on_window_resized(&mut self, width: u32, height: u32) {
-        self.graphics_impl.on_window_resized((width, height));
+        self.graphics_impl
+            .on_window_resized(Size2::from((width, height)));
     }
 
     pub fn loaders() -> Vec<(TypeId, GenericLoader)> {

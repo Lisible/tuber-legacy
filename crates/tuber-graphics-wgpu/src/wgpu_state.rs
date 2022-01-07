@@ -1,16 +1,19 @@
 use crate::composition::Compositor;
 use crate::g_buffer::GBuffer;
 use crate::quad_renderer::QuadRenderer;
-use crate::texture::{create_texture_bind_group, create_texture_bind_group_layout};
+use crate::texture::{
+    create_texture_bind_group, create_texture_bind_group_layout, create_texture_descriptor,
+};
 use crate::TuberGraphicsWGPUError;
 use futures::executor::block_on;
+use nalgebra::Matrix4;
 use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::g_buffer::GBufferComponent;
 use tuber_graphics::low_level::primitives::{QuadDescription, TextureId};
 use tuber_graphics::texture::TextureData;
-use tuber_graphics::types::{Color, WindowSize};
+use tuber_graphics::types::{Color, Size2, WindowSize};
 use tuber_graphics::Window;
 use wgpu::SurfaceTexture;
 
@@ -51,8 +54,8 @@ impl WGPUState {
         let surface_configuration = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface.get_preferred_format(&adapter).unwrap(),
-            width: window_size.0,
-            height: window_size.1,
+            width: window_size.width(),
+            height: window_size.height(),
             present_mode: wgpu::PresentMode::Fifo,
         };
 
@@ -77,11 +80,11 @@ impl WGPUState {
     }
 
     pub fn resize(&mut self, new_size: WindowSize) {
-        assert!(new_size.0 > 0);
-        assert!(new_size.1 > 0);
+        assert!(new_size.width() > 0);
+        assert!(new_size.height() > 0);
         self.size = new_size;
-        self.surface_configuration.width = new_size.0;
-        self.surface_configuration.height = new_size.1;
+        self.surface_configuration.width = new_size.width();
+        self.surface_configuration.height = new_size.height();
         self.surface
             .configure(&self.device, &self.surface_configuration);
     }
@@ -148,24 +151,6 @@ impl WGPUState {
         }
 
         Ok(output)
-    }
-
-    fn create_g_buffer_texture_descriptor(&self, label: &'static str) -> wgpu::TextureDescriptor {
-        wgpu::TextureDescriptor {
-            label: Some(label),
-            size: wgpu::Extent3d {
-                width: self.size.0,
-                height: self.size.1,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb,
-            usage: wgpu::TextureUsages::COPY_SRC
-                | wgpu::TextureUsages::RENDER_ATTACHMENT
-                | wgpu::TextureUsages::TEXTURE_BINDING,
-        }
     }
 
     fn geometry_pass(
@@ -237,8 +222,16 @@ impl WGPUState {
         camera: &OrthographicCamera,
         transform: &Transform2D,
     ) {
+        let projection_matrix = Matrix4::new_orthographic(
+            camera.left,
+            camera.right,
+            camera.bottom,
+            camera.top,
+            camera.near,
+            camera.far,
+        );
         self.quad_renderer
-            .set_camera(&self.queue, camera, transform);
+            .set_projection_matrix(&self.queue, &projection_matrix, transform);
     }
 
     pub(crate) fn load_texture_in_vram(&mut self, texture_data: &TextureData) -> TextureId {
@@ -268,6 +261,13 @@ impl WGPUState {
 
         self.texture_bind_groups.push(bind_group);
         texture_id
+    }
+
+    pub fn create_g_buffer_texture_descriptor(
+        &self,
+        label: &'static str,
+    ) -> wgpu::TextureDescriptor {
+        create_texture_descriptor(label, Size2::from(self.size))
     }
 
     pub(crate) fn is_texture_in_vram(&self, texture_id: TextureId) -> bool {

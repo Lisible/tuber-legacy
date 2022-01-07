@@ -1,9 +1,9 @@
-pub type WindowSize = (u32, u32);
+pub type WindowSize = Size2<u32>;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Size2<T = f32> {
-    width: T,
-    height: T,
+    pub width: T,
+    pub height: T,
 }
 
 impl<T: Copy> Size2<T> {

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use tuber_core::transform::Transform2D;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct TextureId(pub usize);
 
 impl ToString for TextureId {

@@ -27,6 +27,7 @@ pub trait State {
         ));
     }
     fn update(&mut self, _ecs: &mut Ecs, _engine_context: &mut EngineContext) {}
+    fn render(&mut self, _ecs: &mut Ecs, _engine_context: &mut EngineContext) {}
     fn stack_requests(&mut self) -> Vec<StateStackRequest> {
         vec![]
     }
@@ -86,6 +87,15 @@ impl StateStack {
         while let Some(req) = reqs.pop() {
             self.handle_request(req, ecs, system_bundles, engine_context);
         }
+    }
+
+    pub fn render_current_state<'a>(
+        &mut self,
+        ecs: &mut Ecs,
+        engine_context: &'a mut EngineContext,
+    ) {
+        let state = self.states.last_mut().expect("Expected current state");
+        state.render(ecs, engine_context);
     }
 
     pub fn handle_input(&mut self, input: Input, engine_context: &mut EngineContext) {

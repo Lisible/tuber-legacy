@@ -1,5 +1,6 @@
 use tuber_graphics::low_level::primitives::TextureId;
 use tuber_graphics::texture::{TextureData, TextureSize};
+use tuber_graphics::types::Size2;
 
 const BYTES_PER_PIXEL: usize = 4;
 
@@ -113,6 +114,24 @@ pub fn create_texture_bind_group(
             },
         ],
     })
+}
+
+pub fn create_texture_descriptor(label: &'static str, size: Size2<u32>) -> wgpu::TextureDescriptor {
+    wgpu::TextureDescriptor {
+        label: Some(label),
+        size: wgpu::Extent3d {
+            width: size.width(),
+            height: size.height(),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Bgra8UnormSrgb,
+        usage: wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::RENDER_ATTACHMENT
+            | wgpu::TextureUsages::TEXTURE_BINDING,
+    }
 }
 
 fn create_wgpu_texture_label(texture_id: TextureId) -> String {

@@ -2,7 +2,6 @@ use crate::geometry::Vertex;
 use crate::texture::create_texture_bind_group_layout;
 use nalgebra::Matrix4;
 use tuber_core::transform::{IntoMatrix4, Transform2D};
-use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::low_level::primitives::{QuadDescription, TextureId};
 use wgpu::{BufferDescriptor, CommandEncoderDescriptor};
 
@@ -225,20 +224,12 @@ impl QuadRenderer {
         self.quad_metadata.clear();
     }
 
-    pub fn set_camera(
+    pub fn set_projection_matrix(
         &mut self,
         queue: &wgpu::Queue,
-        camera: &OrthographicCamera,
+        projection_matrix: &Matrix4<f32>,
         transform: &Transform2D,
     ) {
-        let projection_matrix: Matrix4<f32> = Matrix4::new_orthographic(
-            camera.left,
-            camera.right,
-            camera.bottom,
-            camera.top,
-            camera.near,
-            camera.far,
-        );
         let view_matrix: Matrix4<f32> = (*transform).into_matrix4();
         let uniform = GlobalUniform {
             view_projection: (projection_matrix * view_matrix.try_inverse().unwrap()).into(),
@@ -417,7 +408,14 @@ impl QuadRenderer {
                     },
                     wgpu::ColorTargetState {
                         format: surface_texture_format,
-                        blend: Some(wgpu::BlendState::REPLACE),
+                        blend: Some(wgpu::BlendState {
+                            color: wgpu::BlendComponent {
+                                src_factor: wgpu::BlendFactor::SrcAlpha,
+                                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                                operation: wgpu::BlendOperation::Add,
+                            },
+                            alpha: Default::default(),
+                        }),
                         write_mask: wgpu::ColorWrites::ALL,
                     },
                 ],
