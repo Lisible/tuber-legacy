@@ -11,6 +11,7 @@ use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::g_buffer::GBufferComponent;
+use tuber_graphics::low_level::polygon_mode::PolygonMode;
 use tuber_graphics::low_level::primitives::{QuadDescription, TextureId};
 use tuber_graphics::texture::TextureData;
 use tuber_graphics::types::{Color, Size2, WindowSize};
@@ -44,7 +45,7 @@ impl WGPUState {
         let (device, queue) = block_on(adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: None,
-                features: wgpu::Features::empty(),
+                features: wgpu::Features::POLYGON_MODE_LINE,
                 limits: wgpu::Limits::default(),
             },
             None,
@@ -114,6 +115,11 @@ impl WGPUState {
     pub fn set_rendered_g_buffer_component(&mut self, g_buffer_component: GBufferComponent) {
         self.compositor
             .set_rendered_g_buffer_component(&self.queue, g_buffer_component);
+    }
+
+    pub fn set_polygon_mode(&mut self, polygon_mode: PolygonMode) {
+        self.quad_renderer
+            .set_polygon_mode(&self.device, polygon_mode);
     }
 
     fn composition_pass(
@@ -272,5 +278,18 @@ impl WGPUState {
 
     pub(crate) fn is_texture_in_vram(&self, texture_id: TextureId) -> bool {
         self.texture_bind_groups.len() > texture_id.0
+    }
+}
+
+pub trait IntoPolygonMode {
+    fn into_polygon_mode(self) -> wgpu::PolygonMode;
+}
+
+impl IntoPolygonMode for PolygonMode {
+    fn into_polygon_mode(self) -> wgpu::PolygonMode {
+        match self {
+            PolygonMode::Line => wgpu::PolygonMode::Line,
+            PolygonMode::Fill => wgpu::PolygonMode::Fill,
+        }
     }
 }

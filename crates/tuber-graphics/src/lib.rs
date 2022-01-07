@@ -15,6 +15,7 @@ use crate::camera::{Active, OrthographicCamera};
 use crate::g_buffer::GBufferComponent;
 use crate::low_level::*;
 use crate::material::Material;
+use crate::polygon_mode::PolygonMode;
 use crate::primitives::{MaterialDescription, QuadDescription, TextureDescription};
 use crate::renderable::shape::RectangleShape;
 use crate::renderable::sprite::{AnimatedSprite, Sprite};
@@ -427,6 +428,10 @@ impl Graphics {
     pub fn set_rendered_g_buffer_component(&mut self, g_buffer_component: GBufferComponent) {
         self.graphics_impl
             .set_rendered_g_buffer_component(g_buffer_component);
+    }
+
+    pub fn set_polygon_mode(&mut self, polygon_mode: PolygonMode) {
+        self.graphics_impl.set_polygon_mode(polygon_mode);
     }
 
     pub fn on_window_resized(&mut self, width: u32, height: u32) {

@@ -11,6 +11,7 @@ use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use tuber_graphics::camera::OrthographicCamera;
 use tuber_graphics::g_buffer::GBufferComponent;
+use tuber_graphics::low_level::polygon_mode::PolygonMode;
 use tuber_graphics::low_level::primitives::TextureId;
 use tuber_graphics::low_level::{api::LowLevelGraphicsAPI, primitives::QuadDescription};
 use tuber_graphics::texture::TextureData;
@@ -94,6 +95,12 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         self.state
             .assume_initialized_mut()
             .set_rendered_g_buffer_component(g_buffer_component);
+    }
+
+    fn set_polygon_mode(&mut self, polygon_mode: PolygonMode) {
+        self.state
+            .assume_initialized_mut()
+            .set_polygon_mode(polygon_mode);
     }
 
     fn on_window_resized(&mut self, size: WindowSize) {

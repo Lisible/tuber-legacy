@@ -1,3 +1,4 @@
+use crate::polygon_mode::PolygonMode;
 use crate::primitives::TextureId;
 use crate::types::{Color, WindowSize};
 use crate::{GBufferComponent, OrthographicCamera, QuadDescription, TextureData, Window};
@@ -25,5 +26,6 @@ pub trait LowLevelGraphicsAPI {
 
     fn set_clear_color(&mut self, color: Color);
     fn set_rendered_g_buffer_component(&mut self, g_buffer_component: GBufferComponent);
+    fn set_polygon_mode(&mut self, polygon_mode: PolygonMode);
     fn on_window_resized(&mut self, size: WindowSize);
 }

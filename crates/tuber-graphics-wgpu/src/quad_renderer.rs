@@ -1,7 +1,9 @@
 use crate::geometry::Vertex;
 use crate::texture::create_texture_bind_group_layout;
+use crate::wgpu_state::IntoPolygonMode;
 use nalgebra::Matrix4;
 use tuber_core::transform::{IntoMatrix4, Transform2D};
+use tuber_graphics::low_level::polygon_mode::PolygonMode;
 use tuber_graphics::low_level::primitives::{QuadDescription, TextureId};
 use wgpu::{BufferDescriptor, CommandEncoderDescriptor};
 
@@ -14,17 +16,19 @@ const QUAD_SIZE: u64 = VERTEX_PER_QUAD * VERTEX_SIZE;
 const MIN_BUFFER_SIZE: u64 = MIN_BUFFER_QUAD_COUNT * QUAD_SIZE;
 
 pub(crate) struct QuadRenderer {
+    polygon_mode: PolygonMode,
     vertex_buffer_size: u64,
     vertex_buffer: wgpu::Buffer,
     global_uniform_buffer: wgpu::Buffer,
-    _global_bind_group_layout: wgpu::BindGroupLayout,
+    global_bind_group_layout: wgpu::BindGroupLayout,
     global_bind_group: wgpu::BindGroup,
     quad_uniform_buffer_size: u64,
     quad_uniform_buffer: wgpu::Buffer,
-    _quad_bind_group_layout: wgpu::BindGroupLayout,
+    quad_bind_group_layout: wgpu::BindGroupLayout,
     quad_bind_group: wgpu::BindGroup,
     render_pipeline: wgpu::RenderPipeline,
     quad_uniform_alignment: wgpu::BufferAddress,
+    surface_texture_format: wgpu::TextureFormat,
     quad_metadata: Vec<QuadMetadata>,
 }
 
@@ -49,20 +53,23 @@ impl QuadRenderer {
             surface_texture_format,
             &global_bind_group_layout,
             &quad_bind_group_layout,
+            PolygonMode::Fill.into_polygon_mode(),
         );
 
         Self {
+            polygon_mode: PolygonMode::Fill,
             vertex_buffer_size: MIN_BUFFER_SIZE,
             vertex_buffer,
             global_uniform_buffer,
-            _global_bind_group_layout: global_bind_group_layout,
+            global_bind_group_layout: global_bind_group_layout,
             global_bind_group,
             quad_uniform_buffer_size: MIN_BUFFER_QUAD_COUNT * quad_uniform_alignment,
             quad_uniform_buffer,
-            _quad_bind_group_layout: quad_bind_group_layout,
+            quad_bind_group_layout: quad_bind_group_layout,
             quad_bind_group,
             render_pipeline,
             quad_uniform_alignment,
+            surface_texture_format,
             quad_metadata: vec![],
         }
     }
@@ -241,6 +248,17 @@ impl QuadRenderer {
         );
     }
 
+    pub fn set_polygon_mode(&mut self, device: &wgpu::Device, polygon_mode: PolygonMode) {
+        self.polygon_mode = polygon_mode;
+        self.render_pipeline = Self::create_render_pipeline(
+            device,
+            self.surface_texture_format,
+            &self.global_bind_group_layout,
+            &self.quad_bind_group_layout,
+            polygon_mode.into_polygon_mode(),
+        );
+    }
+
     fn add_uniform_to_buffer(&mut self, queue: &wgpu::Queue, quad_uniform: QuadUniform) {
         queue.write_buffer(
             &self.quad_uniform_buffer,
@@ -364,6 +382,7 @@ impl QuadRenderer {
         surface_texture_format: wgpu::TextureFormat,
         global_bind_group_layout: &wgpu::BindGroupLayout,
         quad_bind_group_layout: &wgpu::BindGroupLayout,
+        polygon_mode: wgpu::PolygonMode,
     ) -> wgpu::RenderPipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("quad_renderer_shader_module"),
@@ -425,7 +444,7 @@ impl QuadRenderer {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
                 cull_mode: Some(wgpu::Face::Back),
-                polygon_mode: wgpu::PolygonMode::Fill,
+                polygon_mode,
                 clamp_depth: false,
                 conservative: false,
             },
