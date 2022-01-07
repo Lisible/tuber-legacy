@@ -71,6 +71,7 @@ impl State for GameState {
         engine_context.graphics.as_mut().unwrap().draw_tilemap(
             &mut engine_context.asset_store,
             self.tilemap.as_mut().unwrap(),
+            &Transform2D::default(),
         );
     }
 
