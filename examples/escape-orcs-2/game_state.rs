@@ -1,7 +1,7 @@
 use crate::character::Character;
 use crate::orc::{create_orc, Orc};
 use crate::player::{create_player, Player};
-use crate::terrain::TILE_SIZE;
+use crate::terrain::{create_tilemap, TILE_SIZE};
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::f32::consts::PI;
@@ -17,13 +17,18 @@ use tuber::engine::engine_context::EngineContext;
 use tuber::engine::state::{State, StateStackRequest};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::g_buffer::GBufferComponent;
+use tuber_graphics::renderable::tilemap::Tilemap;
 
 pub(crate) struct GameState {
     do_exit: bool,
+    tilemap: Option<Tilemap>,
 }
 impl GameState {
     pub(crate) fn new() -> Self {
-        Self { do_exit: false }
+        Self {
+            do_exit: false,
+            tilemap: None,
+        }
     }
 }
 
@@ -36,6 +41,8 @@ impl State for GameState {
         system_bundles: &mut Vec<SystemBundle<EngineContext>>,
         engine_context: &mut EngineContext,
     ) {
+        self.tilemap = Some(create_tilemap(&mut engine_context.asset_store));
+
         ecs.insert_shared_resource(RandomNumberGenerator(rand::thread_rng()));
 
         ecs.insert(create_camera());
@@ -56,6 +63,13 @@ impl State for GameState {
         if input_state.is(Input::ActionDown("exit_game".into())) {
             self.do_exit = true;
         }
+    }
+
+    fn render(&mut self, _ecs: &mut Ecs, engine_context: &mut EngineContext) {
+        engine_context.graphics.as_mut().unwrap().draw_tilemap(
+            &mut engine_context.asset_store,
+            self.tilemap.as_mut().unwrap(),
+        );
     }
 
     fn stack_requests(&mut self) -> Vec<StateStackRequest> {

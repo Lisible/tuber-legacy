@@ -48,7 +48,7 @@ pub(crate) fn create_orc(asset_store: &mut AssetStore) -> impl EntityDefinition 
             texture_region: atlas.texture_region("shadow").unwrap(),
             material: Material {
                 albedo_map: "spritesheet".to_string(),
-                normal_map: None,
+                normal_map: Some("normal_spritesheet".to_string()),
             },
         },
     )
