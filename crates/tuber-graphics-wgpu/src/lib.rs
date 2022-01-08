@@ -60,10 +60,16 @@ impl LowLevelGraphicsAPI for GraphicsWGPU {
         self.state = MaybeUninitialized::Initialized(WGPUState::new(window, window_size));
     }
 
-    fn pre_draw_quads(&mut self, size: Size2<u32>, quads: &[QuadDescription]) -> QuadDescription {
+    fn create_transparent_quad(&mut self, size: Size2) -> QuadDescription {
         self.state
             .assume_initialized_mut()
-            .pre_draw_quads(size, quads)
+            .create_transparent_quad(size)
+    }
+
+    fn pre_draw_quads(&mut self, destination_quad: &QuadDescription, quads: &[QuadDescription]) {
+        self.state
+            .assume_initialized_mut()
+            .pre_draw_quads(destination_quad, quads);
     }
 
     fn draw_quads(&mut self, quads: &[QuadDescription]) {

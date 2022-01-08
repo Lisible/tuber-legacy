@@ -65,6 +65,8 @@ impl State for GameState {
         if input_state.is(Input::ActionDown("exit_game".into())) {
             self.do_exit = true;
         }
+
+        self.tilemap.as_mut().unwrap().update_animation_state();
     }
 
     fn render(&mut self, _ecs: &mut Ecs, engine_context: &mut EngineContext) {

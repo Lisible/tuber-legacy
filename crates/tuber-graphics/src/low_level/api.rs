@@ -11,7 +11,8 @@ pub trait LowLevelGraphicsAPI {
     /// Initializes the API for a given window
     fn initialize(&mut self, window: Window, window_size: WindowSize, asset_store: &AssetStore);
 
-    fn pre_draw_quads(&mut self, size: Size2<u32>, quads: &[QuadDescription]) -> QuadDescription;
+    fn create_transparent_quad(&mut self, size: Size2) -> QuadDescription;
+    fn pre_draw_quads(&mut self, destination_quad: &QuadDescription, quads: &[QuadDescription]);
     fn draw_quads(&mut self, quads: &[QuadDescription]);
 
     fn is_texture_in_vram(&self, texture_id: TextureId) -> bool;

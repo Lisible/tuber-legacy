@@ -18,7 +18,7 @@ use tuber_graphics::low_level::primitives::{
 use tuber_graphics::texture::{TextureData, TextureRegion};
 use tuber_graphics::types::{Color, Size2, WindowSize};
 use tuber_graphics::Window;
-use wgpu::SurfaceTexture;
+use wgpu::{SurfaceTexture, TextureViewDescriptor};
 
 pub struct WGPUState {
     clear_color: Color,
@@ -31,6 +31,7 @@ pub struct WGPUState {
     compositor: Compositor,
     texture_bind_group_layout: wgpu::BindGroupLayout,
     texture_bind_groups: Vec<wgpu::BindGroup>,
+    textures: Vec<wgpu::Texture>,
 
     projection_matrix: Matrix4<f32>,
     view_transform: Transform2D,
@@ -82,6 +83,7 @@ impl WGPUState {
             compositor,
             texture_bind_group_layout,
             texture_bind_groups: vec![],
+            textures: vec![],
             projection_matrix: Matrix4::identity(),
             view_transform: Transform2D::default(),
         }
@@ -97,18 +99,10 @@ impl WGPUState {
             .configure(&self.device, &self.surface_configuration);
     }
 
-    pub fn pre_draw_quads(
-        &mut self,
-        size: Size2<u32>,
-        quads: &[QuadDescription],
-    ) -> QuadDescription {
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("pre_draw_quads_encoder"),
-            });
-
-        let albedo_map_texture_descriptor = create_texture_descriptor("albedo_map_texture", size);
+    pub fn create_transparent_quad(&mut self, size: Size2) -> QuadDescription {
+        let texture_size = Size2::new(size.width as u32, size.height as u32);
+        let albedo_map_texture_descriptor =
+            create_texture_descriptor("albedo_map_texture", texture_size);
         let albedo_map_texture = self.device.create_texture(&albedo_map_texture_descriptor);
         let albedo_map_view =
             albedo_map_texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -123,7 +117,8 @@ impl WGPUState {
             ..Default::default()
         });
 
-        let normal_map_texture_descriptor = create_texture_descriptor("normal_map_texture", size);
+        let normal_map_texture_descriptor =
+            create_texture_descriptor("normal_map_texture", texture_size);
         let normal_map_texture = self.device.create_texture(&normal_map_texture_descriptor);
         let normal_map_view =
             normal_map_texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -138,6 +133,77 @@ impl WGPUState {
             ..Default::default()
         });
 
+        let albedo_texture_id = self.textures.len();
+        self.textures.push(albedo_map_texture);
+        self.texture_bind_groups.push(create_texture_bind_group(
+            &self.device,
+            &self.texture_bind_group_layout,
+            &albedo_map_view,
+            &albedo_map_sampler,
+        ));
+        let normal_texture_id = self.textures.len();
+        self.textures.push(normal_map_texture);
+        self.texture_bind_groups.push(create_texture_bind_group(
+            &self.device,
+            &self.texture_bind_group_layout,
+            &normal_map_view,
+            &normal_map_sampler,
+        ));
+
+        QuadDescription {
+            size,
+            color: Color::WHITE,
+            material: MaterialDescription {
+                albedo_map_description: TextureDescription {
+                    identifier: TextureId(albedo_texture_id),
+                    texture_region: TextureRegion {
+                        x: 0.0,
+                        y: 0.0,
+                        width: 1.0,
+                        height: 1.0,
+                    },
+                },
+                normal_map_description: TextureDescription {
+                    identifier: TextureId(normal_texture_id),
+                    texture_region: TextureRegion {
+                        x: 0.0,
+                        y: 0.0,
+                        width: 1.0,
+                        height: 1.0,
+                    },
+                },
+            },
+            transform: Default::default(),
+        }
+    }
+
+    pub fn pre_draw_quads(
+        &mut self,
+        destination_quad: &QuadDescription,
+        quads: &[QuadDescription],
+    ) {
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("pre_draw_quads_encoder"),
+            });
+
+        let destination_quad_albedo_texture = &self.textures[destination_quad
+            .material
+            .albedo_map_description
+            .identifier
+            .0];
+        let destination_quad_normal_texture = &self.textures[destination_quad
+            .material
+            .normal_map_description
+            .identifier
+            .0];
+
+        let destination_quad_albedo_texture_view =
+            destination_quad_albedo_texture.create_view(&TextureViewDescriptor::default());
+        let destination_quad_normal_texture_view =
+            destination_quad_normal_texture.create_view(&TextureViewDescriptor::default());
+
         self.quad_renderer.prepare(&self.device, &self.queue, quads);
 
         {
@@ -145,28 +211,18 @@ impl WGPUState {
                 label: Some("quad_pre_render_pass"),
                 color_attachments: &[
                     wgpu::RenderPassColorAttachment {
-                        view: &albedo_map_view,
+                        view: &destination_quad_albedo_texture_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 1.0,
-                                g: 0.0,
-                                b: 0.0,
-                                a: 0.5,
-                            }),
+                            load: wgpu::LoadOp::Load,
                             store: true,
                         },
                     },
                     wgpu::RenderPassColorAttachment {
-                        view: &normal_map_view,
+                        view: &destination_quad_normal_texture_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 0.0,
-                                g: 0.0,
-                                b: 0.0,
-                                a: 0.0,
-                            }),
+                            load: wgpu::LoadOp::Load,
                             store: true,
                         },
                     },
@@ -180,8 +236,8 @@ impl WGPUState {
                 &self.texture_bind_groups,
                 &Matrix4::new_orthographic(
                     0.0,
-                    size.width as f32,
-                    size.height as f32,
+                    destination_quad.size.width,
+                    destination_quad.size.height,
                     0.0,
                     quads[0].transform.translation.2 as f32 - 1.0,
                     quads[0].transform.translation.2 as f32,
@@ -192,48 +248,6 @@ impl WGPUState {
 
         self.queue.submit(std::iter::once(encoder.finish()));
         self.quad_renderer.clear_pending_quads();
-
-        let albedo_map_texture_id = self.texture_bind_groups.len();
-        self.texture_bind_groups.push(create_texture_bind_group(
-            &self.device,
-            &self.texture_bind_group_layout,
-            &albedo_map_view,
-            &albedo_map_sampler,
-        ));
-
-        let normal_map_texture_id = self.texture_bind_groups.len();
-        self.texture_bind_groups.push(create_texture_bind_group(
-            &self.device,
-            &self.texture_bind_group_layout,
-            &normal_map_view,
-            &normal_map_sampler,
-        ));
-
-        QuadDescription {
-            size: Size2::new(size.width as f32, size.height as f32),
-            color: Color::WHITE,
-            material: MaterialDescription {
-                albedo_map_description: TextureDescription {
-                    identifier: TextureId(albedo_map_texture_id),
-                    texture_region: TextureRegion {
-                        x: 0.0,
-                        y: 0.0,
-                        width: 1.0,
-                        height: 1.0,
-                    },
-                },
-                normal_map_description: TextureDescription {
-                    identifier: TextureId(normal_map_texture_id),
-                    texture_region: TextureRegion {
-                        x: 0.0,
-                        y: 0.0,
-                        width: 1.0,
-                        height: 1.0,
-                    },
-                },
-            },
-            transform: Default::default(),
-        }
     }
 
     pub fn draw_quads(&mut self, quads: &[QuadDescription]) {
@@ -417,6 +431,7 @@ impl WGPUState {
             &texture_sampler,
         );
 
+        self.textures.push(texture);
         self.texture_bind_groups.push(bind_group);
         texture_id
     }

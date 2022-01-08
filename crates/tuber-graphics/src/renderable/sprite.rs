@@ -1,6 +1,6 @@
+use crate::animation::AnimationState;
 use crate::material::Material;
 use crate::texture::TextureRegion;
-use std::time::Instant;
 
 pub struct Sprite {
     pub width: f32,
@@ -35,12 +35,4 @@ pub struct AnimatedSprite {
     pub height: f32,
     pub material: Material,
     pub animation_state: AnimationState,
-}
-
-pub struct AnimationState {
-    pub keyframes: Vec<TextureRegion>,
-    pub current_keyframe: usize,
-    pub start_instant: Instant,
-    pub frame_duration: u32,
-    pub flip_x: bool,
 }

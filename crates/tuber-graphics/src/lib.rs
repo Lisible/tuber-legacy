@@ -19,13 +19,14 @@ use crate::polygon_mode::PolygonMode;
 use crate::primitives::{MaterialDescription, QuadDescription, TextureDescription};
 use crate::renderable::shape::RectangleShape;
 use crate::renderable::sprite::{AnimatedSprite, Sprite};
-use crate::renderable::tilemap::Tilemap;
+use crate::renderable::tilemap::{Tile, Tilemap};
 use crate::texture::{
     texture_atlas_loader, texture_loader, TextureAtlas, TextureData, TextureMetadata,
     TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER, MISSING_TEXTURE_IDENTIFIER,
 };
 use crate::types::{Color, Size2};
 
+pub mod animation;
 pub mod bitmap_font;
 pub mod camera;
 pub mod g_buffer;
@@ -221,74 +222,172 @@ impl Graphics {
         transform: &Transform2D,
     ) {
         if tilemap.render_id().is_none() {
-            let tilemap_size = tilemap.size();
-            let tile_size = tilemap.tile_size();
-            let tilemap_material = tilemap.material();
-
-            self.load_material_in_vram_if_required(asset_store, tilemap_material);
-
-            let albedo_map_texture_metadata = &self.texture_metadata[&tilemap_material.albedo_map];
-
-            let mut quads = vec![];
-            for (tile_index, tile) in tilemap.tiles().iter().enumerate() {
-                let tile_x = tile_index % tilemap_size.width;
-                let tile_y = tile_index / tilemap_size.height;
-                if let Some(tile) = tile {
-                    let tile_texture_region = tile.texture_region().clone();
-
-                    quads.push(QuadDescription {
-                        size: Size2::new(tile_size.width as f32, tile_size.height as f32),
-                        color: Color::WHITE,
-                        material: MaterialDescription {
-                            albedo_map_description: TextureDescription {
-                                identifier: albedo_map_texture_metadata.texture_id,
-                                texture_region: tile_texture_region.normalize(
-                                    albedo_map_texture_metadata.width,
-                                    albedo_map_texture_metadata.height,
-                                ),
-                            },
-                            normal_map_description: match &tilemap_material.normal_map {
-                                Some(normal_map_identifier) => TextureDescription {
-                                    identifier: self.texture_metadata[normal_map_identifier]
-                                        .texture_id,
-                                    texture_region: tile_texture_region.normalize(
-                                        albedo_map_texture_metadata.width,
-                                        albedo_map_texture_metadata.height,
-                                    ),
-                                },
-                                None => TextureDescription::default_normal_map_description(
-                                    &self.texture_metadata,
-                                ),
-                            },
-                        },
-                        transform: Transform2D {
-                            translation: (
-                                (tile_x * tile_size.width as usize) as f32,
-                                (tile_y * tile_size.height as usize) as f32,
-                                0,
-                            ),
-                            ..Default::default()
-                        },
-                    })
-                }
-            }
+            let tilemap_size = tilemap.size().clone();
+            let tile_size = tilemap.tile_size().clone();
 
             let tilemap_size_pixel = Size2::new(
                 tilemap_size.width as u32 * tile_size.width,
                 tilemap_size.height as u32 * tile_size.height,
             );
-            let quad = self
-                .graphics_impl
-                .pre_draw_quads(tilemap_size_pixel, &quads);
+
+            let destination_quad = self.graphics_impl.create_transparent_quad(Size2::new(
+                tilemap_size_pixel.width as f32,
+                tilemap_size_pixel.height as f32,
+            ));
+
+            self.render_entire_tilemap(
+                asset_store,
+                tilemap,
+                &tilemap_size,
+                &tile_size,
+                &destination_quad,
+            );
+
             let next_render_id = self.tilemap_renders.len();
-            self.tilemap_renders.push(quad);
+            self.tilemap_renders.push(destination_quad);
             tilemap.set_render_id(RenderId(next_render_id));
+        } else if tilemap
+            .tiles()
+            .iter()
+            .any(|tile| matches!(tile, &Some(Tile::AnimatedTile(_))))
+        {
+            self.rerender_animated_tiles(tilemap);
         }
 
         self.pending_quads.push(QuadDescription {
             transform: transform.clone(),
             ..self.tilemap_renders[tilemap.render_id().as_ref().unwrap().0].clone()
         });
+    }
+
+    fn rerender_animated_tiles(&mut self, tilemap: &Tilemap) {
+        let render_id = tilemap.render_id().unwrap();
+        let render = &self.tilemap_renders[render_id.0];
+        let mut quads = vec![];
+
+        let tilemap_material = tilemap.material();
+        let albedo_map_texture_metadata = &self.texture_metadata[&tilemap_material.albedo_map];
+
+        for (tile_index, tile) in tilemap
+            .tiles()
+            .iter()
+            .enumerate()
+            .filter(|&tile| matches!(tile, (_, &Some(Tile::AnimatedTile(_)))))
+            .map(|(tile_index, tile)| match tile {
+                Some(Tile::AnimatedTile(animated_tile)) => (tile_index, animated_tile),
+                _ => panic!(),
+            })
+        {
+            let tile_x = tile_index % tilemap.size().width;
+            let tile_y = tile_index / tilemap.size().height;
+            quads.push(QuadDescription {
+                size: Size2::new(
+                    tilemap.tile_size().width as f32,
+                    tilemap.tile_size().height as f32,
+                ),
+                color: Color::WHITE,
+                material: MaterialDescription {
+                    albedo_map_description: TextureDescription {
+                        identifier: albedo_map_texture_metadata.texture_id,
+                        texture_region: tile.animation_state.keyframes
+                            [tile.animation_state.current_keyframe]
+                            .normalize(
+                                albedo_map_texture_metadata.width,
+                                albedo_map_texture_metadata.height,
+                            ),
+                    },
+                    normal_map_description: match &tilemap_material.normal_map {
+                        Some(normal_map_identifier) => TextureDescription {
+                            identifier: self.texture_metadata[normal_map_identifier].texture_id,
+                            texture_region: tile.animation_state.keyframes
+                                [tile.animation_state.current_keyframe]
+                                .normalize(
+                                    albedo_map_texture_metadata.width,
+                                    albedo_map_texture_metadata.height,
+                                ),
+                        },
+                        None => TextureDescription::default_normal_map_description(
+                            &self.texture_metadata,
+                        ),
+                    },
+                },
+                transform: Transform2D {
+                    translation: (
+                        (tile_x * tilemap.tile_size().width as usize) as f32,
+                        (tile_y * tilemap.tile_size().height as usize) as f32,
+                        0,
+                    ),
+                    ..Default::default()
+                },
+            })
+        }
+
+        self.graphics_impl.pre_draw_quads(render, &quads);
+    }
+
+    fn render_entire_tilemap(
+        &mut self,
+        asset_store: &mut AssetStore,
+        tilemap: &mut Tilemap,
+        tilemap_size: &Size2<usize>,
+        tile_size: &Size2<u32>,
+        destination_quad: &QuadDescription,
+    ) {
+        let tilemap_material = tilemap.material();
+        self.load_material_in_vram_if_required(asset_store, tilemap_material);
+
+        let albedo_map_texture_metadata = &self.texture_metadata[&tilemap_material.albedo_map];
+
+        let mut quads = vec![];
+        for (tile_index, tile) in tilemap.tiles().iter().enumerate() {
+            let tile_x = tile_index % tilemap_size.width;
+            let tile_y = tile_index / tilemap_size.height;
+            if let Some(tile) = tile {
+                let tile_texture_region = match tile {
+                    Tile::StaticTile(static_tile) => &static_tile.texture_region,
+                    Tile::AnimatedTile(animated_tile) => {
+                        &animated_tile.animation_state.keyframes
+                            [animated_tile.animation_state.current_keyframe]
+                    }
+                };
+
+                quads.push(QuadDescription {
+                    size: Size2::new(tile_size.width as f32, tile_size.height as f32),
+                    color: Color::WHITE,
+                    material: MaterialDescription {
+                        albedo_map_description: TextureDescription {
+                            identifier: albedo_map_texture_metadata.texture_id,
+                            texture_region: tile_texture_region.normalize(
+                                albedo_map_texture_metadata.width,
+                                albedo_map_texture_metadata.height,
+                            ),
+                        },
+                        normal_map_description: match &tilemap_material.normal_map {
+                            Some(normal_map_identifier) => TextureDescription {
+                                identifier: self.texture_metadata[normal_map_identifier].texture_id,
+                                texture_region: tile_texture_region.normalize(
+                                    albedo_map_texture_metadata.width,
+                                    albedo_map_texture_metadata.height,
+                                ),
+                            },
+                            None => TextureDescription::default_normal_map_description(
+                                &self.texture_metadata,
+                            ),
+                        },
+                    },
+                    transform: Transform2D {
+                        translation: (
+                            (tile_x * tile_size.width as usize) as f32,
+                            (tile_y * tile_size.height as usize) as f32,
+                            0,
+                        ),
+                        ..Default::default()
+                    },
+                })
+            }
+        }
+
+        self.graphics_impl.pre_draw_quads(&destination_quad, &quads);
     }
 
     pub fn draw_text(
@@ -491,4 +590,5 @@ unsafe impl HasRawWindowHandle for Window<'_> {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct RenderId(pub usize);

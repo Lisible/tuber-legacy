@@ -1,3 +1,4 @@
+use crate::animation::AnimationState;
 use crate::{Material, RenderId, Size2, TextureRegion};
 
 pub struct Tilemap {
@@ -22,6 +23,17 @@ impl Tilemap {
             material,
             render_id: None,
         }
+    }
+
+    pub fn update_animation_state(&mut self) {
+        self.tiles
+            .iter_mut()
+            .flat_map(|t| t.iter_mut())
+            .for_each(|tile| {
+                if let Tile::AnimatedTile(tile) = tile {
+                    tile.animation_state.update_animation_state();
+                }
+            });
     }
 
     pub fn size(&self) -> &Size2<usize> {
@@ -62,11 +74,22 @@ impl Tilemap {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Tile {
+pub enum Tile {
+    StaticTile(StaticTile),
+    AnimatedTile(AnimatedTile),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnimatedTile {
+    pub animation_state: AnimationState,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StaticTile {
     pub texture_region: TextureRegion,
 }
 
-impl Tile {
+impl StaticTile {
     pub fn texture_region(&self) -> &TextureRegion {
         &self.texture_region
     }
@@ -88,26 +111,26 @@ mod tests {
         tilemap.set_tile(
             4,
             2,
-            Some(Tile {
+            Some(Tile::StaticTile(StaticTile {
                 texture_region: TextureRegion {
                     x: 0.0,
                     y: 0.0,
                     width: 32.0,
                     height: 32.0,
                 },
-            }),
+            })),
         );
 
         assert_eq!(
             tilemap.tile(4, 2).clone().unwrap(),
-            Tile {
+            Tile::StaticTile(StaticTile {
                 texture_region: TextureRegion {
                     x: 0.0,
                     y: 0.0,
                     width: 32.0,
                     height: 32.0,
                 },
-            }
+            })
         );
     }
 }
