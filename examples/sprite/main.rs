@@ -3,7 +3,7 @@ use tuber::core::transform::Transform2D;
 use tuber::engine::state::State;
 use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
-use tuber::graphics::renderable::sprite::{AnimatedSprite, AnimationState, Sprite};
+use tuber::graphics::renderable::sprite::{AnimatedSprite, Sprite};
 use tuber::graphics::texture::TextureRegion;
 use tuber::graphics::Graphics;
 use tuber::graphics_wgpu::GraphicsWGPU;
@@ -12,6 +12,7 @@ use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
 use tuber_engine::engine_context::EngineContext;
 use tuber_engine::system_bundle;
+use tuber_graphics::animation::AnimationState;
 use tuber_graphics::material::Material;
 use tuber_graphics::texture::TextureAtlas;
 
