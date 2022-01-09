@@ -2,6 +2,7 @@ use image::ImageError;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::api::LowLevelGraphicsAPI;
 use tuber_core::asset::{AssetMetadata, AssetStore, GenericLoader};
@@ -13,6 +14,7 @@ use tuber_ecs::EntityIndex;
 use crate::bitmap_font::BitmapFont;
 use crate::camera::{Active, OrthographicCamera};
 use crate::g_buffer::GBufferComponent;
+use crate::immediate_gui::ImmediateGUI;
 use crate::low_level::*;
 use crate::material::Material;
 use crate::polygon_mode::PolygonMode;
@@ -30,6 +32,7 @@ pub mod animation;
 pub mod bitmap_font;
 pub mod camera;
 pub mod g_buffer;
+pub mod immediate_gui;
 pub mod low_level;
 pub mod material;
 pub mod renderable;
@@ -51,15 +54,18 @@ pub struct Graphics {
     texture_metadata: HashMap<String, TextureMetadata>,
     pending_quads: Vec<QuadDescription>,
     tilemap_renders: Vec<QuadDescription>,
+    immediate_gui: ImmediateGUI,
 }
 
 impl Graphics {
     pub fn new(graphics_impl: Box<dyn LowLevelGraphicsAPI>) -> Self {
+        let texture_metadata = HashMap::new();
         Self {
             graphics_impl,
-            texture_metadata: HashMap::new(),
+            texture_metadata,
             pending_quads: vec![],
             tilemap_renders: vec![],
+            immediate_gui: ImmediateGUI::new(),
         }
     }
     pub fn initialize(
@@ -82,6 +88,8 @@ impl Graphics {
                 .2
                 .cmp(&other.transform.translation.2)
         });
+        self.pending_quads
+            .append(&mut self.immediate_gui.generate_quads(&self.texture_metadata));
         self.graphics_impl.draw_quads(&self.pending_quads);
         self.pending_quads.clear();
     }
@@ -323,6 +331,10 @@ impl Graphics {
         }
 
         self.graphics_impl.pre_draw_quads(render, &quads);
+    }
+
+    pub fn immediate_gui(&mut self) -> &mut ImmediateGUI {
+        &mut self.immediate_gui
     }
 
     fn render_entire_tilemap(
