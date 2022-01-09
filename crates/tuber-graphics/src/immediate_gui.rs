@@ -1,10 +1,7 @@
 use crate::{
     Color, MaterialDescription, QuadDescription, Size2, TextureDescription, TextureMetadata,
 };
-use image::png::CompressionType::Default;
 use std::collections::HashMap;
-use std::rc::Weak;
-use std::vec::Drain;
 use tuber_core::transform::Transform2D;
 
 pub struct ImmediateGUI {
@@ -76,7 +73,7 @@ impl IntoQuadDescriptions for FrameCommand {
                     texture_metadata,
                 ),
             },
-            transform: Transform2D::default(),
+            transform: self.transform,
         }]
     }
 }
