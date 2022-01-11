@@ -21,7 +21,7 @@ pub(crate) fn create_orc(asset_store: &mut AssetStore) -> impl EntityDefinition 
             movement: Movement::Idle,
         },
         Transform2D {
-            translation: (128.0, 128.0, 10),
+            translation: (144.0, 144.0, 10),
             ..Default::default()
         },
         AnimatedSprite {
