@@ -8,8 +8,6 @@ use tuber::engine::state::State;
 use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::renderable::shape::RectangleShape;
-use tuber::graphics::Graphics;
-use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::WinitTuberRunner;
 use tuber_engine::engine_context::EngineContext;
 use tuber_engine::system_bundle;
@@ -34,7 +32,6 @@ struct Velocity {
 
 fn main() -> Result<()> {
     let mut engine = Engine::new(EngineSettings {
-        graphics: Some(Graphics::new(Box::new(GraphicsWGPU::new()))),
         ..Default::default()
     });
 

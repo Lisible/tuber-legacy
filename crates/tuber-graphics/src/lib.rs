@@ -3,7 +3,6 @@ use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
-use crate::api::LowLevelGraphicsAPI;
 use tuber_core::asset::{AssetMetadata, AssetStore, GenericLoader};
 use tuber_core::transform::Transform2D;
 use tuber_ecs::ecs::Ecs;
@@ -23,23 +22,28 @@ use crate::renderable::sprite::{AnimatedSprite, Sprite};
 use crate::renderable::tilemap::{Tile, Tilemap};
 use crate::texture::{
     texture_atlas_loader, texture_loader, TextureAtlas, TextureData, TextureMetadata,
-    TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER, MISSING_TEXTURE_IDENTIFIER,
+    TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
-use crate::types::{Color, Size2};
+use crate::types::{Color, Size2, WindowSize};
+use crate::wgpu_state::WGPUState;
 
 pub mod animation;
 pub mod bitmap_font;
 pub mod camera;
+mod composition;
 pub mod g_buffer;
 pub mod immediate_gui;
 pub mod low_level;
 pub mod material;
+mod quad_renderer;
 pub mod renderable;
 pub mod texture;
 pub mod types;
+mod wgpu_state;
 
 #[derive(Debug)]
 pub enum GraphicsError {
+    WGPUSurfaceError(wgpu::SurfaceError),
     TextureFileOpenError(std::io::Error),
     TextureMetadataNotFound,
     AtlasDescriptionFileOpenError(std::io::Error),
@@ -49,7 +53,7 @@ pub enum GraphicsError {
 }
 
 pub struct Graphics {
-    graphics_impl: Box<dyn LowLevelGraphicsAPI>,
+    wgpu_state: Option<WGPUState>,
     texture_metadata: HashMap<String, TextureMetadata>,
     pending_quads: Vec<QuadDescription>,
     tilemap_renders: Vec<QuadDescription>,
@@ -57,24 +61,18 @@ pub struct Graphics {
 }
 
 impl Graphics {
-    pub fn new(graphics_impl: Box<dyn LowLevelGraphicsAPI>) -> Self {
+    pub fn new() -> Self {
         let texture_metadata = HashMap::new();
         Self {
-            graphics_impl,
+            wgpu_state: None,
             texture_metadata,
             pending_quads: vec![],
             tilemap_renders: vec![],
             immediate_gui: ImmediateGUI::new(),
         }
     }
-    pub fn initialize(
-        &mut self,
-        window: Window,
-        window_size: Size2<u32>,
-        asset_store: &mut AssetStore,
-    ) {
-        self.graphics_impl
-            .initialize(window, window_size, asset_store);
+    pub fn initialize(&mut self, window: Window, window_size: WindowSize) {
+        self.wgpu_state = Some(WGPUState::new(window, window_size));
         self.load_texture_in_vram(&texture::create_white_texture());
         self.load_texture_in_vram(&texture::create_placeholder_texture());
         self.load_texture_in_vram(&texture::create_normal_map_texture());
@@ -89,7 +87,10 @@ impl Graphics {
         });
         self.pending_quads
             .append(&mut self.immediate_gui.generate_quads(&self.texture_metadata));
-        self.graphics_impl.draw_quads(&self.pending_quads);
+        self.wgpu_state
+            .as_mut()
+            .unwrap()
+            .draw_quads(&self.pending_quads);
         self.pending_quads.clear();
     }
 
@@ -117,17 +118,6 @@ impl Graphics {
     ) -> Result<(), GraphicsError> {
         self.load_texture_in_vram_if_required(asset_manager, &sprite.material.albedo_map);
 
-        let texture_metadata = self.texture_metadata.get(&sprite.material.albedo_map);
-        let texture_metadata = match texture_metadata {
-            Some(metadata) => metadata,
-            None => &self.texture_metadata[MISSING_TEXTURE_IDENTIFIER],
-        };
-
-        let (texture_width, texture_height) = (
-            texture_metadata.width as f32,
-            texture_metadata.height as f32,
-        );
-
         let effective_transform = Transform2D {
             translation: (
                 transform.translation.0 + sprite.offset.0,
@@ -137,33 +127,41 @@ impl Graphics {
             ..*transform
         };
 
+        let albedo_map_description = match self.texture_metadata.get(&sprite.material.albedo_map) {
+            Some(albedo_map_metadata) => TextureDescription {
+                identifier: albedo_map_metadata.texture_id,
+                texture_region: TextureRegion {
+                    x: sprite.texture_region.x / albedo_map_metadata.width as f32,
+                    y: sprite.texture_region.y / albedo_map_metadata.height as f32,
+                    width: sprite.texture_region.width / albedo_map_metadata.width as f32,
+                    height: sprite.texture_region.height / albedo_map_metadata.height as f32,
+                },
+            },
+            None => TextureDescription::not_found_texture_description(&self.texture_metadata),
+        };
+
+        let normal_map_description = match &sprite.material.normal_map {
+            Some(normal_map) => match self.texture_metadata.get(normal_map) {
+                Some(normal_map_matadata) => TextureDescription {
+                    identifier: normal_map_matadata.texture_id,
+                    texture_region: TextureRegion {
+                        x: sprite.texture_region.x / normal_map_matadata.width as f32,
+                        y: sprite.texture_region.y / normal_map_matadata.height as f32,
+                        width: sprite.texture_region.width / normal_map_matadata.width as f32,
+                        height: sprite.texture_region.height / normal_map_matadata.height as f32,
+                    },
+                },
+                None => TextureDescription::default_normal_map_description(&self.texture_metadata),
+            },
+            None => TextureDescription::default_normal_map_description(&self.texture_metadata),
+        };
+
         self.pending_quads.push(QuadDescription {
             size: Size2::new(sprite.width, sprite.height),
             color: Color::WHITE.into(),
             material: MaterialDescription {
-                albedo_map_description: TextureDescription {
-                    identifier: self.texture_metadata[&sprite.material.albedo_map].texture_id,
-                    texture_region: TextureRegion {
-                        x: sprite.texture_region.x / texture_width,
-                        y: sprite.texture_region.y / texture_height,
-                        width: sprite.texture_region.width / texture_width,
-                        height: sprite.texture_region.height / texture_height,
-                    },
-                },
-                normal_map_description: match &sprite.material.normal_map {
-                    Some(normal_map) => TextureDescription {
-                        identifier: self.texture_metadata[normal_map].texture_id,
-                        texture_region: TextureRegion {
-                            x: sprite.texture_region.x / texture_width,
-                            y: sprite.texture_region.y / texture_height,
-                            width: sprite.texture_region.width / texture_width,
-                            height: sprite.texture_region.height / texture_height,
-                        },
-                    },
-                    None => {
-                        TextureDescription::default_normal_map_description(&self.texture_metadata)
-                    }
-                },
+                albedo_map_description,
+                normal_map_description,
             },
             transform: effective_transform.clone(),
         });
@@ -237,10 +235,14 @@ impl Graphics {
                 tilemap_size.height as u32 * tile_size.height,
             );
 
-            let destination_quad = self.graphics_impl.create_transparent_quad(Size2::new(
-                tilemap_size_pixel.width as f32,
-                tilemap_size_pixel.height as f32,
-            ));
+            let destination_quad =
+                self.wgpu_state
+                    .as_mut()
+                    .unwrap()
+                    .create_transparent_quad(Size2::new(
+                        tilemap_size_pixel.width as f32,
+                        tilemap_size_pixel.height as f32,
+                    ));
 
             self.render_entire_tilemap(
                 asset_store,
@@ -329,7 +331,10 @@ impl Graphics {
             })
         }
 
-        self.graphics_impl.pre_draw_quads(render, &quads);
+        self.wgpu_state
+            .as_mut()
+            .unwrap()
+            .pre_draw_quads(render, &quads);
     }
 
     pub fn immediate_gui(&mut self) -> &mut ImmediateGUI {
@@ -398,7 +403,10 @@ impl Graphics {
             }
         }
 
-        self.graphics_impl.pre_draw_quads(&destination_quad, &quads);
+        self.wgpu_state
+            .as_mut()
+            .unwrap()
+            .pre_draw_quads(&destination_quad, &quads);
     }
 
     pub fn draw_text(
@@ -517,7 +525,11 @@ impl Graphics {
     }
 
     fn load_texture_in_vram(&mut self, texture: &TextureData) {
-        let texture_id = self.graphics_impl.load_texture_in_vram(texture);
+        let texture_id = self
+            .wgpu_state
+            .as_mut()
+            .unwrap()
+            .load_texture_in_vram(texture);
 
         self.texture_metadata.insert(
             texture.identifier.clone(),
@@ -557,26 +569,38 @@ impl Graphics {
         camera: &OrthographicCamera,
         transform: &Transform2D,
     ) {
-        self.graphics_impl
+        self.wgpu_state
+            .as_mut()
+            .unwrap()
             .update_camera(camera_id, camera, transform);
     }
 
     pub fn set_clear_color(&mut self, clear_color: Color) {
-        self.graphics_impl.set_clear_color(clear_color);
+        self.wgpu_state
+            .as_mut()
+            .unwrap()
+            .set_clear_color(clear_color);
     }
 
     pub fn set_rendered_g_buffer_component(&mut self, g_buffer_component: GBufferComponent) {
-        self.graphics_impl
+        self.wgpu_state
+            .as_mut()
+            .unwrap()
             .set_rendered_g_buffer_component(g_buffer_component);
     }
 
     pub fn set_polygon_mode(&mut self, polygon_mode: PolygonMode) {
-        self.graphics_impl.set_polygon_mode(polygon_mode);
+        self.wgpu_state
+            .as_mut()
+            .unwrap()
+            .set_polygon_mode(polygon_mode);
     }
 
     pub fn on_window_resized(&mut self, width: u32, height: u32) {
-        self.graphics_impl
-            .on_window_resized(Size2::from((width, height)));
+        self.wgpu_state
+            .as_mut()
+            .unwrap()
+            .resize(Size2::from((width, height)));
     }
 
     pub fn loaders() -> Vec<(TypeId, GenericLoader)> {

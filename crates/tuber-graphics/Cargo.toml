@@ -9,6 +9,8 @@ edition = "2018"
 [dependencies]
 tuber-core = { path = "../tuber-core" }
 tuber-ecs = { path = "../tuber-ecs" }
+futures = "0.3.19"
+wgpu = "0.11"
 raw-window-handle = "0.3.3"
 image = "0.23.14"
 nalgebra = "0.27"

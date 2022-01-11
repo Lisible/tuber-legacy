@@ -5,8 +5,6 @@ use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::renderable::sprite::{AnimatedSprite, Sprite};
 use tuber::graphics::texture::TextureRegion;
-use tuber::graphics::Graphics;
-use tuber::graphics_wgpu::GraphicsWGPU;
 use tuber::WinitTuberRunner;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
@@ -19,7 +17,6 @@ use tuber_graphics::texture::TextureAtlas;
 fn main() -> Result<()> {
     env_logger::init();
     let mut engine = Engine::new(EngineSettings {
-        graphics: Some(Graphics::new(Box::new(GraphicsWGPU::new()))),
         ..Default::default()
     });
 

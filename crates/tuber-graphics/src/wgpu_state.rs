@@ -1,23 +1,22 @@
+use crate::camera::OrthographicCamera;
 use crate::composition::Compositor;
-use crate::g_buffer::GBuffer;
-use crate::quad_renderer::QuadRenderer;
-use crate::texture::{
+use crate::g_buffer::GBufferComponent;
+use crate::low_level::g_buffer::GBuffer;
+use crate::low_level::polygon_mode::PolygonMode;
+use crate::low_level::primitives::{
+    MaterialDescription, QuadDescription, TextureDescription, TextureId,
+};
+use crate::low_level::texture::{
     create_texture_bind_group, create_texture_bind_group_layout, create_texture_descriptor,
 };
-use crate::TuberGraphicsWGPUError;
+use crate::quad_renderer::QuadRenderer;
+use crate::{
+    low_level, Color, GraphicsError, Size2, TextureData, TextureRegion, Window, WindowSize,
+};
 use futures::executor::block_on;
 use nalgebra::Matrix4;
 use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
-use tuber_graphics::camera::OrthographicCamera;
-use tuber_graphics::g_buffer::GBufferComponent;
-use tuber_graphics::low_level::polygon_mode::PolygonMode;
-use tuber_graphics::low_level::primitives::{
-    MaterialDescription, QuadDescription, TextureDescription, TextureId,
-};
-use tuber_graphics::texture::{TextureData, TextureRegion};
-use tuber_graphics::types::{Color, Size2, WindowSize};
-use tuber_graphics::Window;
 use wgpu::{SurfaceTexture, TextureViewDescriptor};
 
 pub struct WGPUState {
@@ -285,11 +284,11 @@ impl WGPUState {
     fn composition_pass(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
-    ) -> Result<SurfaceTexture, TuberGraphicsWGPUError> {
+    ) -> Result<SurfaceTexture, GraphicsError> {
         let output = self
             .surface
             .get_current_texture()
-            .map_err(|e| TuberGraphicsWGPUError::WGPUSurfaceError(e))?;
+            .map_err(|e| GraphicsError::WGPUSurfaceError(e))?;
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -407,10 +406,13 @@ impl WGPUState {
     }
 
     pub(crate) fn load_texture_in_vram(&mut self, texture_data: &TextureData) -> TextureId {
-        use crate::texture;
         let texture_id = TextureId(self.texture_bind_groups.len());
-        let texture =
-            texture::create_texture_from_data(&self.device, &self.queue, texture_id, &texture_data);
+        let texture = low_level::texture::create_texture_from_data(
+            &self.device,
+            &self.queue,
+            texture_id,
+            &texture_data,
+        );
 
         let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let texture_sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
@@ -441,10 +443,6 @@ impl WGPUState {
         label: &'static str,
     ) -> wgpu::TextureDescriptor {
         create_texture_descriptor(label, Size2::from(self.size))
-    }
-
-    pub(crate) fn is_texture_in_vram(&self, texture_id: TextureId) -> bool {
-        self.texture_bind_groups.len() > texture_id.0
     }
 }
 

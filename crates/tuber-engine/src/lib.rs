@@ -13,14 +13,12 @@ pub mod state;
 pub mod system_bundle;
 
 pub struct EngineSettings {
-    pub graphics: Option<Graphics>,
     pub application_title: Option<String>,
 }
 
 impl Default for EngineSettings {
     fn default() -> Self {
         Self {
-            graphics: None,
             application_title: None,
         }
     }
@@ -49,7 +47,7 @@ impl Engine {
             InputState::new(Keymap::from_file(KEYMAP_FILE).unwrap_or(Keymap::default()));
 
         let context = EngineContext {
-            graphics: settings.graphics,
+            graphics: Some(Graphics::new()),
             asset_store: asset_manager,
             input_state,
         };
@@ -71,11 +69,7 @@ impl Engine {
 
     pub fn initialize_graphics(&mut self, window: Window, window_size: (u32, u32)) {
         if let Some(graphics) = &mut self.context.graphics {
-            graphics.initialize(
-                Window(Box::new(&window)),
-                Size2::from(window_size),
-                &mut self.context.asset_store,
-            );
+            graphics.initialize(Window(Box::new(&window)), Size2::from(window_size));
         }
     }
 

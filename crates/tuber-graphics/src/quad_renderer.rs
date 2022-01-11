@@ -1,10 +1,10 @@
 use crate::geometry::Vertex;
-use crate::texture::create_texture_bind_group_layout;
+use crate::low_level::polygon_mode::PolygonMode;
+use crate::low_level::primitives::{QuadDescription, TextureId};
+use crate::low_level::texture::create_texture_bind_group_layout;
 use crate::wgpu_state::IntoPolygonMode;
 use nalgebra::Matrix4;
 use tuber_core::transform::{IntoMatrix4, Transform2D};
-use tuber_graphics::low_level::polygon_mode::PolygonMode;
-use tuber_graphics::low_level::primitives::{QuadDescription, TextureId};
 use wgpu::{BufferDescriptor, CommandEncoderDescriptor};
 
 const QUAD_UNIFORM_SIZE: u64 = std::mem::size_of::<QuadUniform>() as u64;

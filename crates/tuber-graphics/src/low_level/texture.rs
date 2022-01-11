@@ -1,6 +1,6 @@
-use tuber_graphics::low_level::primitives::TextureId;
-use tuber_graphics::texture::{TextureData, TextureSize};
-use tuber_graphics::types::Size2;
+use crate::low_level::primitives::TextureId;
+use crate::texture::{TextureData, TextureSize};
+use crate::types::Size2;
 
 const BYTES_PER_PIXEL: usize = 4;
 

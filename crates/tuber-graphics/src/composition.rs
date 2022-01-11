@@ -1,6 +1,6 @@
-use crate::g_buffer::GBuffer;
 use crate::geometry::Vertex;
-use tuber_graphics::g_buffer::GBufferComponent;
+use crate::low_level::g_buffer::GBuffer;
+use crate::GBufferComponent;
 use wgpu::util::DeviceExt;
 use wgpu::{
     BindGroupLayoutDescriptor, PipelineLayoutDescriptor, RenderPipelineDescriptor,

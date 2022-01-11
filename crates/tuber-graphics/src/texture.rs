@@ -171,8 +171,8 @@ pub const MISSING_TEXTURE_IDENTIFIER: &'static str = "_placeholder";
 pub const MISSING_TEXTURE_REGION: TextureRegion = TextureRegion {
     x: 0.0,
     y: 0.0,
-    width: 32.0,
-    height: 32.0,
+    width: 1.0,
+    height: 1.0,
 };
 pub(crate) fn create_placeholder_texture() -> TextureData {
     let bytes = include_bytes!("../textures/default_texture.png");
