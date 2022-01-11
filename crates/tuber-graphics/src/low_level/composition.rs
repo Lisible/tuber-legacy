@@ -184,7 +184,7 @@ impl Compositor {
     ) -> wgpu::RenderPipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("compositor_shader_module"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/composition.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/composition.wgsl").into()),
         });
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {

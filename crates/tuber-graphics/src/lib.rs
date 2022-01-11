@@ -25,21 +25,18 @@ use crate::texture::{
     TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
 use crate::types::{Color, Size2, WindowSize};
-use crate::wgpu_state::WGPUState;
+use low_level::wgpu_state::WGPUState;
 
 pub mod animation;
 pub mod bitmap_font;
 pub mod camera;
-mod composition;
 pub mod g_buffer;
 pub mod immediate_gui;
 pub mod low_level;
 pub mod material;
-mod quad_renderer;
 pub mod renderable;
 pub mod texture;
 pub mod types;
-mod wgpu_state;
 
 #[derive(Debug)]
 pub enum GraphicsError {

@@ -1,15 +1,15 @@
 use crate::camera::OrthographicCamera;
-use crate::composition::Compositor;
 use crate::g_buffer::GBufferComponent;
+use crate::low_level::composition::Compositor;
 use crate::low_level::g_buffer::GBuffer;
 use crate::low_level::polygon_mode::PolygonMode;
 use crate::low_level::primitives::{
     MaterialDescription, QuadDescription, TextureDescription, TextureId,
 };
+use crate::low_level::quad_renderer::QuadRenderer;
 use crate::low_level::texture::{
     create_texture_bind_group, create_texture_bind_group_layout, create_texture_descriptor,
 };
-use crate::quad_renderer::QuadRenderer;
 use crate::{
     low_level, Color, GraphicsError, Size2, TextureData, TextureRegion, Window, WindowSize,
 };

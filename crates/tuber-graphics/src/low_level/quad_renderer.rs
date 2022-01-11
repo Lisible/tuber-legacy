@@ -2,7 +2,7 @@ use crate::geometry::Vertex;
 use crate::low_level::polygon_mode::PolygonMode;
 use crate::low_level::primitives::{QuadDescription, TextureId};
 use crate::low_level::texture::create_texture_bind_group_layout;
-use crate::wgpu_state::IntoPolygonMode;
+use crate::low_level::wgpu_state::IntoPolygonMode;
 use nalgebra::Matrix4;
 use tuber_core::transform::{IntoMatrix4, Transform2D};
 use wgpu::{BufferDescriptor, CommandEncoderDescriptor};
@@ -390,7 +390,7 @@ impl QuadRenderer {
     ) -> wgpu::RenderPipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("quad_renderer_shader_module"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("./shaders/quad.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/quad.wgsl").into()),
         });
 
         let render_pipeline_layout =
