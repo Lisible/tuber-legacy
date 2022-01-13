@@ -1,9 +1,11 @@
 use crate::texture::TextureRegion;
 use crate::GraphicsError;
 use serde::{Deserialize, Serialize};
+use std::any::Any;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::str::FromStr;
+use tuber_core::asset::AssetMetadata;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BitmapFont {
@@ -83,6 +85,12 @@ impl BitmapGlyph {
     pub fn region(&self) -> &TextureRegion {
         &self.region
     }
+}
+
+pub(crate) fn font_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
+    let mut font_file_path = asset_metadata.asset_path.clone();
+    font_file_path.push(&asset_metadata.metadata["font_data"]);
+    Box::new(BitmapFont::from_file(&font_file_path).unwrap())
 }
 
 #[cfg(test)]

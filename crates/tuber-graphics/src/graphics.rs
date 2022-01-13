@@ -1,9 +1,9 @@
 use crate::{
-    font_loader, texture, texture_atlas_loader, texture_loader, Active, AnimatedSprite, BitmapFont,
-    Color, GBufferComponent, GraphicsError, ImmediateGUI, Material, MaterialDescription,
-    OrthographicCamera, PolygonMode, QuadDescription, RectangleShape, RenderId, Size2, Sprite,
-    TextureAtlas, TextureData, TextureDescription, TextureMetadata, TextureRegion, Tile, Tilemap,
-    WGPUState, Window, WindowSize, DEFAULT_NORMAL_MAP_IDENTIFIER,
+    bitmap_font::font_loader, texture, texture_atlas_loader, texture_loader, Active,
+    AnimatedSprite, BitmapFont, Color, GBufferComponent, GraphicsError, ImmediateGUI, Material,
+    MaterialDescription, OrthographicCamera, PolygonMode, QuadDescription, RectangleShape,
+    RenderId, Size2, Sprite, TextureAtlas, TextureData, TextureDescription, TextureMetadata,
+    TextureRegion, Tile, Tilemap, WGPUState, Window, WindowSize, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
 use std::any::TypeId;
 use std::collections::HashMap;

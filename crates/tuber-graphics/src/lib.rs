@@ -1,8 +1,5 @@
 use image::ImageError;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-use std::any::Any;
-
-use tuber_core::asset::AssetMetadata;
 
 use crate::bitmap_font::BitmapFont;
 use crate::camera::{Active, OrthographicCamera};
@@ -43,12 +40,6 @@ pub enum GraphicsError {
     ImageDecodeError(ImageError),
     SerdeError(serde_json::error::Error),
     BitmapFontFileReadError(std::io::Error),
-}
-
-fn font_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
-    let mut font_file_path = asset_metadata.asset_path.clone();
-    font_file_path.push(&asset_metadata.metadata["font_data"]);
-    Box::new(BitmapFont::from_file(&font_file_path).unwrap())
 }
 
 pub struct Window<'a>(pub Box<&'a dyn HasRawWindowHandle>);
