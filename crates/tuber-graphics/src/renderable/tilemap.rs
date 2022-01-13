@@ -1,5 +1,6 @@
 use crate::animation::AnimationState;
-use crate::{Material, RenderId, Size2, TextureRegion};
+use crate::graphics::RenderId;
+use crate::{Material, Size2, TextureRegion};
 
 pub struct Tilemap {
     size: Size2<usize>,

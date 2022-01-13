@@ -48,6 +48,3 @@ unsafe impl HasRawWindowHandle for Window<'_> {
         self.0.raw_window_handle()
     }
 }
-
-#[derive(Copy, Clone)]
-pub struct RenderId(pub usize);
