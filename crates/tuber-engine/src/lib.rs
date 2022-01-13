@@ -6,7 +6,7 @@ use tuber_core::{input, CoreError};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
 use tuber_graphics::types::Size2;
-use tuber_graphics::{Graphics, Window};
+use tuber_graphics::{graphics::Graphics, Window};
 
 pub mod engine_context;
 pub mod state;
