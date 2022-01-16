@@ -53,6 +53,16 @@ impl Color {
     }
 }
 
+impl Into<[f32; 3]> for Color {
+    fn into(self) -> [f32; 3] {
+        [
+            self.r as f32 / 255.0,
+            self.g as f32 / 255.0,
+            self.b as f32 / 255.0,
+        ]
+    }
+}
+
 impl Default for Color {
     fn default() -> Self {
         Self::WHITE

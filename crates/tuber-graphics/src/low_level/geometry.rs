@@ -1,11 +1,21 @@
-use crate::primitives::VertexDescription;
+use crate::Color;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     pub position: [f32; 3],
     pub color: [f32; 3],
-    pub tex_coords: [f32; 2],
+    pub texture_coordinates: [f32; 2],
+}
+
+impl Default for Vertex {
+    fn default() -> Self {
+        Self {
+            position: [0.0, 0.0, 0.0],
+            color: Color::WHITE.into(),
+            texture_coordinates: [0.0, 0.0],
+        }
+    }
 }
 
 impl Vertex {
@@ -29,27 +39,6 @@ impl Vertex {
                     offset: std::mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
                     shader_location: 2,
                 },
-            ],
-        }
-    }
-}
-
-impl From<VertexDescription> for Vertex {
-    fn from(vertex_description: VertexDescription) -> Self {
-        Self {
-            position: [
-                vertex_description.position.0,
-                vertex_description.position.1,
-                vertex_description.position.2,
-            ],
-            color: [
-                vertex_description.color.r(),
-                vertex_description.color.g(),
-                vertex_description.color.b(),
-            ],
-            tex_coords: [
-                vertex_description.texture_coordinates.0,
-                vertex_description.texture_coordinates.1,
             ],
         }
     }

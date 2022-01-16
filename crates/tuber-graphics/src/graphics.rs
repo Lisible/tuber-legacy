@@ -1,5 +1,6 @@
 use crate::draw_command::{Command, DrawPreRenderCommand, DrawQuadCommand, PreDrawQuadsCommand};
-use crate::primitives::{Quad, VertexDescription};
+use crate::geometry::Vertex;
+use crate::primitives::Quad;
 use crate::{
     bitmap_font::font_loader, texture, texture_atlas_loader, texture_loader, Active,
     AnimatedSprite, BitmapFont, Color, GBufferComponent, GraphicsError, ImmediateGUI, Material,
@@ -50,24 +51,24 @@ impl Graphics {
             .command_buffer_mut()
             .add(Command::DrawQuad(DrawQuadCommand {
                 quad: Quad {
-                    top_left: VertexDescription {
-                        position: (0.0, 0.0, 0.0),
-                        texture_coordinates: (0.0, 0.0),
+                    top_left: Vertex {
+                        position: [0.0, 0.0, 0.0],
+                        texture_coordinates: [0.0, 0.0],
                         ..Default::default()
                     },
-                    bottom_left: VertexDescription {
-                        position: (0.0, rectangle.height, 0.0),
-                        texture_coordinates: (0.0, 0.0),
+                    bottom_left: Vertex {
+                        position: [0.0, rectangle.height, 0.0],
+                        texture_coordinates: [0.0, 0.0],
                         ..Default::default()
                     },
-                    top_right: VertexDescription {
-                        position: (rectangle.width, 0.0, 0.0),
-                        texture_coordinates: (0.0, 0.0),
+                    top_right: Vertex {
+                        position: [rectangle.width, 0.0, 0.0],
+                        texture_coordinates: [0.0, 0.0],
                         ..Default::default()
                     },
-                    bottom_right: VertexDescription {
-                        position: (rectangle.width, rectangle.height, 0.0),
-                        texture_coordinates: (0.0, 0.0),
+                    bottom_right: Vertex {
+                        position: [rectangle.width, rectangle.height, 0.0],
+                        texture_coordinates: [0.0, 0.0],
                         ..Default::default()
                     },
                 },
@@ -137,33 +138,33 @@ impl Graphics {
             .command_buffer_mut()
             .add(Command::DrawQuad(DrawQuadCommand {
                 quad: Quad {
-                    top_left: VertexDescription {
-                        position: (0.0, 0.0, 0.0),
-                        texture_coordinates: (texture_region.x, texture_region.y),
+                    top_left: Vertex {
+                        position: [0.0, 0.0, 0.0],
+                        texture_coordinates: [texture_region.x, texture_region.y],
                         ..Default::default()
                     },
-                    bottom_left: VertexDescription {
-                        position: (0.0, sprite.height, 0.0),
-                        texture_coordinates: (
+                    bottom_left: Vertex {
+                        position: [0.0, sprite.height, 0.0],
+                        texture_coordinates: [
                             texture_region.x,
                             texture_region.y + texture_region.height,
-                        ),
+                        ],
                         ..Default::default()
                     },
-                    top_right: VertexDescription {
-                        position: (sprite.width, 0.0, 0.0),
-                        texture_coordinates: (
+                    top_right: Vertex {
+                        position: [sprite.width, 0.0, 0.0],
+                        texture_coordinates: [
                             texture_region.x + texture_region.width,
                             texture_region.y,
-                        ),
+                        ],
                         ..Default::default()
                     },
-                    bottom_right: VertexDescription {
-                        position: (sprite.width, sprite.height, 0.0),
-                        texture_coordinates: (
+                    bottom_right: Vertex {
+                        position: [sprite.width, sprite.height, 0.0],
+                        texture_coordinates: [
                             texture_region.x + texture_region.width,
                             texture_region.y + texture_region.height,
-                        ),
+                        ],
                         ..Default::default()
                     },
                 },
@@ -225,36 +226,36 @@ impl Graphics {
             .command_buffer_mut()
             .add(Command::DrawQuad(DrawQuadCommand {
                 quad: Quad {
-                    top_left: VertexDescription {
-                        position: (0.0, 0.0, 0.0),
-                        texture_coordinates: (
+                    top_left: Vertex {
+                        position: [0.0, 0.0, 0.0],
+                        texture_coordinates: [
                             normalized_texture_region.x,
                             normalized_texture_region.y,
-                        ),
+                        ],
                         ..Default::default()
                     },
-                    bottom_left: VertexDescription {
-                        position: (0.0, animated_sprite.height, 0.0),
-                        texture_coordinates: (
+                    bottom_left: Vertex {
+                        position: [0.0, animated_sprite.height, 0.0],
+                        texture_coordinates: [
                             normalized_texture_region.x,
                             normalized_texture_region.y + normalized_texture_region.height,
-                        ),
+                        ],
                         ..Default::default()
                     },
-                    top_right: VertexDescription {
-                        position: (animated_sprite.width, 0.0, 0.0),
-                        texture_coordinates: (
+                    top_right: Vertex {
+                        position: [animated_sprite.width, 0.0, 0.0],
+                        texture_coordinates: [
                             normalized_texture_region.x + normalized_texture_region.width,
                             normalized_texture_region.y,
-                        ),
+                        ],
                         ..Default::default()
                     },
-                    bottom_right: VertexDescription {
-                        position: (animated_sprite.width, animated_sprite.height, 0.0),
-                        texture_coordinates: (
+                    bottom_right: Vertex {
+                        position: [animated_sprite.width, animated_sprite.height, 0.0],
+                        texture_coordinates: [
                             normalized_texture_region.x + normalized_texture_region.width,
                             normalized_texture_region.y + normalized_texture_region.height,
-                        ),
+                        ],
                         ..Default::default()
                     },
                 },
@@ -339,34 +340,34 @@ impl Graphics {
 
             draw_quad_commands.push(DrawQuadCommand {
                 quad: Quad {
-                    top_left: VertexDescription {
-                        position: (0.0, 0.0, 0.0),
+                    top_left: Vertex {
+                        position: [0.0, 0.0, 0.0],
                         color: Default::default(),
-                        texture_coordinates: (texture_region.x, texture_region.y),
+                        texture_coordinates: [texture_region.x, texture_region.y],
                     },
-                    bottom_left: VertexDescription {
-                        position: (0.0, tile_size.height as f32, 0.0),
+                    bottom_left: Vertex {
+                        position: [0.0, tile_size.height as f32, 0.0],
                         color: Default::default(),
-                        texture_coordinates: (
+                        texture_coordinates: [
                             texture_region.x,
                             texture_region.y + texture_region.height,
-                        ),
+                        ],
                     },
-                    top_right: VertexDescription {
-                        position: (tile_size.width as f32, 0.0, 0.0),
+                    top_right: Vertex {
+                        position: [tile_size.width as f32, 0.0, 0.0],
                         color: Default::default(),
-                        texture_coordinates: (
+                        texture_coordinates: [
                             texture_region.x + texture_region.width,
                             texture_region.y,
-                        ),
+                        ],
                     },
-                    bottom_right: VertexDescription {
-                        position: (tile_size.width as f32, tile_size.height as f32, 0.0),
+                    bottom_right: Vertex {
+                        position: [tile_size.width as f32, tile_size.height as f32, 0.0],
                         color: Default::default(),
-                        texture_coordinates: (
+                        texture_coordinates: [
                             texture_region.x + texture_region.width,
                             texture_region.y + texture_region.height,
-                        ),
+                        ],
                     },
                 },
                 world_transform: Transform2D {
@@ -452,34 +453,34 @@ impl Graphics {
 
                 draw_quad_commands.push(DrawQuadCommand {
                     quad: Quad {
-                        top_left: VertexDescription {
-                            position: (0.0, 0.0, 0.0),
+                        top_left: Vertex {
+                            position: [0.0, 0.0, 0.0],
                             color: Default::default(),
-                            texture_coordinates: (texture_region.x, texture_region.y),
+                            texture_coordinates: [texture_region.x, texture_region.y],
                         },
-                        bottom_left: VertexDescription {
-                            position: (0.0, tile_size.height as f32, 0.0),
+                        bottom_left: Vertex {
+                            position: [0.0, tile_size.height as f32, 0.0],
                             color: Default::default(),
-                            texture_coordinates: (
+                            texture_coordinates: [
                                 texture_region.x,
                                 texture_region.y + texture_region.height,
-                            ),
+                            ],
                         },
-                        top_right: VertexDescription {
-                            position: (tile_size.width as f32, 0.0, 0.0),
+                        top_right: Vertex {
+                            position: [tile_size.width as f32, 0.0, 0.0],
                             color: Default::default(),
-                            texture_coordinates: (
+                            texture_coordinates: [
                                 texture_region.x + texture_region.width,
                                 texture_region.y,
-                            ),
+                            ],
                         },
-                        bottom_right: VertexDescription {
-                            position: (tile_size.width as f32, tile_size.height as f32, 0.0),
+                        bottom_right: Vertex {
+                            position: [tile_size.width as f32, tile_size.height as f32, 0.0],
                             color: Default::default(),
-                            texture_coordinates: (
+                            texture_coordinates: [
                                 texture_region.x + texture_region.width,
                                 texture_region.y + texture_region.height,
-                            ),
+                            ],
                         },
                     },
                     world_transform: Transform2D {

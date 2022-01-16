@@ -1,3 +1,4 @@
+use crate::geometry::Vertex;
 use crate::texture::{
     MISSING_TEXTURE_IDENTIFIER, MISSING_TEXTURE_REGION, WHITE_TEXTURE_IDENTIFIER,
 };
@@ -24,57 +25,36 @@ impl Deref for TextureId {
     }
 }
 
-/// Describes a vertex for the low-level renderer
-#[derive(Copy, Clone, Debug)]
-pub struct VertexDescription {
-    /// The position in Normalized Device Coordinates
-    pub position: (f32, f32, f32),
-    /// The color of the vertex
-    pub color: Color,
-    /// The normalized texture coordinates of the vertex
-    pub texture_coordinates: (f32, f32),
-}
-
-impl Default for VertexDescription {
-    fn default() -> Self {
-        Self {
-            position: (0.0, 0.0, 0.0),
-            color: Color::default(),
-            texture_coordinates: (0.0, 0.0),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Quad {
-    pub top_left: VertexDescription,
-    pub bottom_left: VertexDescription,
-    pub top_right: VertexDescription,
-    pub bottom_right: VertexDescription,
+    pub top_left: Vertex,
+    pub bottom_left: Vertex,
+    pub top_right: Vertex,
+    pub bottom_right: Vertex,
 }
 
 impl Quad {
     pub fn with_size(size: Size2) -> Self {
         Self {
-            top_left: VertexDescription {
-                position: (0.0, 0.0, 0.0),
+            top_left: Vertex {
+                position: [0.0, 0.0, 0.0],
                 color: Default::default(),
-                texture_coordinates: (0.0, 0.0),
+                texture_coordinates: [0.0, 0.0],
             },
-            bottom_left: VertexDescription {
-                position: (0.0, size.height, 0.0),
+            bottom_left: Vertex {
+                position: [0.0, size.height, 0.0],
                 color: Default::default(),
-                texture_coordinates: (0.0, 1.0),
+                texture_coordinates: [0.0, 1.0],
             },
-            top_right: VertexDescription {
-                position: (size.width, 0.0, 0.0),
+            top_right: Vertex {
+                position: [size.width, 0.0, 0.0],
                 color: Default::default(),
-                texture_coordinates: (1.0, 0.0),
+                texture_coordinates: [1.0, 0.0],
             },
-            bottom_right: VertexDescription {
-                position: (size.width, size.height, 0.0),
+            bottom_right: Vertex {
+                position: [size.width, size.height, 0.0],
                 color: Default::default(),
-                texture_coordinates: (1.0, 1.0),
+                texture_coordinates: [1.0, 1.0],
             },
         }
     }
@@ -83,25 +63,25 @@ impl Quad {
 impl Default for Quad {
     fn default() -> Self {
         Self {
-            top_left: VertexDescription {
-                position: (0.0, 0.0, 0.0),
+            top_left: Vertex {
+                position: [0.0, 0.0, 0.0],
                 color: Default::default(),
-                texture_coordinates: (0.0, 0.0),
+                texture_coordinates: [0.0, 0.0],
             },
-            bottom_left: VertexDescription {
-                position: (0.0, 1.0, 0.0),
+            bottom_left: Vertex {
+                position: [0.0, 1.0, 0.0],
                 color: Default::default(),
-                texture_coordinates: (0.0, 1.0),
+                texture_coordinates: [0.0, 1.0],
             },
-            top_right: VertexDescription {
-                position: (1.0, 0.0, 0.0),
+            top_right: Vertex {
+                position: [1.0, 0.0, 0.0],
                 color: Default::default(),
-                texture_coordinates: (1.0, 0.0),
+                texture_coordinates: [1.0, 0.0],
             },
-            bottom_right: VertexDescription {
-                position: (1.0, 1.0, 0.0),
+            bottom_right: Vertex {
+                position: [1.0, 1.0, 0.0],
                 color: Default::default(),
-                texture_coordinates: (1.0, 1.0),
+                texture_coordinates: [1.0, 1.0],
             },
         }
     }
