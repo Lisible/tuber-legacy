@@ -25,13 +25,86 @@ impl Deref for TextureId {
 }
 
 /// Describes a vertex for the low-level renderer
+#[derive(Copy, Clone, Debug)]
 pub struct VertexDescription {
     /// The position in Normalized Device Coordinates
     pub position: (f32, f32, f32),
     /// The color of the vertex
-    pub color: (f32, f32, f32),
+    pub color: Color,
     /// The normalized texture coordinates of the vertex
     pub texture_coordinates: (f32, f32),
+}
+
+impl Default for VertexDescription {
+    fn default() -> Self {
+        Self {
+            position: (0.0, 0.0, 0.0),
+            color: Color::default(),
+            texture_coordinates: (0.0, 0.0),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Quad {
+    pub top_left: VertexDescription,
+    pub bottom_left: VertexDescription,
+    pub top_right: VertexDescription,
+    pub bottom_right: VertexDescription,
+}
+
+impl Quad {
+    pub fn with_size(size: Size2) -> Self {
+        Self {
+            top_left: VertexDescription {
+                position: (0.0, 0.0, 0.0),
+                color: Default::default(),
+                texture_coordinates: (0.0, 0.0),
+            },
+            bottom_left: VertexDescription {
+                position: (0.0, size.height, 0.0),
+                color: Default::default(),
+                texture_coordinates: (0.0, 1.0),
+            },
+            top_right: VertexDescription {
+                position: (size.width, 0.0, 0.0),
+                color: Default::default(),
+                texture_coordinates: (1.0, 0.0),
+            },
+            bottom_right: VertexDescription {
+                position: (size.width, size.height, 0.0),
+                color: Default::default(),
+                texture_coordinates: (1.0, 1.0),
+            },
+        }
+    }
+}
+
+impl Default for Quad {
+    fn default() -> Self {
+        Self {
+            top_left: VertexDescription {
+                position: (0.0, 0.0, 0.0),
+                color: Default::default(),
+                texture_coordinates: (0.0, 0.0),
+            },
+            bottom_left: VertexDescription {
+                position: (0.0, 1.0, 0.0),
+                color: Default::default(),
+                texture_coordinates: (0.0, 1.0),
+            },
+            top_right: VertexDescription {
+                position: (1.0, 0.0, 0.0),
+                color: Default::default(),
+                texture_coordinates: (1.0, 0.0),
+            },
+            bottom_right: VertexDescription {
+                position: (1.0, 1.0, 0.0),
+                color: Default::default(),
+                texture_coordinates: (1.0, 1.0),
+            },
+        }
+    }
 }
 
 /// Describes a quad for the low-level renderer
@@ -43,13 +116,13 @@ pub struct QuadDescription {
     pub transform: Transform2D,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MaterialDescription {
     pub albedo_map_description: TextureDescription,
     pub normal_map_description: TextureDescription,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TextureDescription {
     /// The identifier of the texture
     pub identifier: TextureId,

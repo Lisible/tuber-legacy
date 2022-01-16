@@ -1,18 +1,17 @@
 use crate::camera::OrthographicCamera;
+use crate::draw_command::{CommandBuffer, DrawQuadCommand};
 use crate::g_buffer::GBufferComponent;
+use crate::graphics::RenderId;
 use crate::low_level::composition::Compositor;
 use crate::low_level::g_buffer::GBuffer;
 use crate::low_level::polygon_mode::PolygonMode;
-use crate::low_level::primitives::{
-    MaterialDescription, QuadDescription, TextureDescription, TextureId,
-};
+use crate::low_level::primitives::{MaterialDescription, TextureDescription, TextureId};
 use crate::low_level::quad_renderer::QuadRenderer;
 use crate::low_level::texture::{
     create_texture_bind_group, create_texture_bind_group_layout, create_texture_descriptor,
 };
-use crate::{
-    low_level, Color, GraphicsError, Size2, TextureData, TextureRegion, Window, WindowSize,
-};
+use crate::primitives::Quad;
+use crate::{low_level, Color, Size2, TextureData, TextureRegion, Window, WindowSize};
 use futures::executor::block_on;
 use nalgebra::Matrix4;
 use tuber_core::transform::Transform2D;
@@ -34,6 +33,10 @@ pub struct WGPUState {
 
     projection_matrix: Matrix4<f32>,
     view_transform: Transform2D,
+
+    pre_renders: Vec<PreRender>,
+
+    command_buffer: CommandBuffer,
 }
 
 impl WGPUState {
@@ -85,7 +88,61 @@ impl WGPUState {
             textures: vec![],
             projection_matrix: Matrix4::identity(),
             view_transform: Transform2D::default(),
+            pre_renders: vec![],
+            command_buffer: CommandBuffer::new(),
         }
+    }
+
+    pub fn allocate_pre_render(&mut self, size_pixel: Size2<u32>) -> RenderId {
+        let material = self.allocate_material(size_pixel);
+        self.pre_renders.push(PreRender {
+            size: Size2::new(size_pixel.width as f32, size_pixel.height as f32),
+            material,
+        });
+
+        RenderId(self.pre_renders.len() - 1)
+    }
+
+    fn allocate_material(&mut self, size_pixel: Size2<u32>) -> MaterialDescription {
+        let albedo_map_texture_id = self.allocate_texture(size_pixel);
+        let normal_map_texture_id = self.allocate_texture(size_pixel);
+
+        MaterialDescription {
+            albedo_map_description: TextureDescription {
+                identifier: albedo_map_texture_id,
+                texture_region: TextureRegion::whole_texture(),
+            },
+            normal_map_description: TextureDescription {
+                identifier: normal_map_texture_id,
+                texture_region: TextureRegion::whole_texture(),
+            },
+        }
+    }
+
+    fn allocate_texture(&mut self, texture_size: Size2<u32>) -> TextureId {
+        let texture_id = self.textures.len();
+        let texture_descriptor =
+            create_texture_descriptor(None, texture_size, wgpu::TextureFormat::Bgra8UnormSrgb);
+        let texture = self.device.create_texture(&texture_descriptor);
+        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let texture_sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
+            label: None,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+        self.textures.push(texture);
+        self.texture_bind_groups.push(create_texture_bind_group(
+            &self.device,
+            &self.texture_bind_group_layout,
+            &texture_view,
+            &texture_sampler,
+        ));
+        TextureId(texture_id)
     }
 
     pub fn resize(&mut self, new_size: WindowSize) {
@@ -98,231 +155,101 @@ impl WGPUState {
             .configure(&self.device, &self.surface_configuration);
     }
 
-    pub fn create_transparent_quad(&mut self, size: Size2) -> QuadDescription {
-        let texture_size = Size2::new(size.width as u32, size.height as u32);
-        let albedo_map_texture_descriptor =
-            create_texture_descriptor("albedo_map_texture", texture_size);
-        let albedo_map_texture = self.device.create_texture(&albedo_map_texture_descriptor);
-        let albedo_map_view =
-            albedo_map_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let albedo_map_sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
-            label: None,
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Nearest,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
+    pub fn command_buffer_mut(&mut self) -> &mut CommandBuffer {
+        &mut self.command_buffer
+    }
 
-        let normal_map_texture_descriptor =
-            create_texture_descriptor("normal_map_texture", texture_size);
-        let normal_map_texture = self.device.create_texture(&normal_map_texture_descriptor);
-        let normal_map_view =
-            normal_map_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let normal_map_sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
-            label: None,
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Nearest,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
+    pub fn command_buffer(&self) -> &CommandBuffer {
+        &self.command_buffer
+    }
 
-        let albedo_texture_id = self.textures.len();
-        self.textures.push(albedo_map_texture);
-        self.texture_bind_groups.push(create_texture_bind_group(
-            &self.device,
-            &self.texture_bind_group_layout,
-            &albedo_map_view,
-            &albedo_map_sampler,
-        ));
-        let normal_texture_id = self.textures.len();
-        self.textures.push(normal_map_texture);
-        self.texture_bind_groups.push(create_texture_bind_group(
-            &self.device,
-            &self.texture_bind_group_layout,
-            &normal_map_view,
-            &normal_map_sampler,
-        ));
+    pub fn render(&mut self) {
+        let mut pre_render_command_encoder =
+            self.device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("pre_render_command_encoder"),
+                });
+        self.pre_render_pass(&mut pre_render_command_encoder);
+        self.queue
+            .submit(std::iter::once(pre_render_command_encoder.finish()));
 
-        QuadDescription {
-            size,
-            color: Color::WHITE,
-            material: MaterialDescription {
-                albedo_map_description: TextureDescription {
-                    identifier: TextureId(albedo_texture_id),
-                    texture_region: TextureRegion {
-                        x: 0.0,
-                        y: 0.0,
-                        width: 1.0,
-                        height: 1.0,
-                    },
-                },
-                normal_map_description: TextureDescription {
-                    identifier: TextureId(normal_texture_id),
-                    texture_region: TextureRegion {
-                        x: 0.0,
-                        y: 0.0,
-                        width: 1.0,
-                        height: 1.0,
-                    },
-                },
-            },
-            transform: Default::default(),
+        let mut command_encoder =
+            self.device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("render_command_encoder"),
+                });
+
+        let g_buffer = self.geometry_pass(&mut command_encoder);
+        //let render = self.lighting_pass(g_buffer);
+        // let ui_render = self.ui_pass(ui_draw_quad_commands)
+        let final_render = self.composition_pass(&mut command_encoder, g_buffer);
+
+        self.queue.submit(std::iter::once(command_encoder.finish()));
+
+        final_render.present();
+
+        self.command_buffer_mut().clear();
+    }
+
+    pub fn pre_render_pass(&mut self, command_encoder: &mut wgpu::CommandEncoder) {
+        for command in self.command_buffer.pre_draw_quads_commands() {
+            let pre_render = &self.pre_renders[command.render_id.0];
+            let albedo_map_id = pre_render.material.albedo_map_description.identifier;
+            let normal_map_id = pre_render.material.normal_map_description.identifier;
+
+            let albedo_texture = &self.textures[*albedo_map_id];
+            let normal_texture = &self.textures[*normal_map_id];
+
+            let albedo_texture_view = albedo_texture.create_view(&TextureViewDescriptor::default());
+            let normal_texture_view = normal_texture.create_view(&TextureViewDescriptor::default());
+
+            self.quad_renderer
+                .prepare(&self.device, &self.queue, &command.draw_quad_commands);
+            {
+                let mut render_pass =
+                    command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("quad_pre_render_pass"),
+                        color_attachments: &[
+                            wgpu::RenderPassColorAttachment {
+                                view: &albedo_texture_view,
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Load,
+                                    store: true,
+                                },
+                            },
+                            wgpu::RenderPassColorAttachment {
+                                view: &normal_texture_view,
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Load,
+                                    store: true,
+                                },
+                            },
+                        ],
+                        depth_stencil_attachment: None,
+                    });
+
+                self.quad_renderer.render(
+                    &self.queue,
+                    &mut render_pass,
+                    &self.texture_bind_groups,
+                    &Matrix4::new_orthographic(
+                        0.0,
+                        pre_render.size.width,
+                        pre_render.size.height,
+                        0.0,
+                        -1.0,
+                        1.0,
+                    ),
+                    &Transform2D::default(),
+                )
+            }
+            self.quad_renderer.clear_pending_quads();
         }
     }
 
-    pub fn pre_draw_quads(
-        &mut self,
-        destination_quad: &QuadDescription,
-        quads: &[QuadDescription],
-    ) {
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("pre_draw_quads_encoder"),
-            });
-
-        let destination_quad_albedo_texture = &self.textures[destination_quad
-            .material
-            .albedo_map_description
-            .identifier
-            .0];
-        let destination_quad_normal_texture = &self.textures[destination_quad
-            .material
-            .normal_map_description
-            .identifier
-            .0];
-
-        let destination_quad_albedo_texture_view =
-            destination_quad_albedo_texture.create_view(&TextureViewDescriptor::default());
-        let destination_quad_normal_texture_view =
-            destination_quad_normal_texture.create_view(&TextureViewDescriptor::default());
-
-        self.quad_renderer.prepare(&self.device, &self.queue, quads);
-
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("quad_pre_render_pass"),
-                color_attachments: &[
-                    wgpu::RenderPassColorAttachment {
-                        view: &destination_quad_albedo_texture_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: true,
-                        },
-                    },
-                    wgpu::RenderPassColorAttachment {
-                        view: &destination_quad_normal_texture_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: true,
-                        },
-                    },
-                ],
-                depth_stencil_attachment: None,
-            });
-
-            self.quad_renderer.render(
-                &self.queue,
-                &mut render_pass,
-                &self.texture_bind_groups,
-                &Matrix4::new_orthographic(
-                    0.0,
-                    destination_quad.size.width,
-                    destination_quad.size.height,
-                    0.0,
-                    quads[0].transform.translation.2 as f32 - 1.0,
-                    quads[0].transform.translation.2 as f32,
-                ),
-                &Transform2D::default(),
-            )
-        }
-
-        self.queue.submit(std::iter::once(encoder.finish()));
-        self.quad_renderer.clear_pending_quads();
-    }
-
-    pub fn draw_quads(&mut self, quads: &[QuadDescription]) {
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("draw_quads_encoder"),
-            });
-
-        let g_buffer = self.geometry_pass(&mut encoder, quads);
-        self.compositor.prepare(&self.device, g_buffer);
-        let output = self.composition_pass(&mut encoder).unwrap();
-
-        self.queue.submit(std::iter::once(encoder.finish()));
-
-        output.present();
-
-        self.quad_renderer.clear_pending_quads();
-    }
-
-    pub fn set_clear_color(&mut self, color: Color) {
-        self.clear_color = color;
-    }
-
-    pub fn set_rendered_g_buffer_component(&mut self, g_buffer_component: GBufferComponent) {
-        self.compositor
-            .set_rendered_g_buffer_component(&self.queue, g_buffer_component);
-    }
-
-    pub fn set_polygon_mode(&mut self, polygon_mode: PolygonMode) {
-        self.quad_renderer
-            .set_polygon_mode(&self.device, polygon_mode);
-    }
-
-    fn composition_pass(
-        &mut self,
-        encoder: &mut wgpu::CommandEncoder,
-    ) -> Result<SurfaceTexture, GraphicsError> {
-        let output = self
-            .surface
-            .get_current_texture()
-            .map_err(|e| GraphicsError::WGPUSurfaceError(e))?;
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("composition_pass"),
-                color_attachments: &[wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.0,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 1.0,
-                        }),
-                        store: true,
-                    },
-                }],
-                depth_stencil_attachment: None,
-            });
-
-            self.compositor.render(&mut render_pass);
-        }
-
-        Ok(output)
-    }
-
-    fn geometry_pass(
-        &mut self,
-        encoder: &mut wgpu::CommandEncoder,
-        quads: &[QuadDescription],
-    ) -> GBuffer {
+    fn geometry_pass(&mut self, encoder: &mut wgpu::CommandEncoder) -> GBuffer {
         let albedo_map_texture_descriptor =
             self.create_g_buffer_texture_descriptor("albedo_map_texture");
         let albedo_map_texture = self.device.create_texture(&albedo_map_texture_descriptor);
@@ -335,7 +262,37 @@ impl WGPUState {
         let normal_map_view =
             normal_map_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        self.quad_renderer.prepare(&self.device, &self.queue, quads);
+        let mut draw_commands = self
+            .command_buffer()
+            .draw_quad_commands()
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let mut render_draw_commands = self
+            .command_buffer()
+            .draw_pre_render_commands()
+            .iter()
+            .map(|pre_render_command| DrawQuadCommand {
+                quad: Quad::with_size(pre_render_command.size),
+                world_transform: pre_render_command.world_transform,
+                material: self.pre_renders[pre_render_command.render_id.0]
+                    .material
+                    .clone(),
+            })
+            .collect::<Vec<_>>();
+
+        draw_commands.append(&mut render_draw_commands);
+        draw_commands.sort_by(|first_draw_command, second_draw_command| {
+            first_draw_command
+                .world_transform
+                .translation
+                .2
+                .cmp(&second_draw_command.world_transform.translation.2)
+        });
+
+        self.quad_renderer
+            .prepare(&self.device, &self.queue, &draw_commands);
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -380,10 +337,62 @@ impl WGPUState {
             )
         }
 
+        self.quad_renderer.clear_pending_quads();
+
         GBuffer {
             albedo: albedo_map_texture,
             normal: normal_map_texture,
         }
+    }
+
+    fn composition_pass(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        g_buffer: GBuffer,
+    ) -> SurfaceTexture {
+        let output_texture = self.surface.get_current_texture().unwrap();
+        let output_texture_view = output_texture
+            .texture
+            .create_view(&TextureViewDescriptor::default());
+        self.compositor.prepare(&self.device, g_buffer);
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("composition_pass"),
+                color_attachments: &[wgpu::RenderPassColorAttachment {
+                    view: &output_texture_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 1.0,
+                        }),
+                        store: true,
+                    },
+                }],
+                depth_stencil_attachment: None,
+            });
+
+            self.compositor.render(&mut render_pass);
+        }
+
+        output_texture
+    }
+
+    pub fn set_clear_color(&mut self, color: Color) {
+        self.clear_color = color;
+    }
+
+    pub fn set_rendered_g_buffer_component(&mut self, g_buffer_component: GBufferComponent) {
+        self.compositor
+            .set_rendered_g_buffer_component(&self.queue, g_buffer_component);
+    }
+
+    pub fn set_polygon_mode(&mut self, polygon_mode: PolygonMode) {
+        self.quad_renderer
+            .set_polygon_mode(&self.device, polygon_mode);
     }
 
     pub(crate) fn update_camera(
@@ -442,8 +451,17 @@ impl WGPUState {
         &self,
         label: &'static str,
     ) -> wgpu::TextureDescriptor {
-        create_texture_descriptor(label, Size2::from(self.size))
+        create_texture_descriptor(
+            Some(label),
+            Size2::from(self.size),
+            wgpu::TextureFormat::Bgra8UnormSrgb,
+        )
     }
+}
+
+pub struct PreRender {
+    pub size: Size2,
+    pub material: MaterialDescription,
 }
 
 pub trait IntoPolygonMode {

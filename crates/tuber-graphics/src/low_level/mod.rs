@@ -1,8 +1,9 @@
-pub mod composition;
-pub mod g_buffer;
-pub mod geometry;
+pub(crate) mod composition;
+pub(crate) mod draw_command;
+pub(crate) mod g_buffer;
+pub(crate) mod geometry;
 pub mod polygon_mode;
-pub mod primitives;
-pub mod quad_renderer;
-pub mod texture;
-pub mod wgpu_state;
+pub(crate) mod primitives;
+pub(crate) mod quad_renderer;
+pub(crate) mod texture;
+pub(crate) mod wgpu_state;

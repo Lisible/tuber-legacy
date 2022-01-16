@@ -1,6 +1,7 @@
+use crate::draw_command::DrawQuadCommand;
 use crate::geometry::Vertex;
 use crate::low_level::polygon_mode::PolygonMode;
-use crate::low_level::primitives::{QuadDescription, TextureId};
+use crate::low_level::primitives::TextureId;
 use crate::low_level::texture::create_texture_bind_group_layout;
 use crate::low_level::wgpu_state::IntoPolygonMode;
 use nalgebra::Matrix4;
@@ -78,66 +79,40 @@ impl QuadRenderer {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        quads: &[QuadDescription],
+        draw_quad_commmands: &[DrawQuadCommand],
     ) {
-        while quads.len() as u64 * QUAD_SIZE > self.vertex_buffer_size {
+        while draw_quad_commmands.len() as u64 * QUAD_SIZE > self.vertex_buffer_size {
             self.reallocate_buffers(device, queue);
         }
 
-        for quad in quads {
-            self.prepare_quad(queue, quad);
+        for draw_quad_command in draw_quad_commmands {
+            self.prepare_quad(queue, draw_quad_command);
         }
     }
 
-    pub fn prepare_quad(&mut self, queue: &wgpu::Queue, quad: &QuadDescription) {
-        let albedo_map_description = &quad.material.albedo_map_description;
-        let normal_map_description = &quad.material.normal_map_description;
-        let texture_region = &albedo_map_description.texture_region;
-
+    pub fn prepare_quad(&mut self, queue: &wgpu::Queue, draw_quad_command: &DrawQuadCommand) {
+        let albedo_map_description = &draw_quad_command.material.albedo_map_description;
+        let normal_map_description = &draw_quad_command.material.normal_map_description;
         self.add_uniform_to_buffer(
             queue,
             QuadUniform {
-                model: quad.transform.clone().into_matrix4().into(),
+                model: draw_quad_command
+                    .world_transform
+                    .clone()
+                    .into_matrix4()
+                    .into(),
             },
         );
 
-        let color = [quad.color.r(), quad.color.g(), quad.color.b()];
         self.add_vertices_to_buffer(
             queue,
             &[
-                Vertex {
-                    position: [0.0, 0.0, 0.0],
-                    color,
-                    tex_coords: [texture_region.x, texture_region.y],
-                },
-                Vertex {
-                    position: [0.0, quad.size.height, 0.0],
-                    color,
-                    tex_coords: [texture_region.x, texture_region.y + texture_region.height],
-                },
-                Vertex {
-                    position: [quad.size.width, 0.0, 0.0],
-                    color,
-                    tex_coords: [texture_region.x + texture_region.width, texture_region.y],
-                },
-                Vertex {
-                    position: [quad.size.width, 0.0, 0.0],
-                    color,
-                    tex_coords: [texture_region.x + texture_region.width, texture_region.y],
-                },
-                Vertex {
-                    position: [0.0, quad.size.height, 0.0],
-                    color,
-                    tex_coords: [texture_region.x, texture_region.y + texture_region.height],
-                },
-                Vertex {
-                    position: [quad.size.width, quad.size.height, 0.0],
-                    color,
-                    tex_coords: [
-                        texture_region.x + texture_region.width,
-                        texture_region.y + texture_region.height,
-                    ],
-                },
+                draw_quad_command.quad.top_left.into(),
+                draw_quad_command.quad.bottom_left.into(),
+                draw_quad_command.quad.top_right.into(),
+                draw_quad_command.quad.top_right.into(),
+                draw_quad_command.quad.bottom_left.into(),
+                draw_quad_command.quad.bottom_right.into(),
             ],
         );
 

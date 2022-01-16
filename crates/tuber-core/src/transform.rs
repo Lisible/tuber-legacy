@@ -1,6 +1,6 @@
 use nalgebra::{Matrix4, Vector3};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Transform2D {
     pub translation: (f32, f32, i32),
     pub angle: f32,

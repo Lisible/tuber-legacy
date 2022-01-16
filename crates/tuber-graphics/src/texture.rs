@@ -47,6 +47,15 @@ impl TextureRegion {
         }
     }
 
+    pub fn whole_texture() -> Self {
+        Self {
+            x: 0.0,
+            y: 0.0,
+            width: 1.0,
+            height: 1.0,
+        }
+    }
+
     pub fn normalize(self, texture_width: u32, texture_height: u32) -> Self {
         let texture_width = texture_width as f32;
         let texture_height = texture_height as f32;

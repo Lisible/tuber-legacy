@@ -21,7 +21,7 @@ impl<T: Copy> From<(T, T)> for Size2<T> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Color {
     r: u8,
     g: u8,
@@ -50,6 +50,12 @@ impl Color {
 
     pub fn b<T: From<ColorComponent>>(&self) -> T {
         ColorComponent(self.b).into()
+    }
+}
+
+impl Default for Color {
+    fn default() -> Self {
+        Self::WHITE
     }
 }
 

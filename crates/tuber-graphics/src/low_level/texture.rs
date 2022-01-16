@@ -116,9 +116,13 @@ pub fn create_texture_bind_group(
     })
 }
 
-pub fn create_texture_descriptor(label: &'static str, size: Size2<u32>) -> wgpu::TextureDescriptor {
+pub fn create_texture_descriptor(
+    label: Option<&'static str>,
+    size: Size2<u32>,
+    texture_format: wgpu::TextureFormat,
+) -> wgpu::TextureDescriptor {
     wgpu::TextureDescriptor {
-        label: Some(label),
+        label,
         size: wgpu::Extent3d {
             width: size.width,
             height: size.height,
@@ -127,7 +131,7 @@ pub fn create_texture_descriptor(label: &'static str, size: Size2<u32>) -> wgpu:
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Bgra8UnormSrgb,
+        format: texture_format,
         usage: wgpu::TextureUsages::COPY_SRC
             | wgpu::TextureUsages::RENDER_ATTACHMENT
             | wgpu::TextureUsages::TEXTURE_BINDING,
