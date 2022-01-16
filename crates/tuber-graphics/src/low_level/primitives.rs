@@ -2,11 +2,10 @@ use crate::geometry::Vertex;
 use crate::texture::{
     MISSING_TEXTURE_IDENTIFIER, MISSING_TEXTURE_REGION, WHITE_TEXTURE_IDENTIFIER,
 };
-use crate::types::{Color, Size2};
+use crate::types::Size2;
 use crate::{TextureMetadata, TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER};
 use std::collections::HashMap;
 use std::ops::Deref;
-use tuber_core::transform::Transform2D;
 
 #[derive(Copy, Clone, Debug)]
 pub struct TextureId(pub usize);
@@ -85,15 +84,6 @@ impl Default for Quad {
             },
         }
     }
-}
-
-/// Describes a quad for the low-level renderer
-#[derive(Clone)]
-pub struct QuadDescription {
-    pub size: Size2,
-    pub color: Color,
-    pub material: MaterialDescription,
-    pub transform: Transform2D,
 }
 
 #[derive(Clone, Debug)]
