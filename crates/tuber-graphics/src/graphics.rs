@@ -3,7 +3,7 @@ use crate::geometry::Vertex;
 use crate::primitives::Quad;
 use crate::{
     bitmap_font::font_loader, texture, texture_atlas_loader, texture_loader, Active,
-    AnimatedSprite, BitmapFont, Color, GBufferComponent, GraphicsError, ImmediateGUI, Material,
+    AnimatedSprite, BitmapFont, Color, GBufferComponent, GraphicsError, Material,
     MaterialDescription, OrthographicCamera, PolygonMode, RectangleShape, Size2, Sprite,
     TextureAtlas, TextureData, TextureDescription, TextureMetadata, TextureRegion, Tile, Tilemap,
     WGPUState, Window, WindowSize, DEFAULT_NORMAL_MAP_IDENTIFIER,
@@ -19,7 +19,6 @@ use tuber_ecs::EntityIndex;
 pub struct Graphics {
     wgpu_state: Option<WGPUState>,
     texture_metadata: HashMap<String, TextureMetadata>,
-    immediate_gui: ImmediateGUI,
 }
 
 impl Graphics {
@@ -28,8 +27,6 @@ impl Graphics {
         Self {
             wgpu_state: None,
             texture_metadata,
-
-            immediate_gui: ImmediateGUI::new(),
         }
     }
 
@@ -414,10 +411,6 @@ impl Graphics {
                 render_id,
                 draw_quad_commands,
             }));
-    }
-
-    pub fn immediate_gui(&mut self) -> &mut ImmediateGUI {
-        &mut self.immediate_gui
     }
 
     fn render_entire_tilemap(
