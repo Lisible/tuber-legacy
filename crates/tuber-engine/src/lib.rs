@@ -7,6 +7,7 @@ use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
 use tuber_graphics::types::Size2;
 use tuber_graphics::{graphics::Graphics, Window};
+use tuber_gui::immediate_gui::ImmediateGUI;
 
 pub mod engine_context;
 pub mod state;
@@ -50,6 +51,7 @@ impl Engine {
             graphics: Some(Graphics::new()),
             asset_store: asset_manager,
             input_state,
+            immediate_gui: ImmediateGUI::new(),
         };
 
         Self {
@@ -110,6 +112,10 @@ impl Engine {
     pub fn render(&mut self) {
         self.state_stack
             .render_current_state(&mut self.ecs, &mut self.context);
+
+        self.context
+            .immediate_gui
+            .render(self.context.graphics.as_mut().unwrap());
 
         if let Some(graphics) = self.context.graphics.as_mut() {
             graphics.render_scene(&self.ecs, &mut self.context.asset_store);

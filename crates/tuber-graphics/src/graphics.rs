@@ -51,22 +51,22 @@ impl Graphics {
                     top_left: Vertex {
                         position: [0.0, 0.0, 0.0],
                         texture_coordinates: [0.0, 0.0],
-                        ..Default::default()
+                        color: rectangle.color.into(),
                     },
                     bottom_left: Vertex {
                         position: [0.0, rectangle.height, 0.0],
                         texture_coordinates: [0.0, 0.0],
-                        ..Default::default()
+                        color: rectangle.color.into(),
                     },
                     top_right: Vertex {
                         position: [rectangle.width, 0.0, 0.0],
                         texture_coordinates: [0.0, 0.0],
-                        ..Default::default()
+                        color: rectangle.color.into(),
                     },
                     bottom_right: Vertex {
                         position: [rectangle.width, rectangle.height, 0.0],
                         texture_coordinates: [0.0, 0.0],
-                        ..Default::default()
+                        color: rectangle.color.into(),
                     },
                 },
                 world_transform: transform.clone(),
