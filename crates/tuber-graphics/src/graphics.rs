@@ -41,6 +41,46 @@ impl Graphics {
         self.wgpu_state.as_mut().unwrap().render();
     }
 
+    pub fn draw_ui_rectangle(&mut self, rectangle: &RectangleShape, transform: &Transform2D) {
+        self.wgpu_state
+            .as_mut()
+            .unwrap()
+            .command_buffer_mut()
+            .add(Command::DrawUIQuad(DrawQuadCommand {
+                quad: Quad {
+                    top_left: Vertex {
+                        position: [0.0, 0.0, 0.0],
+                        texture_coordinates: [0.0, 0.0],
+                        color: rectangle.color.into(),
+                    },
+                    bottom_left: Vertex {
+                        position: [0.0, rectangle.height, 0.0],
+                        texture_coordinates: [0.0, 0.0],
+                        color: rectangle.color.into(),
+                    },
+                    top_right: Vertex {
+                        position: [rectangle.width, 0.0, 0.0],
+                        texture_coordinates: [0.0, 0.0],
+                        color: rectangle.color.into(),
+                    },
+                    bottom_right: Vertex {
+                        position: [rectangle.width, rectangle.height, 0.0],
+                        texture_coordinates: [0.0, 0.0],
+                        color: rectangle.color.into(),
+                    },
+                },
+                world_transform: transform.clone(),
+                material: MaterialDescription {
+                    albedo_map_description: TextureDescription::default_albedo_map_description(
+                        &self.texture_metadata,
+                    ),
+                    normal_map_description: TextureDescription::default_normal_map_description(
+                        &self.texture_metadata,
+                    ),
+                },
+            }));
+    }
+
     pub fn draw_rectangle(&mut self, rectangle: &RectangleShape, transform: &Transform2D) {
         self.wgpu_state
             .as_mut()

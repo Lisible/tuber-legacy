@@ -34,14 +34,20 @@ var t_normal: texture_2d<f32>;
 [[group(1), binding(3)]]
 var s_normal: sampler;
 
+
+[[group(2), binding(0)]]
+var t_ui: texture_2d<f32>;
+[[group(2), binding(1)]]
+var s_ui: sampler;
+
 [[stage(fragment)]]
 fn fs_main(input: VertexStageOutput) -> [[location(0)]] vec4<f32> {
-    let DIFFUSE = 0;
-    let NORMAL = 1;
+    let ui_fragment = textureSample(t_ui, s_ui, input.texture_coordinates);
+    let diffuse_fragment = textureSample(t_diffuse, s_diffuse, input.texture_coordinates);
 
-    if (u_global.rendered_g_buffer_component == DIFFUSE) {
-        return textureSample(t_diffuse, s_diffuse, input.texture_coordinates);
+    if (ui_fragment.a == 0.0) {
+        return diffuse_fragment;
     } else {
-        return textureSample(t_normal, s_normal, input.texture_coordinates);
+        return ui_fragment;
     }
 }

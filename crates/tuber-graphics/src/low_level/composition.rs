@@ -13,6 +13,8 @@ pub(crate) struct Compositor {
     vertex_buffer: wgpu::Buffer,
     g_buffer_bind_group_layout: wgpu::BindGroupLayout,
     g_buffer_bind_group: Option<wgpu::BindGroup>,
+    ui_render_bind_group_layout: wgpu::BindGroupLayout,
+    ui_render_bind_group: Option<wgpu::BindGroup>,
     global_uniform: GlobalUniform,
     global_uniform_buffer: wgpu::Buffer,
     global_uniform_bind_group: wgpu::BindGroup,
@@ -23,6 +25,7 @@ impl Compositor {
     pub fn new(device: &wgpu::Device, surface_texture_format: wgpu::TextureFormat) -> Self {
         let vertex_buffer = Self::create_vertex_buffer(device);
         let g_buffer_bind_group_layout = Self::create_g_buffer_bind_group_layout(device);
+        let ui_render_bind_group_layout = Self::create_ui_render_bind_group_layout(device);
 
         let global_uniform = GlobalUniform {
             rendered_g_buffer_component: 0,
@@ -40,6 +43,7 @@ impl Compositor {
             device,
             surface_texture_format,
             &g_buffer_bind_group_layout,
+            &ui_render_bind_group_layout,
             &global_uniform_bind_group_layout,
         );
 
@@ -47,6 +51,8 @@ impl Compositor {
             vertex_buffer,
             g_buffer_bind_group_layout,
             g_buffer_bind_group: None,
+            ui_render_bind_group_layout,
+            ui_render_bind_group: None,
             global_uniform,
             global_uniform_buffer,
             global_uniform_bind_group,
@@ -54,11 +60,17 @@ impl Compositor {
         }
     }
 
-    pub fn prepare(&mut self, device: &wgpu::Device, g_buffer: GBuffer) {
+    pub fn prepare(&mut self, device: &wgpu::Device, g_buffer: GBuffer, ui_render: &wgpu::Texture) {
         self.g_buffer_bind_group = Some(Self::create_g_buffer_bind_group(
             device,
             &self.g_buffer_bind_group_layout,
             g_buffer,
+        ));
+
+        self.ui_render_bind_group = Some(Self::create_ui_render_bind_group(
+            device,
+            &self.ui_render_bind_group_layout,
+            ui_render,
         ));
     }
 
@@ -68,6 +80,11 @@ impl Compositor {
         if let Some(texture_bind_group) = &self.g_buffer_bind_group {
             render_pass.set_bind_group(1, texture_bind_group, &[]);
         }
+
+        if let Some(texture_bind_group) = &self.ui_render_bind_group {
+            render_pass.set_bind_group(2, texture_bind_group, &[]);
+        }
+
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.draw(0..6, 0..1);
     }
@@ -176,10 +193,38 @@ impl Compositor {
         })
     }
 
+    fn create_ui_render_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("compositor_ui_render_bind_group_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler {
+                        filtering: true,
+                        comparison: false,
+                    },
+                    count: None,
+                },
+            ],
+        })
+    }
+
     fn create_render_pipeline(
         device: &wgpu::Device,
         surface_texture_format: wgpu::TextureFormat,
-        texture_bind_group_layout: &wgpu::BindGroupLayout,
+        g_buffer_bind_group_layout: &wgpu::BindGroupLayout,
+        ui_bind_group_layout: &wgpu::BindGroupLayout,
         global_uniform_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> wgpu::RenderPipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
@@ -189,7 +234,11 @@ impl Compositor {
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("compositor_render_pipeline_layout"),
-            bind_group_layouts: &[global_uniform_bind_group_layout, texture_bind_group_layout],
+            bind_group_layouts: &[
+                global_uniform_bind_group_layout,
+                g_buffer_bind_group_layout,
+                ui_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
 
@@ -236,11 +285,11 @@ impl Compositor {
         let albedo_map_view = g_buffer
             .albedo
             .create_view(&TextureViewDescriptor::default());
-        let albedo_map_sampler = Self::create_g_buffer_sampler(device);
+        let albedo_map_sampler = Self::create_sampler(device);
         let normal_map_view = g_buffer
             .normal
             .create_view(&TextureViewDescriptor::default());
-        let normal_map_sampler = Self::create_g_buffer_sampler(device);
+        let normal_map_sampler = Self::create_sampler(device);
 
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
@@ -266,7 +315,31 @@ impl Compositor {
         })
     }
 
-    fn create_g_buffer_sampler(device: &wgpu::Device) -> wgpu::Sampler {
+    fn create_ui_render_bind_group(
+        device: &wgpu::Device,
+        ui_render_bind_group_layout: &wgpu::BindGroupLayout,
+        ui_render: &wgpu::Texture,
+    ) -> wgpu::BindGroup {
+        let render_view = ui_render.create_view(&TextureViewDescriptor::default());
+        let render_sampler = Self::create_sampler(device);
+
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &ui_render_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&render_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&render_sampler),
+                },
+            ],
+        })
+    }
+
+    fn create_sampler(device: &wgpu::Device) -> wgpu::Sampler {
         device.create_sampler(&wgpu::SamplerDescriptor {
             label: None,
             address_mode_u: wgpu::AddressMode::ClampToEdge,

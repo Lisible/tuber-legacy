@@ -58,7 +58,7 @@ pub struct Window {
 impl Window {
     pub fn new() -> Self {
         Self {
-            size: Size2::new(1000.0, 1000.0),
+            size: Size2::new(10.0, 10.0),
         }
     }
 }
@@ -69,7 +69,7 @@ pub trait Renderable {
 
 impl Renderable for Window {
     fn render(&self, graphics: &mut Graphics) {
-        graphics.draw_rectangle(
+        graphics.draw_ui_rectangle(
             &RectangleShape {
                 width: self.size.width,
                 height: self.size.height,

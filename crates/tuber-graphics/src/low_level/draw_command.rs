@@ -7,6 +7,7 @@ pub struct CommandBuffer {
     pre_draw_quads_command_buffer: Vec<PreDrawQuadsCommand>,
     draw_pre_render_command_buffer: Vec<DrawPreRenderCommand>,
     draw_quad_command_buffer: Vec<DrawQuadCommand>,
+    draw_ui_quad_command_buffer: Vec<DrawQuadCommand>,
 }
 
 impl CommandBuffer {
@@ -15,6 +16,7 @@ impl CommandBuffer {
             pre_draw_quads_command_buffer: vec![],
             draw_pre_render_command_buffer: vec![],
             draw_quad_command_buffer: vec![],
+            draw_ui_quad_command_buffer: vec![],
         }
     }
 
@@ -29,11 +31,18 @@ impl CommandBuffer {
             Command::DrawPreRender(draw_pre_render_command) => self
                 .draw_pre_render_command_buffer
                 .push(draw_pre_render_command),
+            Command::DrawUIQuad(draw_quad_command) => {
+                self.draw_ui_quad_command_buffer.push(draw_quad_command)
+            }
         }
     }
 
     pub fn draw_quad_commands(&self) -> &[DrawQuadCommand] {
         &self.draw_quad_command_buffer
+    }
+
+    pub fn draw_ui_quad_commands(&self) -> &[DrawQuadCommand] {
+        &self.draw_ui_quad_command_buffer
     }
 
     pub fn pre_draw_quads_commands(&self) -> &[PreDrawQuadsCommand] {
@@ -46,6 +55,7 @@ impl CommandBuffer {
 
     pub fn clear(&mut self) {
         self.draw_quad_command_buffer.clear();
+        self.draw_ui_quad_command_buffer.clear();
         self.pre_draw_quads_command_buffer.clear();
         self.draw_pre_render_command_buffer.clear();
     }
@@ -56,6 +66,7 @@ pub enum Command {
     PreDrawQuads(PreDrawQuadsCommand),
     DrawPreRender(DrawPreRenderCommand),
     DrawQuad(DrawQuadCommand),
+    DrawUIQuad(DrawQuadCommand),
 }
 
 #[derive(Debug)]
