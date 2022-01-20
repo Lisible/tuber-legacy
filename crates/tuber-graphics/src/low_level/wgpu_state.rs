@@ -17,7 +17,7 @@ use futures::executor::block_on;
 use nalgebra::Matrix4;
 use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
-use wgpu::{SurfaceTexture, TextureViewDescriptor};
+use wgpu::{CommandEncoderDescriptor, SurfaceTexture, TextureViewDescriptor};
 
 pub struct WGPUState {
     clear_color: Color,
@@ -165,48 +165,18 @@ impl WGPUState {
     }
 
     pub fn render(&mut self) {
-        let mut command_buffers = vec![];
-        let mut pre_render_command_encoder =
-            self.device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("pre_render_command_encoder"),
-                });
-        self.pre_render_pass(&mut pre_render_command_encoder);
-        command_buffers.push(pre_render_command_encoder.finish());
-        self.queue.submit(command_buffers);
-
-        command_buffers = vec![];
-        let mut command_encoder =
-            self.device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("render_command_encoder"),
-                });
-        let g_buffer = self.geometry_pass(&mut command_encoder);
-        command_buffers.push(command_encoder.finish());
-        self.queue.submit(command_buffers);
-
-        command_buffers = vec![];
-        let mut command_encoder =
-            self.device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("render_command_encoder"),
-                });
+        let mut command_encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor::default());
+        self.pre_render_pass(&mut command_encoder);
         let ui_render = self.ui_pass(&mut command_encoder);
-        command_buffers.push(command_encoder.finish());
-        self.queue.submit(command_buffers);
-
-        command_buffers = vec![];
-        let mut command_encoder =
-            self.device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("render_command_encoder"),
-                });
+        let g_buffer = self.geometry_pass(&mut command_encoder);
         let final_render = self.composition_pass(&mut command_encoder, g_buffer, &ui_render);
-        command_buffers.push(command_encoder.finish());
-        self.queue.submit(command_buffers);
+        self.queue.submit(std::iter::once(command_encoder.finish()));
 
         final_render.present();
 
+        self.quad_renderer.clear_pending_quads();
         self.command_buffer_mut().clear();
     }
 
@@ -215,9 +185,11 @@ impl WGPUState {
         let render_texture = self.device.create_texture(&render_texture_descriptor);
         let render_view = render_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        self.quad_renderer.prepare(
+        let quad_group = self.quad_renderer.prepare_quad_group(
             &self.device,
             &self.queue,
+            &self.projection_matrix,
+            &Transform2D::default(),
             &self.command_buffer.draw_ui_quad_commands(),
         );
 
@@ -240,17 +212,13 @@ impl WGPUState {
                 depth_stencil_attachment: None,
             });
 
-            self.quad_renderer.render(
-                &self.queue,
+            self.quad_renderer.render_quad_group(
                 &mut render_pass,
                 &self.texture_bind_groups,
-                &self.projection_matrix,
-                &Transform2D::default(),
                 QuadRenderPassType::UI,
+                &quad_group,
             )
         }
-
-        self.quad_renderer.clear_pending_quads();
         render_texture
     }
 
@@ -266,8 +234,20 @@ impl WGPUState {
             let albedo_texture_view = albedo_texture.create_view(&TextureViewDescriptor::default());
             let normal_texture_view = normal_texture.create_view(&TextureViewDescriptor::default());
 
-            self.quad_renderer
-                .prepare(&self.device, &self.queue, &command.draw_quad_commands);
+            let quad_group = self.quad_renderer.prepare_quad_group(
+                &self.device,
+                &self.queue,
+                &Matrix4::new_orthographic(
+                    0.0,
+                    pre_render.size.width,
+                    pre_render.size.height,
+                    0.0,
+                    -1.0,
+                    1.0,
+                ),
+                &Transform2D::default(),
+                &command.draw_quad_commands,
+            );
             {
                 let mut render_pass =
                     command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -293,27 +273,17 @@ impl WGPUState {
                         depth_stencil_attachment: None,
                     });
 
-                self.quad_renderer.render(
-                    &self.queue,
+                self.quad_renderer.render_quad_group(
                     &mut render_pass,
                     &self.texture_bind_groups,
-                    &Matrix4::new_orthographic(
-                        0.0,
-                        pre_render.size.width,
-                        pre_render.size.height,
-                        0.0,
-                        -1.0,
-                        1.0,
-                    ),
-                    &Transform2D::default(),
                     QuadRenderPassType::Geometry,
+                    &quad_group,
                 )
             }
-            self.quad_renderer.clear_pending_quads();
         }
     }
 
-    fn geometry_pass(&mut self, encoder: &mut wgpu::CommandEncoder) -> GBuffer {
+    fn geometry_pass(&mut self, command_encoder: &mut wgpu::CommandEncoder) -> GBuffer {
         let albedo_map_texture_descriptor =
             self.create_g_buffer_texture_descriptor("albedo_map_texture");
         let albedo_map_texture = self.device.create_texture(&albedo_map_texture_descriptor);
@@ -355,11 +325,16 @@ impl WGPUState {
                 .cmp(&second_draw_command.world_transform.translation.2)
         });
 
-        self.quad_renderer
-            .prepare(&self.device, &self.queue, &draw_commands);
+        let quad_group = self.quad_renderer.prepare_quad_group(
+            &self.device,
+            &self.queue,
+            &self.projection_matrix,
+            &self.view_transform,
+            &draw_commands,
+        );
 
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("geometry_pass"),
                 color_attachments: &[
                     wgpu::RenderPassColorAttachment {
@@ -392,17 +367,13 @@ impl WGPUState {
                 depth_stencil_attachment: None,
             });
 
-            self.quad_renderer.render(
-                &self.queue,
+            self.quad_renderer.render_quad_group(
                 &mut render_pass,
                 &self.texture_bind_groups,
-                &self.projection_matrix,
-                &self.view_transform,
                 QuadRenderPassType::Geometry,
+                &quad_group,
             )
         }
-
-        self.quad_renderer.clear_pending_quads();
 
         GBuffer {
             albedo: albedo_map_texture,
@@ -412,7 +383,7 @@ impl WGPUState {
 
     fn composition_pass(
         &mut self,
-        encoder: &mut wgpu::CommandEncoder,
+        command_encoder: &mut wgpu::CommandEncoder,
         g_buffer: GBuffer,
         ui_render: &wgpu::Texture,
     ) -> SurfaceTexture {
@@ -423,7 +394,7 @@ impl WGPUState {
         self.compositor.prepare(&self.device, g_buffer, ui_render);
 
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("composition_pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachment {
                     view: &output_texture_view,
@@ -443,7 +414,6 @@ impl WGPUState {
 
             self.compositor.render(&mut render_pass);
         }
-
         output_texture
     }
 
