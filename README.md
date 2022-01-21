@@ -7,4 +7,5 @@
 # How to run examples
 
 You can run the examples by going into the examples/<example> directory and running the following example
+  
 ``cargo run --example <example>``
