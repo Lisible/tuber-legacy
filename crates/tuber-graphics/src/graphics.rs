@@ -2,12 +2,13 @@ use crate::draw_command::{Command, DrawPreRenderCommand, DrawQuadCommand, PreDra
 use crate::font::DEFAULT_FONT_IDENTIFIER;
 use crate::geometry::Vertex;
 use crate::primitives::Quad;
+use crate::texture::{MISSING_TEXTURE_IDENTIFIER, WHITE_TEXTURE_IDENTIFIER};
 use crate::{
     bitmap_font::font_loader, font, texture, texture_atlas_loader, texture_loader, Active,
     AnimatedSprite, BitmapFont, Color, GBufferComponent, GraphicsError, Material,
     MaterialDescription, OrthographicCamera, PolygonMode, RectangleShape, Size2, Sprite,
-    TextureAtlas, TextureData, TextureDescription, TextureMetadata, TextureRegion, Tile, Tilemap,
-    WGPUState, Window, WindowSize, DEFAULT_NORMAL_MAP_IDENTIFIER,
+    TextureAtlas, TextureData, TextureMetadata, TextureRegion, Tile, Tilemap, WGPUState, Window,
+    WindowSize, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
 use std::any::TypeId;
 use std::collections::HashMap;
@@ -73,12 +74,8 @@ impl Graphics {
                 },
                 world_transform: transform.clone(),
                 material: MaterialDescription {
-                    albedo_map_description: TextureDescription::default_albedo_map_description(
-                        &self.texture_metadata,
-                    ),
-                    normal_map_description: TextureDescription::default_normal_map_description(
-                        &self.texture_metadata,
-                    ),
+                    albedo_map_id: self.texture_metadata[WHITE_TEXTURE_IDENTIFIER].texture_id,
+                    normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
                 },
             }));
     }
@@ -113,12 +110,8 @@ impl Graphics {
                 },
                 world_transform: transform.clone(),
                 material: MaterialDescription {
-                    albedo_map_description: TextureDescription::default_albedo_map_description(
-                        &self.texture_metadata,
-                    ),
-                    normal_map_description: TextureDescription::default_normal_map_description(
-                        &self.texture_metadata,
-                    ),
+                    albedo_map_id: self.texture_metadata[WHITE_TEXTURE_IDENTIFIER].texture_id,
+                    normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
                 },
             }));
     }
@@ -140,36 +133,19 @@ impl Graphics {
             ..*transform
         };
 
-        let albedo_map_description = match self.texture_metadata.get(&sprite.material.albedo_map) {
-            Some(albedo_map_metadata) => TextureDescription {
-                identifier: albedo_map_metadata.texture_id,
-                texture_region: TextureRegion {
-                    x: sprite.texture_region.x / albedo_map_metadata.width as f32,
-                    y: sprite.texture_region.y / albedo_map_metadata.height as f32,
-                    width: sprite.texture_region.width / albedo_map_metadata.width as f32,
-                    height: sprite.texture_region.height / albedo_map_metadata.height as f32,
-                },
-            },
-            None => TextureDescription::not_found_texture_description(&self.texture_metadata),
+        let albedo_map_metadata = match self.texture_metadata.get(&sprite.material.albedo_map) {
+            Some(albedo_map_medata) => albedo_map_medata,
+            None => &self.texture_metadata[MISSING_TEXTURE_IDENTIFIER],
         };
 
-        let normal_map_description = match &sprite.material.normal_map {
-            Some(normal_map) => match self.texture_metadata.get(normal_map) {
-                Some(normal_map_metadata) => TextureDescription {
-                    identifier: normal_map_metadata.texture_id,
-                    texture_region: TextureRegion {
-                        x: sprite.texture_region.x / normal_map_metadata.width as f32,
-                        y: sprite.texture_region.y / normal_map_metadata.height as f32,
-                        width: sprite.texture_region.width / normal_map_metadata.width as f32,
-                        height: sprite.texture_region.height / normal_map_metadata.height as f32,
-                    },
-                },
-                None => TextureDescription::default_normal_map_description(&self.texture_metadata),
-            },
-            None => TextureDescription::default_normal_map_description(&self.texture_metadata),
+        let normal_map_metadata = match &sprite.material.normal_map {
+            Some(normal_map) => self.texture_metadata.get(normal_map),
+            None => None,
         };
 
-        let texture_region = &albedo_map_description.texture_region;
+        let texture_region = sprite
+            .texture_region
+            .normalize(albedo_map_metadata.width, albedo_map_metadata.height);
 
         self.wgpu_state
             .as_mut()
@@ -209,8 +185,11 @@ impl Graphics {
                 },
                 world_transform: effective_transform.clone(),
                 material: MaterialDescription {
-                    albedo_map_description: albedo_map_description.clone(),
-                    normal_map_description: normal_map_description.clone(),
+                    albedo_map_id: albedo_map_metadata.texture_id,
+                    normal_map_id: normal_map_metadata
+                        .or(Some(&self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER]))
+                        .unwrap()
+                        .texture_id,
                 },
             }));
 
@@ -246,17 +225,10 @@ impl Graphics {
             normalized_texture_region = normalized_texture_region.flip_x();
         }
 
-        let albedo_map_description = TextureDescription {
-            identifier: self.texture_metadata[&animated_sprite.material.albedo_map].texture_id,
-            texture_region: normalized_texture_region,
-        };
-
-        let normal_map_description = TextureDescription {
-            identifier: match &animated_sprite.material.normal_map {
-                Some(normal_map) => self.texture_metadata[normal_map].texture_id,
-                None => self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
-            },
-            texture_region: normalized_texture_region,
+        let albedo_map_id = self.texture_metadata[&animated_sprite.material.albedo_map].texture_id;
+        let normal_map_id = match &animated_sprite.material.normal_map {
+            Some(normal_map) => self.texture_metadata[normal_map].texture_id,
+            None => self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
         };
 
         self.wgpu_state
@@ -300,8 +272,8 @@ impl Graphics {
                 },
                 world_transform: transform.clone(),
                 material: MaterialDescription {
-                    albedo_map_description: albedo_map_description.clone(),
-                    normal_map_description: normal_map_description.clone(),
+                    albedo_map_id,
+                    normal_map_id,
                 },
             }));
 
@@ -418,28 +390,12 @@ impl Graphics {
                     ..Default::default()
                 },
                 material: MaterialDescription {
-                    albedo_map_description: TextureDescription {
-                        identifier: albedo_map_texture_metadata.texture_id,
-                        texture_region: tile.animation_state.keyframes
-                            [tile.animation_state.current_keyframe]
-                            .normalize(
-                                albedo_map_texture_metadata.width,
-                                albedo_map_texture_metadata.height,
-                            ),
-                    },
-                    normal_map_description: match &tilemap_material.normal_map {
-                        Some(normal_map_identifier) => TextureDescription {
-                            identifier: self.texture_metadata[normal_map_identifier].texture_id,
-                            texture_region: tile.animation_state.keyframes
-                                [tile.animation_state.current_keyframe]
-                                .normalize(
-                                    albedo_map_texture_metadata.width,
-                                    albedo_map_texture_metadata.height,
-                                ),
-                        },
-                        None => TextureDescription::default_normal_map_description(
-                            &self.texture_metadata,
-                        ),
+                    albedo_map_id: albedo_map_texture_metadata.texture_id,
+                    normal_map_id: match &tilemap_material.normal_map {
+                        Some(normal_map_identifier) => {
+                            self.texture_metadata[normal_map_identifier].texture_id
+                        }
+                        None => self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
                     },
                 },
             });
@@ -527,24 +483,12 @@ impl Graphics {
                         ..Default::default()
                     },
                     material: MaterialDescription {
-                        albedo_map_description: TextureDescription {
-                            identifier: albedo_map_texture_metadata.texture_id,
-                            texture_region: texture_region.normalize(
-                                albedo_map_texture_metadata.width,
-                                albedo_map_texture_metadata.height,
-                            ),
-                        },
-                        normal_map_description: match &tilemap_material.normal_map {
-                            Some(normal_map_identifier) => TextureDescription {
-                                identifier: self.texture_metadata[normal_map_identifier].texture_id,
-                                texture_region: texture_region.normalize(
-                                    albedo_map_texture_metadata.width,
-                                    albedo_map_texture_metadata.height,
-                                ),
-                            },
-                            None => TextureDescription::default_normal_map_description(
-                                &self.texture_metadata,
-                            ),
+                        albedo_map_id: albedo_map_texture_metadata.texture_id,
+                        normal_map_id: match &tilemap_material.normal_map {
+                            Some(normal_map_identifier) => {
+                                self.texture_metadata[normal_map_identifier].texture_id
+                            }
+                            None => self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
                         },
                     },
                 });
@@ -682,18 +626,9 @@ impl Graphics {
                     },
                     world_transform: glyph_transform.clone(),
                     material: MaterialDescription {
-                        albedo_map_description: TextureDescription {
-                            identifier: self.texture_metadata[font_texture].texture_id,
-                            texture_region: TextureRegion {
-                                x: (font_region.x + glyph_region.x) / texture.width as f32,
-                                y: (font_region.y + glyph_region.y) / texture.height as f32,
-                                width: glyph_region.width / texture.width as f32,
-                                height: glyph_region.height / texture.height as f32,
-                            },
-                        },
-                        normal_map_description: TextureDescription::default_normal_map_description(
-                            &self.texture_metadata,
-                        ),
+                        albedo_map_id: self.texture_metadata[font_texture].texture_id,
+                        normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER]
+                            .texture_id,
                     },
                 }));
 

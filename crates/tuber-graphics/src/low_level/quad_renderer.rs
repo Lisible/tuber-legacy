@@ -167,8 +167,8 @@ impl QuadRenderer {
             );
 
             self.quad_metadata.push(QuadMetadata {
-                albedo_map_texture_id: draw_quad_command.material.albedo_map_description.identifier,
-                normal_map_texture_id: draw_quad_command.material.normal_map_description.identifier,
+                albedo_map_texture_id: draw_quad_command.material.albedo_map_id,
+                normal_map_texture_id: draw_quad_command.material.normal_map_id,
                 uniform_offset: self.quad_metadata.len() as u32 * self.min_uniform_alignment as u32,
             });
         }

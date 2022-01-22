@@ -1,10 +1,5 @@
 use crate::geometry::Vertex;
-use crate::texture::{
-    MISSING_TEXTURE_IDENTIFIER, MISSING_TEXTURE_REGION, WHITE_TEXTURE_IDENTIFIER,
-};
 use crate::types::Size2;
-use crate::{TextureMetadata, TextureRegion, DEFAULT_NORMAL_MAP_IDENTIFIER};
-use std::collections::HashMap;
 use std::ops::Deref;
 
 #[derive(Copy, Clone, Debug)]
@@ -88,41 +83,6 @@ impl Default for Quad {
 
 #[derive(Clone, Debug)]
 pub struct MaterialDescription {
-    pub albedo_map_description: TextureDescription,
-    pub normal_map_description: TextureDescription,
-}
-
-#[derive(Clone, Debug)]
-pub struct TextureDescription {
-    /// The identifier of the texture
-    pub identifier: TextureId,
-    /// The region of the texture to use
-    pub texture_region: TextureRegion,
-}
-
-impl TextureDescription {
-    pub fn not_found_texture_description(
-        texture_metadata: &HashMap<String, TextureMetadata>,
-    ) -> Self {
-        Self {
-            identifier: texture_metadata[MISSING_TEXTURE_IDENTIFIER].texture_id,
-            texture_region: MISSING_TEXTURE_REGION,
-        }
-    }
-    pub fn default_albedo_map_description(
-        texture_metadata: &HashMap<String, TextureMetadata>,
-    ) -> Self {
-        Self {
-            identifier: texture_metadata[WHITE_TEXTURE_IDENTIFIER].texture_id,
-            texture_region: TextureRegion::one_pixel(),
-        }
-    }
-    pub fn default_normal_map_description(
-        texture_metadata: &HashMap<String, TextureMetadata>,
-    ) -> Self {
-        Self {
-            identifier: texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
-            texture_region: TextureRegion::one_pixel(),
-        }
-    }
+    pub albedo_map_id: TextureId,
+    pub normal_map_id: TextureId,
 }

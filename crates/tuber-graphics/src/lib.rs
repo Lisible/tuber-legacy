@@ -7,7 +7,7 @@ use crate::g_buffer::GBufferComponent;
 use crate::low_level::*;
 use crate::material::Material;
 use crate::polygon_mode::PolygonMode;
-use crate::primitives::{MaterialDescription, TextureDescription};
+use crate::primitives::MaterialDescription;
 use crate::renderable::shape::RectangleShape;
 use crate::renderable::sprite::{AnimatedSprite, Sprite};
 use crate::renderable::tilemap::{Tile, Tilemap};

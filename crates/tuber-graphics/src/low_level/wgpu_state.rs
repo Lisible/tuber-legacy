@@ -5,14 +5,14 @@ use crate::graphics::RenderId;
 use crate::low_level::composition::Compositor;
 use crate::low_level::g_buffer::GBuffer;
 use crate::low_level::polygon_mode::PolygonMode;
-use crate::low_level::primitives::{MaterialDescription, TextureDescription, TextureId};
+use crate::low_level::primitives::{MaterialDescription, TextureId};
 use crate::low_level::quad_renderer::QuadRenderer;
 use crate::low_level::texture::{
     create_texture_bind_group, create_texture_bind_group_layout, create_texture_descriptor,
 };
 use crate::primitives::Quad;
 use crate::quad_renderer::QuadRenderPassType;
-use crate::{low_level, Color, Size2, TextureData, TextureRegion, Window, WindowSize};
+use crate::{low_level, Color, Size2, TextureData, Window, WindowSize};
 use futures::executor::block_on;
 use nalgebra::Matrix4;
 use tuber_core::transform::Transform2D;
@@ -105,18 +105,9 @@ impl WGPUState {
     }
 
     fn allocate_material(&mut self, size_pixel: Size2<u32>) -> MaterialDescription {
-        let albedo_map_texture_id = self.allocate_texture(size_pixel);
-        let normal_map_texture_id = self.allocate_texture(size_pixel);
-
         MaterialDescription {
-            albedo_map_description: TextureDescription {
-                identifier: albedo_map_texture_id,
-                texture_region: TextureRegion::whole_texture(),
-            },
-            normal_map_description: TextureDescription {
-                identifier: normal_map_texture_id,
-                texture_region: TextureRegion::whole_texture(),
-            },
+            albedo_map_id: self.allocate_texture(size_pixel),
+            normal_map_id: self.allocate_texture(size_pixel),
         }
     }
 
@@ -225,8 +216,8 @@ impl WGPUState {
     pub fn pre_render_pass(&mut self, command_encoder: &mut wgpu::CommandEncoder) {
         for command in self.command_buffer.pre_draw_quads_commands() {
             let pre_render = &self.pre_renders[command.render_id.0];
-            let albedo_map_id = pre_render.material.albedo_map_description.identifier;
-            let normal_map_id = pre_render.material.normal_map_description.identifier;
+            let albedo_map_id = pre_render.material.albedo_map_id;
+            let normal_map_id = pre_render.material.normal_map_id;
 
             let albedo_texture = &self.textures[*albedo_map_id];
             let normal_texture = &self.textures[*normal_map_id];
