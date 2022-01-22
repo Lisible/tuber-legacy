@@ -135,8 +135,11 @@ mod tests {
         "#;
 
         let bitmap_font = BitmapFont::from_str(json)?;
-        assert_eq!(bitmap_font.font_atlas, "font_atlas");
-        assert_eq!(bitmap_font.font_atlas_texture, "font_atlas_texture");
+        assert_eq!(bitmap_font.font_atlas, Some("font_atlas".to_string()));
+        assert_eq!(
+            bitmap_font.font_atlas_texture,
+            Some("font_atlas_texture".to_string())
+        );
         assert_eq!(bitmap_font.line_height, 32);
         assert_eq!(bitmap_font.line_spacing, 4);
         assert_eq!(bitmap_font.letter_spacing, 2);

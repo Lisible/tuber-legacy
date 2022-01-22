@@ -55,13 +55,13 @@ mod tests {
 
     #[test]
     fn new_text_widget() {
-        let text_widget = TextWidget::new("Test", "font");
-        assert_eq!(text_widget.text(), "Test");
-        assert_eq!(text_widget.font_identifier(), "font");
+        let text_widget = TextWidget::new("text_widget", "Text", None);
+        assert_eq!(text_widget.text(), "Text");
+        assert_eq!(text_widget.font_identifier(), None);
     }
     #[test]
     fn set_text() {
-        let mut text_widget = TextWidget::new("Test", "font");
+        let mut text_widget = TextWidget::new("text_widget", "Text", None);
         text_widget.set_text("Bonjour");
         assert_eq!(text_widget.text(), "Bonjour");
     }

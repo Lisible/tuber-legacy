@@ -75,7 +75,7 @@ mod test {
 
         let mut root = Root::new();
         assert_eq!(root.widgets().len(), 0);
-        root.add_widget(Box::new(TextWidget::new("Text", "font")));
+        root.add_widget(Box::new(TextWidget::new("text_widget", "Text", None)));
         assert_eq!(root.widgets().len(), 1);
     }
 }
