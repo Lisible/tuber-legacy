@@ -9,13 +9,15 @@ use tuber::graphics::texture::TextureAtlas;
 use tuber_graphics::animation::AnimationState;
 use tuber_graphics::material::Material;
 
-pub(crate) struct Player;
+pub(crate) struct Player {
+    pub score: u32,
+}
 
 pub(crate) fn create_player(asset_store: &mut AssetStore) -> impl EntityDefinition {
     let atlas = asset_store.asset::<TextureAtlas>("atlas").unwrap();
 
     (
-        Player,
+        Player { score: 0 },
         Character {
             initial_position: (0, 0),
             animation_time: 0.0,

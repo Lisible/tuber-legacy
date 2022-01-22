@@ -19,6 +19,7 @@ use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::g_buffer::GBufferComponent;
 use tuber_graphics::low_level::polygon_mode::PolygonMode;
 use tuber_graphics::renderable::tilemap::Tilemap;
+use tuber_gui::widget::text::TextWidget;
 
 pub(crate) struct GameState {
     do_exit: bool,
@@ -53,11 +54,17 @@ impl State for GameState {
 
         let mut system_bundle = SystemBundle::<EngineContext>::new();
         system_bundle.add_system(move_player);
+        system_bundle.add_system(update_score_label);
         system_bundle.add_system(update_character_position);
         system_bundle.add_system(update_camera_position);
         system_bundle.add_system(switch_rendered_g_buffer_component);
         system_bundle.add_system(switch_polygon_mode);
         system_bundles.push(system_bundle);
+
+        engine_context
+            .gui
+            .root()
+            .add_widget(Box::new(TextWidget::new("score_text", "Score 0", None)));
     }
 
     fn update(&mut self, _ecs: &mut Ecs, engine_context: &mut EngineContext) {
@@ -120,6 +127,16 @@ fn switch_polygon_mode(_ecs: &mut Ecs, engine_context: &mut EngineContext) {
     }
 }
 
+fn update_score_label(ecs: &mut Ecs, engine_context: &mut EngineContext) {
+    let (_, (player,)) = ecs.query_one::<(R<Player>,)>().unwrap();
+    let text_widget = engine_context
+        .gui
+        .root()
+        .find_mut::<TextWidget>("score_text")
+        .unwrap();
+    text_widget.set_text(format!("Score {}", player.score));
+}
+
 fn create_camera() -> impl EntityDefinition {
     (
         OrthographicCamera {
@@ -176,10 +193,11 @@ fn move_player(ecs: &mut Ecs, engine_context: &mut EngineContext) {
 
     move_orcs(ecs);
 
-    if let Some((_, (_, mut character, transform))) =
-        ecs.query_one::<(R<Player>, W<Character>, R<Transform2D>)>()
+    if let Some((_, (mut player, mut character, transform))) =
+        ecs.query_one::<(W<Player>, W<Character>, R<Transform2D>)>()
     {
         if character.movement == Movement::Idle {
+            player.score += 1;
             character.movement = player_movement;
             character.animation_time = 0.0;
             character.initial_position.0 = transform.translation.0 as i32 / TILE_SIZE as i32;
