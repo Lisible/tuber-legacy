@@ -9,12 +9,12 @@ use tuber_core::asset::AssetMetadata;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BitmapFont {
-    /// Identifier of the font tiles
-    font_atlas: String,
+    /// Identifier of the font texture atlas
+    font_atlas: Option<String>,
     /// Identifier of the font tiles texture
-    font_atlas_texture: String,
+    font_atlas_texture: Option<String>,
     /// The region of the bitmap font on the texture tiles
-    font_atlas_region: TextureRegion,
+    font_atlas_region: Option<TextureRegion>,
     /// The height of a line in pixels
     line_height: u32,
     /// The spacing between lines in pixels
@@ -28,16 +28,16 @@ pub struct BitmapFont {
 }
 
 impl BitmapFont {
-    pub fn font_atlas(&self) -> &str {
-        &self.font_atlas
+    pub fn font_atlas(&self) -> Option<&String> {
+        self.font_atlas.as_ref()
     }
 
-    pub fn font_atlas_texture(&self) -> &str {
-        &self.font_atlas_texture
+    pub fn font_atlas_texture(&self) -> Option<&String> {
+        self.font_atlas_texture.as_ref()
     }
 
-    pub fn font_atlas_region(&self) -> TextureRegion {
-        self.font_atlas_region
+    pub fn font_atlas_region(&self) -> Option<&TextureRegion> {
+        self.font_atlas_region.as_ref()
     }
 
     pub fn glyph(&self, character: char) -> Option<&BitmapGlyph> {

@@ -1,1 +1,2 @@
-pub mod immediate_gui;
+pub mod gui;
+pub mod widget;

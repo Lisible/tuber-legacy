@@ -1,8 +1,9 @@
 use crate::draw_command::{Command, DrawPreRenderCommand, DrawQuadCommand, PreDrawQuadsCommand};
+use crate::font::DEFAULT_FONT_IDENTIFIER;
 use crate::geometry::Vertex;
 use crate::primitives::Quad;
 use crate::{
-    bitmap_font::font_loader, texture, texture_atlas_loader, texture_loader, Active,
+    bitmap_font::font_loader, font, texture, texture_atlas_loader, texture_loader, Active,
     AnimatedSprite, BitmapFont, Color, GBufferComponent, GraphicsError, Material,
     MaterialDescription, OrthographicCamera, PolygonMode, RectangleShape, Size2, Sprite,
     TextureAtlas, TextureData, TextureDescription, TextureMetadata, TextureRegion, Tile, Tilemap,
@@ -32,6 +33,7 @@ impl Graphics {
 
     pub fn initialize(&mut self, window: Window, window_size: WindowSize) {
         self.wgpu_state = Some(WGPUState::new(window, window_size));
+        self.load_texture_in_vram(&font::create_default_bitmap_font_texture());
         self.load_texture_in_vram(&texture::create_white_texture());
         self.load_texture_in_vram(&texture::create_placeholder_texture());
         self.load_texture_in_vram(&texture::create_normal_map_texture());
@@ -562,35 +564,47 @@ impl Graphics {
     pub fn draw_text(
         &mut self,
         text: &str,
-        font_identifier: &str,
+        font_identifier: &Option<String>,
         transform: &Transform2D,
         asset_store: &mut AssetStore,
     ) {
-        let (font_atlas, font_texture) = {
-            let font = asset_store.asset::<BitmapFont>(font_identifier).unwrap();
-            (
-                font.font_atlas().to_string(),
-                font.font_atlas_texture().to_string(),
-            )
-        };
-
         {
-            asset_store.load::<TextureAtlas>(&font_atlas).unwrap();
-            asset_store.load::<TextureData>(&font_texture).unwrap();
-            self.load_texture_in_vram_if_required(asset_store, &font_texture);
+            if let Some(font_identifier) = font_identifier {
+                let _ = asset_store.load::<BitmapFont>(font_identifier);
+            }
         }
 
-        let font = asset_store
-            .stored_asset::<BitmapFont>(font_identifier)
-            .unwrap();
-        let texture_atlas = asset_store
-            .stored_asset::<TextureAtlas>(font.font_atlas())
-            .unwrap();
+        let default_bitmap_font = font::default_bitmap_font();
+        let font = match font_identifier {
+            Some(font_identifier) => asset_store
+                .stored_asset::<BitmapFont>(dbg!(font_identifier))
+                .unwrap(),
+            None => &default_bitmap_font,
+        };
 
-        let texture = &self.texture_metadata[&font_texture];
-        let font_region = texture_atlas
-            .texture_region(font_identifier)
-            .expect("Font region not found");
+        let font_texture_atlas = match font_identifier {
+            Some(_) => Some(
+                asset_store
+                    .stored_asset::<TextureAtlas>(font.font_atlas().unwrap())
+                    .unwrap(),
+            ),
+            None => None,
+        };
+
+        let font_region = match font_identifier {
+            Some(font_identifier) => font_texture_atlas
+                .unwrap()
+                .texture_region(font_identifier)
+                .expect("Font region not found"),
+            None => TextureRegion::new(0.0, 0.0, 128.0, 32.0),
+        };
+
+        let font_texture = match font_identifier {
+            Some(_) => font.font_atlas_texture().unwrap(),
+            None => DEFAULT_FONT_IDENTIFIER,
+        };
+
+        let texture = &self.texture_metadata[font_texture];
 
         let mut offset_x = transform.translation.0;
         let mut offset_y = transform.translation.1;
@@ -616,18 +630,60 @@ impl Graphics {
             let mut glyph_transform = transform.clone();
             glyph_transform.translation.0 = offset_x;
             glyph_transform.translation.1 = offset_y;
+            glyph_transform.scale = (10.0, 10.0);
             glyph_transform.rotation_center = (-offset_x, -offset_y);
+
+            let glyph_texture_coordinates = TextureRegion {
+                x: font_region.x + glyph_region.x,
+                y: font_region.y + glyph_region.y,
+                width: glyph_region.width,
+                height: glyph_region.height,
+            }
+            .normalize(texture.width, texture.height);
 
             self.wgpu_state
                 .as_mut()
                 .unwrap()
                 .command_buffer_mut()
-                .add(Command::DrawQuad(DrawQuadCommand {
-                    quad: Quad::with_size(Size2::new(glyph_region.width, glyph_region.height)),
+                .add(Command::DrawUIQuad(DrawQuadCommand {
+                    quad: Quad {
+                        top_left: Vertex {
+                            position: [0.0, 0.0, 0.0],
+                            color: Color::WHITE.into(),
+                            texture_coordinates: [
+                                glyph_texture_coordinates.x,
+                                glyph_texture_coordinates.y,
+                            ],
+                        },
+                        bottom_left: Vertex {
+                            position: [0.0, glyph_region.height, 0.0],
+                            color: Color::WHITE.into(),
+                            texture_coordinates: [
+                                glyph_texture_coordinates.x,
+                                glyph_texture_coordinates.y + glyph_texture_coordinates.height,
+                            ],
+                        },
+                        top_right: Vertex {
+                            position: [glyph_region.width, 0.0, 0.0],
+                            color: Color::WHITE.into(),
+                            texture_coordinates: [
+                                glyph_texture_coordinates.x + glyph_texture_coordinates.width,
+                                glyph_texture_coordinates.y,
+                            ],
+                        },
+                        bottom_right: Vertex {
+                            position: [glyph_region.width, glyph_region.height, 0.0],
+                            color: Color::WHITE.into(),
+                            texture_coordinates: [
+                                glyph_texture_coordinates.x + glyph_texture_coordinates.width,
+                                glyph_texture_coordinates.y + glyph_texture_coordinates.height,
+                            ],
+                        },
+                    },
                     world_transform: glyph_transform.clone(),
                     material: MaterialDescription {
                         albedo_map_description: TextureDescription {
-                            identifier: self.texture_metadata[&font_texture].texture_id,
+                            identifier: self.texture_metadata[font_texture].texture_id,
                             texture_region: TextureRegion {
                                 x: (font_region.x + glyph_region.x) / texture.width as f32,
                                 y: (font_region.y + glyph_region.y) / texture.height as f32,

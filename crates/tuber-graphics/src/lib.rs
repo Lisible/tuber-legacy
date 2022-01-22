@@ -21,6 +21,7 @@ use low_level::wgpu_state::WGPUState;
 pub mod animation;
 pub mod bitmap_font;
 pub mod camera;
+pub mod font;
 pub mod g_buffer;
 pub mod graphics;
 pub mod low_level;
