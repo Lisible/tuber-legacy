@@ -4,8 +4,8 @@
 
 ***tuber*** is a game engine I'm currently working on during my spare time.
 
-# How to run examples
+# How to run the examples
 
-You can run the examples by going into the examples/<example> directory and running the following example
+You can run the examples by going into the ``examples/<example>`` directory and running the following example
   
 ``cargo run --example <example>``
