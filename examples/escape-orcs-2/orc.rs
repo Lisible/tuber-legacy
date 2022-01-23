@@ -6,13 +6,20 @@ use tuber::core::transform::Transform2D;
 use tuber::ecs::ecs::EntityDefinition;
 use tuber::graphics::renderable::sprite::{AnimatedSprite, Sprite};
 use tuber::graphics::texture::TextureAtlas;
+use tuber_ecs::ecs::Ecs;
+use tuber_ecs::{EntityIndex, Parent};
 use tuber_graphics::animation::AnimationState;
 use tuber_graphics::material::Material;
 
 pub(crate) struct Orc;
-pub(crate) fn create_orc(asset_store: &mut AssetStore) -> impl EntityDefinition {
-    let atlas = asset_store.asset::<TextureAtlas>("atlas").unwrap();
 
+pub(crate) fn create_orc(ecs: &mut Ecs, asset_store: &mut AssetStore) {
+    let orc_entity = ecs.insert(create_orc_entity_definition(asset_store));
+    let _ = ecs.insert(create_orc_shadow_entity_definition(asset_store, orc_entity));
+}
+
+fn create_orc_entity_definition(asset_store: &mut AssetStore) -> impl EntityDefinition {
+    let atlas = asset_store.asset::<TextureAtlas>("atlas").unwrap();
     (
         Orc,
         Character {
@@ -42,15 +49,28 @@ pub(crate) fn create_orc(asset_store: &mut AssetStore) -> impl EntityDefinition 
                 flip_x: false,
             },
         },
+    )
+}
+
+fn create_orc_shadow_entity_definition(
+    asset_store: &mut AssetStore,
+    orc_entity: EntityIndex,
+) -> impl EntityDefinition {
+    let atlas = asset_store.asset::<TextureAtlas>("atlas").unwrap();
+    (
+        Parent(orc_entity),
         Sprite {
             width: 48.0,
             height: 14.0,
-            offset: (6.0, 55.0, -1),
             texture_region: atlas.texture_region("shadow").unwrap(),
             material: Material {
                 albedo_map: "spritesheet".to_string(),
                 normal_map: Some("normal_spritesheet".to_string()),
             },
+        },
+        Transform2D {
+            translation: (6.0, 55.0, -1),
+            ..Default::default()
         },
     )
 }

@@ -5,7 +5,6 @@ use crate::low_level::primitives::TextureId;
 use crate::low_level::texture::create_texture_bind_group_layout;
 use crate::low_level::wgpu_state::IntoPolygonMode;
 use nalgebra::Matrix4;
-use tuber_core::transform::{IntoMatrix4, Transform2D};
 use wgpu::{BufferDescriptor, CommandEncoderDescriptor};
 
 const QUAD_UNIFORM_SIZE: u64 = std::mem::size_of::<QuadUniform>() as u64;
@@ -111,7 +110,7 @@ impl QuadRenderer {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         projection_matrix: &Matrix4<f32>,
-        view_transform: &Transform2D,
+        view_transform: &Matrix4<f32>,
         draw_quad_commands: &[DrawQuadCommand],
     ) -> QuadGroup {
         self.ensure_max_quad_count(
@@ -127,9 +126,7 @@ impl QuadRenderer {
                 * device.limits().min_uniform_buffer_offset_alignment as usize)
                 as wgpu::BufferAddress,
             bytemuck::cast_slice(&[GlobalUniform {
-                view_projection: (projection_matrix
-                    * view_transform.into_matrix4().try_inverse().unwrap())
-                .into(),
+                view_projection: (projection_matrix * view_transform.try_inverse().unwrap()).into(),
             }]),
         );
 
@@ -141,15 +138,13 @@ impl QuadRenderer {
 
         for (index, draw_quad_command) in draw_quad_commands.iter().enumerate() {
             let quad_index = quad_group.start_quad + index as u64;
+            let mut effective_transform = draw_quad_command.world_transform.clone();
+            effective_transform.column_mut(3).z = 0.0;
             queue.write_buffer(
                 &self.quad_uniform_buffer,
                 (quad_index * self.min_uniform_alignment) as wgpu::BufferAddress,
                 bytemuck::cast_slice(&[QuadUniform {
-                    model: draw_quad_command
-                        .world_transform
-                        .clone()
-                        .into_matrix4()
-                        .into(),
+                    model: effective_transform.into(),
                 }]),
             );
 

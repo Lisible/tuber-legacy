@@ -17,6 +17,7 @@ use tuber::engine::engine_context::EngineContext;
 use tuber::engine::state::{State, StateStackRequest};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::g_buffer::GBufferComponent;
+use tuber_core::transform::IntoMatrix4;
 use tuber_graphics::low_level::polygon_mode::PolygonMode;
 use tuber_graphics::renderable::tilemap::Tilemap;
 use tuber_gui::widget::text::TextWidget;
@@ -48,8 +49,8 @@ impl State for GameState {
         ecs.insert_shared_resource(RandomNumberGenerator(rand::thread_rng()));
 
         ecs.insert(create_camera());
-        ecs.insert(create_player(&mut engine_context.asset_store));
-        ecs.insert(create_orc(&mut engine_context.asset_store));
+        create_player(ecs, &mut engine_context.asset_store);
+        create_orc(ecs, &mut engine_context.asset_store);
         system_bundles.push(tuber::engine::system_bundle::graphics::default_system_bundle());
 
         let mut system_bundle = SystemBundle::<EngineContext>::new();
@@ -80,7 +81,11 @@ impl State for GameState {
         engine_context.graphics.as_mut().unwrap().draw_tilemap(
             &mut engine_context.asset_store,
             self.tilemap.as_mut().unwrap(),
-            &Transform2D::default(),
+            Transform2D {
+                translation: (0.0, 0.0, -4),
+                ..Default::default()
+            }
+            .into_matrix4(),
         );
     }
 

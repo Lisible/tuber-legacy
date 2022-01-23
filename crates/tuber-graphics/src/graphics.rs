@@ -10,13 +10,15 @@ use crate::{
     TextureAtlas, TextureData, TextureMetadata, TextureRegion, Tile, Tilemap, WGPUState, Window,
     WindowSize, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
+use nalgebra::{Matrix4, Vector3};
 use std::any::TypeId;
 use std::collections::HashMap;
 use tuber_core::asset::{AssetStore, GenericLoader};
-use tuber_core::transform::Transform2D;
+use tuber_core::transform::{IntoMatrix4, Transform2D};
 use tuber_ecs::ecs::Ecs;
+use tuber_ecs::query::accessors::Opt;
 use tuber_ecs::query::accessors::R;
-use tuber_ecs::EntityIndex;
+use tuber_ecs::{EntityIndex, Parent};
 
 pub struct Graphics {
     wgpu_state: Option<WGPUState>,
@@ -44,7 +46,11 @@ impl Graphics {
         self.wgpu_state.as_mut().unwrap().render();
     }
 
-    pub fn draw_ui_rectangle(&mut self, rectangle: &RectangleShape, transform: &Transform2D) {
+    pub fn draw_ui_rectangle(
+        &mut self,
+        rectangle: &RectangleShape,
+        transform_matrix: Matrix4<f32>,
+    ) {
         self.wgpu_state
             .as_mut()
             .unwrap()
@@ -72,7 +78,7 @@ impl Graphics {
                         color: rectangle.color.into(),
                     },
                 },
-                world_transform: transform.clone(),
+                world_transform: transform_matrix,
                 material: MaterialDescription {
                     albedo_map_id: self.texture_metadata[WHITE_TEXTURE_IDENTIFIER].texture_id,
                     normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
@@ -80,7 +86,7 @@ impl Graphics {
             }));
     }
 
-    pub fn draw_rectangle(&mut self, rectangle: &RectangleShape, transform: &Transform2D) {
+    pub fn draw_rectangle(&mut self, rectangle: &RectangleShape, transform_matrix: Matrix4<f32>) {
         self.wgpu_state
             .as_mut()
             .unwrap()
@@ -108,7 +114,7 @@ impl Graphics {
                         color: rectangle.color.into(),
                     },
                 },
-                world_transform: transform.clone(),
+                world_transform: transform_matrix,
                 material: MaterialDescription {
                     albedo_map_id: self.texture_metadata[WHITE_TEXTURE_IDENTIFIER].texture_id,
                     normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
@@ -119,19 +125,10 @@ impl Graphics {
     pub fn draw_sprite(
         &mut self,
         sprite: &Sprite,
-        transform: &Transform2D,
+        transform_matrix: Matrix4<f32>,
         asset_manager: &mut AssetStore,
     ) -> Result<(), GraphicsError> {
         self.load_texture_in_vram_if_required(asset_manager, &sprite.material.albedo_map);
-
-        let effective_transform = Transform2D {
-            translation: (
-                transform.translation.0 + sprite.offset.0,
-                transform.translation.1 + sprite.offset.1,
-                transform.translation.2 + sprite.offset.2,
-            ),
-            ..*transform
-        };
 
         let albedo_map_metadata = match self.texture_metadata.get(&sprite.material.albedo_map) {
             Some(albedo_map_medata) => albedo_map_medata,
@@ -183,7 +180,7 @@ impl Graphics {
                         ..Default::default()
                     },
                 },
-                world_transform: effective_transform.clone(),
+                world_transform: transform_matrix,
                 material: MaterialDescription {
                     albedo_map_id: albedo_map_metadata.texture_id,
                     normal_map_id: normal_map_metadata
@@ -199,7 +196,7 @@ impl Graphics {
     pub fn draw_animated_sprite(
         &mut self,
         animated_sprite: &AnimatedSprite,
-        transform: &Transform2D,
+        transform_matrix: Matrix4<f32>,
         asset_store: &mut AssetStore,
     ) -> Result<(), GraphicsError> {
         self.load_material_in_vram_if_required(asset_store, &animated_sprite.material);
@@ -270,7 +267,7 @@ impl Graphics {
                         ..Default::default()
                     },
                 },
-                world_transform: transform.clone(),
+                world_transform: transform_matrix,
                 material: MaterialDescription {
                     albedo_map_id,
                     normal_map_id,
@@ -284,7 +281,7 @@ impl Graphics {
         &mut self,
         asset_store: &mut AssetStore,
         tilemap: &mut Tilemap,
-        transform: &Transform2D,
+        transform_matrix: Matrix4<f32>,
     ) {
         if tilemap.render_id().is_none() {
             let tilemap_size = tilemap.size().clone();
@@ -321,7 +318,7 @@ impl Graphics {
                     tilemap.size().width as f32 * tilemap.tile_size().width as f32,
                     tilemap.size().height as f32 * tilemap.tile_size().height as f32,
                 ),
-                world_transform: transform.clone(),
+                world_transform: transform_matrix,
             }));
     }
 
@@ -381,14 +378,11 @@ impl Graphics {
                         ],
                     },
                 },
-                world_transform: Transform2D {
-                    translation: (
-                        (tile_x * tilemap.tile_size().width as usize) as f32,
-                        (tile_y * tilemap.tile_size().height as usize) as f32,
-                        0,
-                    ),
-                    ..Default::default()
-                },
+                world_transform: Matrix4::identity().append_translation(&Vector3::new(
+                    (tile_x * tilemap.tile_size().width as usize) as f32,
+                    (tile_y * tilemap.tile_size().height as usize) as f32,
+                    0.0,
+                )),
                 material: MaterialDescription {
                     albedo_map_id: albedo_map_texture_metadata.texture_id,
                     normal_map_id: match &tilemap_material.normal_map {
@@ -474,14 +468,11 @@ impl Graphics {
                             ],
                         },
                     },
-                    world_transform: Transform2D {
-                        translation: (
-                            (tile_x * tilemap.tile_size().width as usize) as f32,
-                            (tile_y * tilemap.tile_size().height as usize) as f32,
-                            0,
-                        ),
-                        ..Default::default()
-                    },
+                    world_transform: Matrix4::identity().append_translation(&Vector3::new(
+                        (tile_x * tilemap.tile_size().width as usize) as f32,
+                        (tile_y * tilemap.tile_size().height as usize) as f32,
+                        0.0,
+                    )),
                     material: MaterialDescription {
                         albedo_map_id: albedo_map_texture_metadata.texture_id,
                         normal_map_id: match &tilemap_material.normal_map {
@@ -509,7 +500,7 @@ impl Graphics {
         &mut self,
         text: &str,
         font_identifier: &Option<String>,
-        transform: &Transform2D,
+        transform_matrix: Matrix4<f32>,
         asset_store: &mut AssetStore,
     ) {
         {
@@ -550,12 +541,13 @@ impl Graphics {
 
         let texture = &self.texture_metadata[font_texture];
 
-        let mut offset_x = transform.translation.0;
-        let mut offset_y = transform.translation.1;
+        let transform_matrix = transform_matrix;
+        let mut offset_x = transform_matrix.column(3).x;
+        let mut offset_y = transform_matrix.column(3).y;
         for character in text.chars() {
             if character == '\n' {
                 offset_y += (font.line_height() + font.line_spacing()) as f32;
-                offset_x = transform.translation.0;
+                offset_x = transform_matrix.column(3).x;
                 continue;
             }
 
@@ -571,11 +563,9 @@ impl Graphics {
             };
 
             let glyph_region = glyph_data.region();
-            let mut glyph_transform = transform.clone();
-            glyph_transform.translation.0 = offset_x;
-            glyph_transform.translation.1 = offset_y;
-            glyph_transform.scale = (10.0, 10.0);
-            glyph_transform.rotation_center = (-offset_x, -offset_y);
+
+            let mut glyph_transform_matrix = Matrix4::identity();
+            glyph_transform_matrix.append_translation_mut(&Vector3::new(offset_x, offset_y, 0.0));
 
             let glyph_texture_coordinates = TextureRegion {
                 x: font_region.x + glyph_region.x,
@@ -624,7 +614,7 @@ impl Graphics {
                             ],
                         },
                     },
-                    world_transform: glyph_transform.clone(),
+                    world_transform: glyph_transform_matrix,
                     material: MaterialDescription {
                         albedo_map_id: self.texture_metadata[font_texture].texture_id,
                         normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER]
@@ -689,19 +679,68 @@ impl Graphics {
         let (camera_id, (camera, _, camera_transform)) = ecs
             .query_one::<(R<OrthographicCamera>, R<Active>, R<Transform2D>)>()
             .expect("There is no camera");
-        self.update_camera(camera_id, &camera, &camera_transform);
+        self.update_camera(camera_id, &camera, camera_transform.into_matrix4());
 
-        for (_, (rectangle_shape, transform)) in ecs.query::<(R<RectangleShape>, R<Transform2D>)>()
+        for (_, (rectangle_shape, transform, parent)) in
+            ecs.query::<(R<RectangleShape>, R<Transform2D>, Opt<R<Parent>>)>()
         {
-            self.draw_rectangle(&rectangle_shape, &transform);
+            let mut parent_transform = Matrix4::<f32>::identity();
+            let mut parent = parent;
+            while let Some(parent_ref) = &parent {
+                let parent_id = parent_ref.0;
+                let (_, (transform, p)) = ecs
+                    .query_one_by_id::<(R<Transform2D>, Opt<R<Parent>>)>(parent_id)
+                    .unwrap();
+                parent_transform *= transform.into_matrix4();
+                parent = p;
+            }
+
+            self.draw_rectangle(
+                &rectangle_shape,
+                parent_transform * transform.into_matrix4(),
+            );
         }
-        for (_, (sprite, transform)) in ecs.query::<(R<Sprite>, R<Transform2D>)>() {
-            self.draw_sprite(&sprite, &transform, asset_store).unwrap();
-        }
-        for (_, (animated_sprite, transform)) in ecs.query::<(R<AnimatedSprite>, R<Transform2D>)>()
+        for (_, (sprite, transform, parent)) in
+            ecs.query::<(R<Sprite>, R<Transform2D>, Opt<R<Parent>>)>()
         {
-            self.draw_animated_sprite(&animated_sprite, &transform, asset_store)
-                .unwrap();
+            let mut parent_transform = Matrix4::<f32>::identity();
+            let mut parent = parent;
+            while let Some(parent_ref) = &parent {
+                let parent_id = parent_ref.0;
+                let (_, (transform, p)) = ecs
+                    .query_one_by_id::<(R<Transform2D>, Opt<R<Parent>>)>(parent_id)
+                    .unwrap();
+                parent_transform *= transform.into_matrix4();
+                parent = p;
+            }
+
+            self.draw_sprite(
+                &sprite,
+                parent_transform * transform.into_matrix4(),
+                asset_store,
+            )
+            .unwrap();
+        }
+        for (_, (animated_sprite, transform, parent)) in
+            ecs.query::<(R<AnimatedSprite>, R<Transform2D>, Opt<R<Parent>>)>()
+        {
+            let mut parent_transform = Matrix4::<f32>::identity();
+            let mut parent = parent;
+            while let Some(parent_ref) = &parent {
+                let parent_id = parent_ref.0;
+                let (_, (transform, p)) = ecs
+                    .query_one_by_id::<(R<Transform2D>, Opt<R<Parent>>)>(parent_id)
+                    .unwrap();
+                parent_transform *= transform.into_matrix4();
+                parent = p;
+            }
+
+            self.draw_animated_sprite(
+                &animated_sprite,
+                parent_transform * transform.into_matrix4(),
+                asset_store,
+            )
+            .unwrap();
         }
 
         self.render();
@@ -711,12 +750,12 @@ impl Graphics {
         &mut self,
         camera_id: EntityIndex,
         camera: &OrthographicCamera,
-        transform: &Transform2D,
+        transform_matrix: Matrix4<f32>,
     ) {
         self.wgpu_state
             .as_mut()
             .unwrap()
-            .update_camera(camera_id, camera, transform);
+            .update_camera(camera_id, camera, transform_matrix);
     }
 
     pub fn set_clear_color(&mut self, clear_color: Color) {

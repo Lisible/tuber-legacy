@@ -29,7 +29,11 @@ impl IntoMatrix4 for Transform2D {
             Vector3::new(self.rotation_center.0, self.rotation_center.1, 0.0);
 
         Matrix4::new_nonuniform_scaling(&Vector3::new(self.scale.0, self.scale.1, 1.0))
-            * Matrix4::new_translation(&Vector3::new(self.translation.0, self.translation.1, 0.0))
+            * Matrix4::new_translation(&Vector3::new(
+                self.translation.0,
+                self.translation.1,
+                self.translation.2 as f32,
+            ))
             * Matrix4::new_translation(&translate_to_rotation_center.clone())
             * Matrix4::new_rotation(Vector3::new(0.0, 0.0, self.angle.to_radians()))
             * Matrix4::new_translation(&-&translate_to_rotation_center)

@@ -15,7 +15,6 @@ use crate::quad_renderer::QuadRenderPassType;
 use crate::{low_level, Color, Size2, TextureData, Window, WindowSize};
 use futures::executor::block_on;
 use nalgebra::Matrix4;
-use tuber_core::transform::Transform2D;
 use tuber_ecs::EntityIndex;
 use wgpu::{CommandEncoderDescriptor, SurfaceTexture, TextureViewDescriptor};
 
@@ -33,7 +32,7 @@ pub struct WGPUState {
     textures: Vec<wgpu::Texture>,
 
     projection_matrix: Matrix4<f32>,
-    view_transform: Transform2D,
+    view_transform: Matrix4<f32>,
 
     pre_renders: Vec<PreRender>,
 
@@ -88,7 +87,7 @@ impl WGPUState {
             texture_bind_groups: vec![],
             textures: vec![],
             projection_matrix: Matrix4::identity(),
-            view_transform: Transform2D::default(),
+            view_transform: Matrix4::identity(),
             pre_renders: vec![],
             command_buffer: CommandBuffer::new(),
         }
@@ -180,7 +179,7 @@ impl WGPUState {
             &self.device,
             &self.queue,
             &self.projection_matrix,
-            &Transform2D::default(),
+            &Matrix4::identity(),
             &self.command_buffer.draw_ui_quad_commands(),
         );
 
@@ -236,7 +235,7 @@ impl WGPUState {
                     -1.0,
                     1.0,
                 ),
-                &Transform2D::default(),
+                &Matrix4::identity(),
                 &command.draw_quad_commands,
             );
             {
@@ -309,11 +308,9 @@ impl WGPUState {
 
         draw_commands.append(&mut render_draw_commands);
         draw_commands.sort_by(|first_draw_command, second_draw_command| {
-            first_draw_command
-                .world_transform
-                .translation
-                .2
-                .cmp(&second_draw_command.world_transform.translation.2)
+            (first_draw_command.world_transform.column(3).z as f32)
+                .partial_cmp(&(second_draw_command.world_transform.column(3).z as f32))
+                .unwrap()
         });
 
         let quad_group = self.quad_renderer.prepare_quad_group(
@@ -426,7 +423,7 @@ impl WGPUState {
         &mut self,
         _camera_id: EntityIndex,
         camera: &OrthographicCamera,
-        transform: &Transform2D,
+        transform_matrix: Matrix4<f32>,
     ) {
         let projection_matrix = Matrix4::new_orthographic(
             camera.left,
@@ -438,7 +435,7 @@ impl WGPUState {
         );
 
         self.projection_matrix = projection_matrix;
-        self.view_transform = transform.clone();
+        self.view_transform = transform_matrix;
     }
 
     pub(crate) fn load_texture_in_vram(&mut self, texture_data: &TextureData) -> TextureId {

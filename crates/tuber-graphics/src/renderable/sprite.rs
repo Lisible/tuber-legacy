@@ -5,7 +5,6 @@ use crate::texture::TextureRegion;
 pub struct Sprite {
     pub width: f32,
     pub height: f32,
-    pub offset: (f32, f32, i32),
     pub texture_region: TextureRegion,
     pub material: Material,
 }
@@ -15,7 +14,6 @@ impl Default for Sprite {
         Self {
             width: 32.0,
             height: 32.0,
-            offset: (0.0, 0.0, 0),
             texture_region: TextureRegion {
                 x: 0.0,
                 y: 0.0,

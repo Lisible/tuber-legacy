@@ -1,7 +1,7 @@
 use crate::graphics::RenderId;
 use crate::primitives::Quad;
 use crate::{MaterialDescription, Size2};
-use tuber_core::transform::Transform2D;
+use nalgebra::Matrix4;
 
 pub struct CommandBuffer {
     pre_draw_quads_command_buffer: Vec<PreDrawQuadsCommand>,
@@ -79,12 +79,12 @@ pub struct PreDrawQuadsCommand {
 pub struct DrawPreRenderCommand {
     pub render_id: RenderId,
     pub size: Size2,
-    pub world_transform: Transform2D,
+    pub world_transform: Matrix4<f32>,
 }
 
 #[derive(Debug, Clone)]
 pub struct DrawQuadCommand {
     pub quad: Quad,
-    pub world_transform: Transform2D,
+    pub world_transform: Matrix4<f32>,
     pub material: MaterialDescription,
 }
