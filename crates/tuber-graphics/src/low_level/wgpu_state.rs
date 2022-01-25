@@ -2,6 +2,7 @@ use crate::camera::OrthographicCamera;
 use crate::draw_command::{CommandBuffer, DrawQuadCommand};
 use crate::g_buffer::GBufferComponent;
 use crate::graphics::RenderId;
+use crate::light_renderer::LightRenderer;
 use crate::low_level::composition::Compositor;
 use crate::low_level::g_buffer::GBuffer;
 use crate::low_level::polygon_mode::PolygonMode;
@@ -26,6 +27,7 @@ pub struct WGPUState {
     surface_configuration: wgpu::SurfaceConfiguration,
     size: WindowSize,
     quad_renderer: QuadRenderer,
+    light_renderer: LightRenderer,
     compositor: Compositor,
     texture_bind_group_layout: wgpu::BindGroupLayout,
     texture_bind_groups: Vec<wgpu::BindGroup>,
@@ -71,6 +73,7 @@ impl WGPUState {
         surface.configure(&device, &surface_configuration);
 
         let quad_renderer = QuadRenderer::new(&device, surface_configuration.format);
+        let light_renderer = LightRenderer::new(&device, surface_configuration.format);
         let compositor = Compositor::new(&device, surface_configuration.format);
         let texture_bind_group_layout = create_texture_bind_group_layout(&device);
 
@@ -82,6 +85,7 @@ impl WGPUState {
             surface_configuration,
             size: window_size,
             quad_renderer,
+            light_renderer,
             compositor,
             texture_bind_group_layout,
             texture_bind_groups: vec![],
@@ -161,7 +165,8 @@ impl WGPUState {
         self.pre_render_pass(&mut command_encoder);
         let ui_render = self.ui_pass(&mut command_encoder);
         let g_buffer = self.geometry_pass(&mut command_encoder);
-        let final_render = self.composition_pass(&mut command_encoder, g_buffer, &ui_render);
+        let lit_render = self.lighting_pass(&mut command_encoder, g_buffer);
+        let final_render = self.composition_pass(&mut command_encoder, &lit_render, &ui_render);
         self.quad_renderer.finish_preparation(&self.queue);
         self.queue.submit(std::iter::once(command_encoder.finish()));
 
@@ -267,7 +272,7 @@ impl WGPUState {
                 self.quad_renderer.render_quad_group(
                     &mut render_pass,
                     &self.texture_bind_groups,
-                    QuadRenderPassType::Geometry,
+                    QuadRenderPassType::PreRender,
                     &quad_group,
                 )
             }
@@ -281,11 +286,23 @@ impl WGPUState {
         let albedo_map_view =
             albedo_map_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let normal_map_texture_descriptor =
-            self.create_g_buffer_texture_descriptor("normal_map_texture");
+        let normal_map_texture_descriptor = create_texture_descriptor(
+            Some("normal_map_texture"),
+            Size2::from(self.size),
+            wgpu::TextureFormat::Rgba8Unorm,
+        );
         let normal_map_texture = self.device.create_texture(&normal_map_texture_descriptor);
         let normal_map_view =
             normal_map_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let position_map_texture_descriptor = create_texture_descriptor(
+            Some("position_map_texture"),
+            Size2::from(self.size),
+            wgpu::TextureFormat::Rgba16Float,
+        );
+        let position_map_texture = self.device.create_texture(&position_map_texture_descriptor);
+        let position_map_view =
+            position_map_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         let mut draw_commands = self
             .command_buffer()
@@ -352,6 +369,19 @@ impl WGPUState {
                             store: true,
                         },
                     },
+                    wgpu::RenderPassColorAttachment {
+                        view: &position_map_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.0,
+                                g: 0.0,
+                                b: 0.0,
+                                a: 1.0,
+                            }),
+                            store: true,
+                        },
+                    },
                 ],
                 depth_stencil_attachment: None,
             });
@@ -367,20 +397,60 @@ impl WGPUState {
         GBuffer {
             albedo: albedo_map_texture,
             normal: normal_map_texture,
+            position: position_map_texture,
         }
+    }
+
+    pub fn lighting_pass(
+        &mut self,
+        command_encoder: &mut wgpu::CommandEncoder,
+        g_buffer: GBuffer,
+    ) -> wgpu::Texture {
+        let render_texture_descriptor = self.create_g_buffer_texture_descriptor("render_texture");
+        let render_texture = self.device.create_texture(&render_texture_descriptor);
+        let render_view = render_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        self.light_renderer.prepare(
+            &self.device,
+            g_buffer,
+            self.command_buffer.draw_light_commands(),
+        );
+
+        {
+            let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("lighting_pass"),
+                color_attachments: &[wgpu::RenderPassColorAttachment {
+                    view: &render_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 0.0,
+                        }),
+                        store: true,
+                    },
+                }],
+                depth_stencil_attachment: None,
+            });
+
+            self.light_renderer.render(&mut render_pass);
+        }
+
+        render_texture
     }
 
     fn composition_pass(
         &mut self,
         command_encoder: &mut wgpu::CommandEncoder,
-        g_buffer: GBuffer,
+        lit_render: &wgpu::Texture,
         ui_render: &wgpu::Texture,
     ) -> SurfaceTexture {
         let output_texture = self.surface.get_current_texture().unwrap();
         let output_texture_view = output_texture
             .texture
             .create_view(&TextureViewDescriptor::default());
-        self.compositor.prepare(&self.device, g_buffer, ui_render);
+        self.compositor.prepare(&self.device, lit_render, ui_render);
 
         {
             let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

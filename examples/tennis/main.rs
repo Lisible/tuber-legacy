@@ -13,7 +13,7 @@ use tuber_engine::engine_context::EngineContext;
 use tuber_engine::system_bundle;
 use tuber_graphics::types::Color;
 
-const BALL_COUNT: usize = 20;
+const BALL_COUNT: usize = 2000;
 const PADDLE_WIDTH: f32 = 20.0;
 const PADDLE_HEIGHT: f32 = 100.0;
 const BALL_SIZE: f32 = 10.0;

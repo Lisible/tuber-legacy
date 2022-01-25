@@ -11,8 +11,8 @@ const GLOBAL_UNIFORM_SIZE: u64 = std::mem::size_of::<GlobalUniform>() as u64;
 
 pub(crate) struct Compositor {
     vertex_buffer: wgpu::Buffer,
-    g_buffer_bind_group_layout: wgpu::BindGroupLayout,
-    g_buffer_bind_group: Option<wgpu::BindGroup>,
+    lit_render_bind_group_layout: wgpu::BindGroupLayout,
+    lit_render_bind_group: Option<wgpu::BindGroup>,
     ui_render_bind_group_layout: wgpu::BindGroupLayout,
     ui_render_bind_group: Option<wgpu::BindGroup>,
     global_uniform: GlobalUniform,
@@ -24,7 +24,7 @@ pub(crate) struct Compositor {
 impl Compositor {
     pub fn new(device: &wgpu::Device, surface_texture_format: wgpu::TextureFormat) -> Self {
         let vertex_buffer = Self::create_vertex_buffer(device);
-        let g_buffer_bind_group_layout = Self::create_g_buffer_bind_group_layout(device);
+        let lit_render_bind_group_layout = Self::create_lit_render_bind_group_layout(device);
         let ui_render_bind_group_layout = Self::create_ui_render_bind_group_layout(device);
 
         let global_uniform = GlobalUniform {
@@ -42,15 +42,15 @@ impl Compositor {
         let render_pipeline = Self::create_render_pipeline(
             device,
             surface_texture_format,
-            &g_buffer_bind_group_layout,
+            &lit_render_bind_group_layout,
             &ui_render_bind_group_layout,
             &global_uniform_bind_group_layout,
         );
 
         Self {
             vertex_buffer,
-            g_buffer_bind_group_layout,
-            g_buffer_bind_group: None,
+            lit_render_bind_group_layout,
+            lit_render_bind_group: None,
             ui_render_bind_group_layout,
             ui_render_bind_group: None,
             global_uniform,
@@ -60,11 +60,16 @@ impl Compositor {
         }
     }
 
-    pub fn prepare(&mut self, device: &wgpu::Device, g_buffer: GBuffer, ui_render: &wgpu::Texture) {
-        self.g_buffer_bind_group = Some(Self::create_g_buffer_bind_group(
+    pub fn prepare(
+        &mut self,
+        device: &wgpu::Device,
+        lit_render: &wgpu::Texture,
+        ui_render: &wgpu::Texture,
+    ) {
+        self.lit_render_bind_group = Some(Self::create_lit_render_bind_group(
             device,
-            &self.g_buffer_bind_group_layout,
-            g_buffer,
+            &self.lit_render_bind_group_layout,
+            lit_render,
         ));
 
         self.ui_render_bind_group = Some(Self::create_ui_render_bind_group(
@@ -77,7 +82,7 @@ impl Compositor {
     pub fn render<'rpass: 'pass, 'pass>(&'rpass self, render_pass: &mut wgpu::RenderPass<'pass>) {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.global_uniform_bind_group, &[]);
-        if let Some(texture_bind_group) = &self.g_buffer_bind_group {
+        if let Some(texture_bind_group) = &self.lit_render_bind_group {
             render_pass.set_bind_group(1, texture_bind_group, &[]);
         }
 
@@ -147,9 +152,9 @@ impl Compositor {
         })
     }
 
-    fn create_g_buffer_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    fn create_lit_render_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
         device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("compositor_g_buffer_bind_group_layout"),
+            label: Some("compositor_lit_render_bind_group_layout"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
@@ -163,25 +168,6 @@ impl Compositor {
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler {
-                        filtering: true,
-                        comparison: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler {
                         filtering: true,
@@ -277,39 +263,25 @@ impl Compositor {
         })
     }
 
-    fn create_g_buffer_bind_group(
+    fn create_lit_render_bind_group(
         device: &wgpu::Device,
-        g_buffer_bind_group_layout: &wgpu::BindGroupLayout,
-        g_buffer: GBuffer,
+        lit_render_bind_group_layout: &wgpu::BindGroupLayout,
+        lit_render: &wgpu::Texture,
     ) -> wgpu::BindGroup {
-        let albedo_map_view = g_buffer
-            .albedo
-            .create_view(&TextureViewDescriptor::default());
-        let albedo_map_sampler = Self::create_sampler(device);
-        let normal_map_view = g_buffer
-            .normal
-            .create_view(&TextureViewDescriptor::default());
-        let normal_map_sampler = Self::create_sampler(device);
+        let lit_render_view = lit_render.create_view(&TextureViewDescriptor::default());
+        let lit_render_sampler = Self::create_sampler(device);
 
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
-            layout: &g_buffer_bind_group_layout,
+            layout: &lit_render_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&albedo_map_view),
+                    resource: wgpu::BindingResource::TextureView(&lit_render_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&albedo_map_sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&normal_map_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::Sampler(&normal_map_sampler),
+                    resource: wgpu::BindingResource::Sampler(&lit_render_sampler),
                 },
             ],
         })

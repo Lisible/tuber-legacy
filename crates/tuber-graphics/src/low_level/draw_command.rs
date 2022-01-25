@@ -1,5 +1,6 @@
 use crate::graphics::RenderId;
 use crate::primitives::Quad;
+use crate::renderable::light::PointLight;
 use crate::{MaterialDescription, Size2};
 use nalgebra::Matrix4;
 
@@ -8,6 +9,7 @@ pub struct CommandBuffer {
     draw_pre_render_command_buffer: Vec<DrawPreRenderCommand>,
     draw_quad_command_buffer: Vec<DrawQuadCommand>,
     draw_ui_quad_command_buffer: Vec<DrawQuadCommand>,
+    draw_light_command_buffer: Vec<DrawLightCommand>,
 }
 
 impl CommandBuffer {
@@ -17,6 +19,7 @@ impl CommandBuffer {
             draw_pre_render_command_buffer: vec![],
             draw_quad_command_buffer: vec![],
             draw_ui_quad_command_buffer: vec![],
+            draw_light_command_buffer: vec![],
         }
     }
 
@@ -33,6 +36,9 @@ impl CommandBuffer {
                 .push(draw_pre_render_command),
             Command::DrawUIQuad(draw_quad_command) => {
                 self.draw_ui_quad_command_buffer.push(draw_quad_command)
+            }
+            Command::DrawLight(draw_light_command) => {
+                self.draw_light_command_buffer.push(draw_light_command)
             }
         }
     }
@@ -53,11 +59,16 @@ impl CommandBuffer {
         &self.draw_pre_render_command_buffer
     }
 
+    pub fn draw_light_commands(&self) -> &[DrawLightCommand] {
+        &self.draw_light_command_buffer
+    }
+
     pub fn clear(&mut self) {
         self.draw_quad_command_buffer.clear();
         self.draw_ui_quad_command_buffer.clear();
         self.pre_draw_quads_command_buffer.clear();
         self.draw_pre_render_command_buffer.clear();
+        self.draw_light_command_buffer.clear();
     }
 }
 
@@ -67,6 +78,13 @@ pub enum Command {
     DrawPreRender(DrawPreRenderCommand),
     DrawQuad(DrawQuadCommand),
     DrawUIQuad(DrawQuadCommand),
+    DrawLight(DrawLightCommand),
+}
+
+#[derive(Debug)]
+pub struct DrawLightCommand {
+    pub light: PointLight,
+    pub world_transform: Matrix4<f32>,
 }
 
 #[derive(Debug)]

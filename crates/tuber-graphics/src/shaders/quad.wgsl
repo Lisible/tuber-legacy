@@ -24,6 +24,7 @@ struct VertexStageOutput {
     [[builtin(position)]] clip_position: vec4<f32>;
     [[location(0)]] color: vec3<f32>;
     [[location(1)]] texture_coordinates: vec2<f32>;
+    [[location(2)]] world_position: vec3<f32>;
 };
 
 [[stage(vertex)]]
@@ -31,7 +32,10 @@ fn vs_main(input: VertexStageInput) -> VertexStageOutput {
     var output: VertexStageOutput;
     output.color = input.color;
     output.texture_coordinates = input.texture_coordinates;
-    output.clip_position = u_global.view_projection * u_quad.model * vec4<f32>(input.position.x, input.position.y, 0.0, 1.0);
+
+    let world_position = u_quad.model * vec4<f32>(input.position.x, input.position.y, 0.0, 1.0);
+    output.world_position = world_position.xyz;
+    output.clip_position = u_global.view_projection * world_position;
     return output;
 }
 
@@ -50,12 +54,14 @@ var s_normal: sampler;
 struct FragmentStageOutput {
     [[location(0)]] albedo: vec4<f32>;
     [[location(1)]] normal: vec4<f32>;
+    [[location(2)]] position: vec4<f32>;
 };
 
 [[stage(fragment)]]
 fn fs_main(input: VertexStageOutput) -> FragmentStageOutput {
     var output: FragmentStageOutput;
     output.albedo = textureSample(t_diffuse, s_diffuse, input.texture_coordinates);
-    output.normal = textureSample(t_normal, s_normal, input.texture_coordinates);
+    output.normal = textureSample(t_normal, s_normal, input.texture_coordinates).rgba;
+    output.position = vec4<f32>(input.world_position.xyz, 1.0);
     return output;
 }

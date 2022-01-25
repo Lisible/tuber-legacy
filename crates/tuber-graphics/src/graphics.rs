@@ -1,7 +1,10 @@
-use crate::draw_command::{Command, DrawPreRenderCommand, DrawQuadCommand, PreDrawQuadsCommand};
+use crate::draw_command::{
+    Command, DrawLightCommand, DrawPreRenderCommand, DrawQuadCommand, PreDrawQuadsCommand,
+};
 use crate::font::DEFAULT_FONT_IDENTIFIER;
 use crate::geometry::Vertex;
 use crate::primitives::Quad;
+use crate::renderable::light::PointLight;
 use crate::texture::{MISSING_TEXTURE_IDENTIFIER, WHITE_TEXTURE_IDENTIFIER};
 use crate::{
     bitmap_font::font_loader, font, texture, texture_atlas_loader, texture_loader, Active,
@@ -10,7 +13,7 @@ use crate::{
     TextureAtlas, TextureData, TextureMetadata, TextureRegion, Tile, Tilemap, WGPUState, Window,
     WindowSize, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
-use nalgebra::{Matrix4, Vector3};
+use nalgebra::{point, Matrix4, Vector3};
 use std::any::TypeId;
 use std::collections::HashMap;
 use tuber_core::asset::{AssetStore, GenericLoader};
@@ -120,6 +123,17 @@ impl Graphics {
                     normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
                 },
             }));
+    }
+
+    pub fn draw_point_light(&mut self, point_light: &PointLight, transform_matrix: Matrix4<f32>) {
+        self.wgpu_state
+            .as_mut()
+            .unwrap()
+            .command_buffer_mut()
+            .add(Command::DrawLight(DrawLightCommand {
+                light: point_light.clone(),
+                world_transform: transform_matrix,
+            }))
     }
 
     pub fn draw_sprite(
@@ -741,6 +755,23 @@ impl Graphics {
                 asset_store,
             )
             .unwrap();
+        }
+
+        for (_, (point_light, transform, parent)) in
+            ecs.query::<(R<PointLight>, R<Transform2D>, Opt<R<Parent>>)>()
+        {
+            let mut parent_transform = Matrix4::<f32>::identity();
+            let mut parent = parent;
+            while let Some(parent_ref) = &parent {
+                let parent_id = parent_ref.0;
+                let (_, (transform, p)) = ecs
+                    .query_one_by_id::<(R<Transform2D>, Opt<R<Parent>>)>(parent_id)
+                    .unwrap();
+                parent_transform *= transform.into_matrix4();
+                parent = p;
+            }
+
+            self.draw_point_light(&point_light, parent_transform * transform.into_matrix4())
         }
 
         self.render();

@@ -10,6 +10,7 @@ use tuber_ecs::ecs::Ecs;
 use tuber_ecs::{EntityIndex, Parent};
 use tuber_graphics::animation::AnimationState;
 use tuber_graphics::material::Material;
+use tuber_graphics::renderable::light::PointLight;
 
 pub(crate) struct Player {
     pub score: u32,
@@ -20,6 +21,22 @@ pub(crate) fn create_player(ecs: &mut Ecs, asset_store: &mut AssetStore) {
     let _ = ecs.insert(create_player_shadow_entity_definition(
         asset_store,
         player_entity,
+    ));
+
+    let _ = ecs.insert((
+        PointLight {
+            ambient: (0.6, 0.6, 0.6).into(),
+            diffuse: (1.0, 1.0, 1.0).into(),
+            specular: (1.0, 1.0, 1.0).into(),
+            constant: 1.0,
+            linear: 0.007,
+            quadratic: 0.0002,
+        },
+        Parent(player_entity),
+        Transform2D {
+            translation: (0.0, 0.0, -10),
+            ..Default::default()
+        },
     ));
 }
 
@@ -33,10 +50,7 @@ fn create_player_entity_definition(asset_store: &mut AssetStore) -> impl EntityD
             animation_time: 0.0,
             movement: Movement::Idle,
         },
-        Transform2D {
-            translation: (0.0, 0.0, 10),
-            ..Default::default()
-        },
+        Transform2D::default(),
         AnimatedSprite {
             width: 64.0,
             height: 64.0,
