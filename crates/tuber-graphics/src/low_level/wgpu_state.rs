@@ -162,6 +162,7 @@ impl WGPUState {
         let ui_render = self.ui_pass(&mut command_encoder);
         let g_buffer = self.geometry_pass(&mut command_encoder);
         let final_render = self.composition_pass(&mut command_encoder, g_buffer, &ui_render);
+        self.quad_renderer.finish_preparation(&self.queue);
         self.queue.submit(std::iter::once(command_encoder.finish()));
 
         final_render.present();

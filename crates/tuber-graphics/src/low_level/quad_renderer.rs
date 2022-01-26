@@ -16,27 +16,34 @@ const MIN_QUAD_COUNT: usize = 1000;
 const MIN_GLOBAL_UNIFORM_COUNT: usize = 10;
 
 pub(crate) struct QuadRenderer {
-    polygon_mode: PolygonMode,
     vertex_buffer_size: u64,
     vertex_buffer: wgpu::Buffer,
+
     global_uniform_buffer_size: u64,
     global_uniform_buffer: wgpu::Buffer,
     global_bind_group_layout: wgpu::BindGroupLayout,
     global_bind_group: wgpu::BindGroup,
+
     quad_uniform_buffer_size: u64,
     quad_uniform_buffer: wgpu::Buffer,
     quad_bind_group_layout: wgpu::BindGroupLayout,
     quad_bind_group: wgpu::BindGroup,
+
     render_pipeline: wgpu::RenderPipeline,
     ui_render_pipeline: wgpu::RenderPipeline,
+
+    polygon_mode: PolygonMode,
     min_uniform_alignment: wgpu::BufferAddress,
     surface_texture_format: wgpu::TextureFormat,
+
     quad_metadata: Vec<QuadMetadata>,
-    quad_groups: Vec<QuadGroup>,
     quad_count: usize,
     max_quad_count: usize,
     global_uniform_count: usize,
     max_global_uniform_count: usize,
+    pending_vertices: Vec<Vertex>,
+    pending_global_uniforms: Vec<GlobalUniform>,
+    pending_quad_uniforms: Vec<QuadUniform>,
 }
 
 impl QuadRenderer {
@@ -81,27 +88,34 @@ impl QuadRenderer {
         );
 
         Self {
-            polygon_mode: PolygonMode::Fill,
             vertex_buffer_size,
             vertex_buffer,
+
             global_uniform_buffer_size,
             global_uniform_buffer,
             global_bind_group_layout,
             global_bind_group,
+
             quad_uniform_buffer_size,
             quad_uniform_buffer,
             quad_bind_group_layout,
             quad_bind_group,
+
             render_pipeline,
             ui_render_pipeline,
+
+            polygon_mode: PolygonMode::Fill,
             min_uniform_alignment,
             surface_texture_format,
+
             quad_metadata: vec![],
-            quad_groups: vec![],
             quad_count: 0,
             max_quad_count: MIN_QUAD_COUNT,
             global_uniform_count: 0,
             max_global_uniform_count: MIN_GLOBAL_UNIFORM_COUNT,
+            pending_vertices: vec![],
+            pending_global_uniforms: vec![],
+            pending_quad_uniforms: vec![],
         }
     }
 
@@ -120,15 +134,11 @@ impl QuadRenderer {
         );
 
         self.ensure_max_global_uniform_count(device, queue, (self.global_uniform_count + 1) as u64);
-        queue.write_buffer(
-            &self.global_uniform_buffer,
-            (self.global_uniform_count
-                * device.limits().min_uniform_buffer_offset_alignment as usize)
-                as wgpu::BufferAddress,
-            bytemuck::cast_slice(&[GlobalUniform {
-                view_projection: (projection_matrix * view_transform.try_inverse().unwrap()).into(),
-            }]),
-        );
+
+        self.pending_global_uniforms.push(GlobalUniform {
+            view_projection: (projection_matrix * view_transform.try_inverse().unwrap()).into(),
+            _padding: [0.0; 48],
+        });
 
         let quad_group = QuadGroup {
             start_quad: self.quad_count as u64,
@@ -136,41 +146,59 @@ impl QuadRenderer {
             global_uniform: self.global_uniform_count as u64,
         };
 
-        for (index, draw_quad_command) in draw_quad_commands.iter().enumerate() {
-            let quad_index = quad_group.start_quad + index as u64;
+        for draw_quad_command in draw_quad_commands {
             let mut effective_transform = draw_quad_command.world_transform.clone();
             effective_transform.column_mut(3).z = 0.0;
-            queue.write_buffer(
-                &self.quad_uniform_buffer,
-                (quad_index * self.min_uniform_alignment) as wgpu::BufferAddress,
-                bytemuck::cast_slice(&[QuadUniform {
-                    model: effective_transform.into(),
-                }]),
-            );
 
-            queue.write_buffer(
-                &self.vertex_buffer,
-                (quad_index * QUAD_SIZE) as wgpu::BufferAddress,
-                bytemuck::cast_slice(&[
-                    draw_quad_command.quad.top_left,
-                    draw_quad_command.quad.bottom_left,
-                    draw_quad_command.quad.top_right,
-                    draw_quad_command.quad.top_right,
-                    draw_quad_command.quad.bottom_left,
-                    draw_quad_command.quad.bottom_right,
-                ]),
-            );
+            self.pending_quad_uniforms.push(QuadUniform {
+                model: effective_transform.into(),
+                _padding: [0.0; 48],
+            });
+
+            self.pending_vertices.extend_from_slice(&[
+                draw_quad_command.quad.top_left,
+                draw_quad_command.quad.bottom_left,
+                draw_quad_command.quad.top_right,
+                draw_quad_command.quad.top_right,
+                draw_quad_command.quad.bottom_left,
+                draw_quad_command.quad.bottom_right,
+            ]);
 
             self.quad_metadata.push(QuadMetadata {
                 albedo_map_texture_id: draw_quad_command.material.albedo_map_id,
                 normal_map_texture_id: draw_quad_command.material.normal_map_id,
-                uniform_offset: self.quad_metadata.len() as u32 * self.min_uniform_alignment as u32,
+                uniform_offset: (self.quad_metadata.len() * self.min_uniform_alignment as usize)
+                    as u32,
             });
         }
 
         self.quad_count += draw_quad_commands.len();
         self.global_uniform_count += 1;
         quad_group
+    }
+
+    pub fn finish_preparation(&mut self, queue: &wgpu::Queue) {
+        queue.write_buffer(
+            &self.vertex_buffer,
+            0,
+            bytemuck::cast_slice(&self.pending_vertices),
+        );
+
+        queue.write_buffer(
+            &self.global_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&self.pending_global_uniforms),
+        );
+
+        queue.write_buffer(
+            &self.quad_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&self.pending_quad_uniforms),
+        );
+
+        self.pending_vertices.clear();
+        self.pending_global_uniforms.clear();
+        self.pending_quad_uniforms.clear();
     }
 
     pub fn ensure_max_quad_count(
@@ -329,7 +357,6 @@ impl QuadRenderer {
 
     pub fn clear_pending_quads(&mut self) {
         self.quad_metadata.clear();
-        self.quad_groups.clear();
         self.global_uniform_count = 0;
         self.quad_count = 0;
     }
@@ -624,10 +651,12 @@ struct QuadMetadata {
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct QuadUniform {
     model: [[f32; 4]; 4],
+    _padding: [f32; 48],
 }
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct GlobalUniform {
     view_projection: [[f32; 4]; 4],
+    _padding: [f32; 48],
 }
