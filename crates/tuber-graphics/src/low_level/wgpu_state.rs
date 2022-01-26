@@ -426,16 +426,7 @@ impl WGPUState {
         camera: &OrthographicCamera,
         transform_matrix: Matrix4<f32>,
     ) {
-        let projection_matrix = Matrix4::new_orthographic(
-            camera.left,
-            camera.right,
-            camera.bottom,
-            camera.top,
-            camera.near,
-            camera.far,
-        );
-
-        self.projection_matrix = projection_matrix;
+        self.projection_matrix = camera.projection_matrix();
         self.view_transform = transform_matrix;
     }
 
