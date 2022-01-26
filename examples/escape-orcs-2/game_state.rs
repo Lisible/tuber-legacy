@@ -2,7 +2,6 @@ use crate::character::Character;
 use crate::orc::{create_orc, Orc};
 use crate::player::{create_player, Player};
 use crate::terrain::{create_tilemap, TILE_SIZE};
-use nalgebra::{Point2, Point3};
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::f32::consts::PI;
@@ -19,6 +18,7 @@ use tuber::engine::state::{State, StateStackRequest};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::g_buffer::GBufferComponent;
 use tuber_core::transform::IntoMatrix4;
+use tuber_graphics::camera::mouse_coordinates_to_world_coordinates;
 use tuber_graphics::low_level::polygon_mode::PolygonMode;
 use tuber_graphics::renderable::tilemap::Tilemap;
 use tuber_gui::widget::text::TextWidget;
@@ -104,26 +104,18 @@ fn print_mouse_position(ecs: &mut Ecs, engine_context: &mut EngineContext) {
     let (_, (camera, view_transform, _)) = ecs
         .query_one::<(R<OrthographicCamera>, R<Transform2D>, R<Active>)>()
         .unwrap();
-    let input_state = &engine_context.input_state;
-    let mouse_position = input_state.mouse_position();
-    let mouse_position = (mouse_position.0, mouse_position.1);
-
-    let mouse_position = nalgebra::Point3::<f32>::new(
-        (mouse_position.0 / 800.0) * 2.0 - 1.0,
-        -(mouse_position.1 / 600.0) * 2.0 + 1.0,
-        0.0,
+    let mouse_position = mouse_coordinates_to_world_coordinates(
+        engine_context.input_state.mouse_position(),
+        (800.0, 600.0),
+        &camera.projection_matrix(),
+        &view_transform.into_matrix4(),
     );
 
-    let mouse_position = camera
-        .projection_matrix()
-        .try_inverse()
-        .unwrap()
-        .transform_point(&mouse_position);
-
-    let mouse_position = view_transform
-        .into_matrix4()
-        .transform_point(&mouse_position);
-    println!("mouse position {}", mouse_position);
+    let (_, (_, mut transform)) = ecs.query_one::<(R<Orc>, W<Transform2D>)>().unwrap();
+    *transform = Transform2D {
+        translation: (mouse_position.0, mouse_position.1, 0),
+        ..Default::default()
+    };
 }
 
 fn switch_rendered_g_buffer_component(_ecs: &mut Ecs, engine_context: &mut EngineContext) {
