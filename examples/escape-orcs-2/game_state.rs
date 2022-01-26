@@ -2,6 +2,7 @@ use crate::character::Character;
 use crate::orc::{create_orc, Orc};
 use crate::player::{create_player, Player};
 use crate::terrain::{create_tilemap, TILE_SIZE};
+use nalgebra::{Point2, Point3};
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::f32::consts::PI;
@@ -55,6 +56,7 @@ impl State for GameState {
 
         let mut system_bundle = SystemBundle::<EngineContext>::new();
         system_bundle.add_system(move_player);
+        system_bundle.add_system(print_mouse_position);
         system_bundle.add_system(update_score_label);
         system_bundle.add_system(update_character_position);
         system_bundle.add_system(update_camera_position);
@@ -96,6 +98,32 @@ impl State for GameState {
 
         vec![]
     }
+}
+
+fn print_mouse_position(ecs: &mut Ecs, engine_context: &mut EngineContext) {
+    let (_, (camera, view_transform, _)) = ecs
+        .query_one::<(R<OrthographicCamera>, R<Transform2D>, R<Active>)>()
+        .unwrap();
+    let input_state = &engine_context.input_state;
+    let mouse_position = input_state.mouse_position();
+    let mouse_position = (mouse_position.0, mouse_position.1);
+
+    let mouse_position = nalgebra::Point3::<f32>::new(
+        (mouse_position.0 / 800.0) * 2.0 - 1.0,
+        -(mouse_position.1 / 600.0) * 2.0 + 1.0,
+        0.0,
+    );
+
+    let mouse_position = camera
+        .projection_matrix()
+        .try_inverse()
+        .unwrap()
+        .transform_point(&mouse_position);
+
+    let mouse_position = view_transform
+        .into_matrix4()
+        .transform_point(&mouse_position);
+    println!("mouse position {}", mouse_position);
 }
 
 fn switch_rendered_g_buffer_component(_ecs: &mut Ecs, engine_context: &mut EngineContext) {
