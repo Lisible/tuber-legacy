@@ -62,17 +62,13 @@ impl LightRenderer {
             .iter()
             .map(|command| PointLightUniform {
                 position: command.world_transform.column(3).xyz().into(),
-                _padding: 0,
+                radius: command.light.radius,
                 ambient_color: command.light.ambient.into(),
-                _padding2: 0,
+                _padding: 0,
                 diffuse_color: command.light.diffuse.into(),
-                _padding3: 0,
+                _padding2: 0,
                 specular_color: command.light.specular.into(),
-                _padding4: 0,
-                constant: command.light.constant,
-                linear: command.light.constant,
-                quadratic: command.light.constant,
-                _padding5: 0,
+                _padding3: 0,
             })
             .collect::<Vec<_>>();
 
@@ -376,15 +372,11 @@ impl LightRenderer {
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct PointLightUniform {
     position: [f32; 3],
-    _padding: u32,
+    radius: f32,
     ambient_color: [f32; 3],
-    _padding2: u32,
+    _padding: u32,
     diffuse_color: [f32; 3],
-    _padding3: u32,
+    _padding2: u32,
     specular_color: [f32; 3],
-    _padding4: u32,
-    constant: f32,
-    linear: f32,
-    quadratic: f32,
-    _padding5: u32,
+    _padding3: u32,
 }

@@ -115,7 +115,7 @@ fn update_light_position(ecs: &mut Ecs, engine_context: &mut EngineContext) {
 
     let (_, (_, mut transform)) = ecs.query_one::<(R<PointLight>, W<Transform2D>)>().unwrap();
     *transform = Transform2D {
-        translation: (mouse_position.0, mouse_position.1, 0),
+        translation: (mouse_position.0, mouse_position.1, 50),
         ..Default::default()
     };
 }

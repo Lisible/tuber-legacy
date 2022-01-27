@@ -28,11 +28,8 @@ pub(crate) fn create_player(ecs: &mut Ecs, asset_store: &mut AssetStore) {
             ambient: (0.6, 0.6, 0.6).into(),
             diffuse: (1.0, 1.0, 1.0).into(),
             specular: (1.0, 1.0, 1.0).into(),
-            constant: 1.0,
-            linear: 0.007,
-            quadratic: 0.0002,
+            radius: 100.0,
         },
-        Parent(player_entity),
         Transform2D {
             translation: (0.0, 0.0, -10),
             ..Default::default()

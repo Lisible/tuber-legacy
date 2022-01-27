@@ -12,12 +12,10 @@ struct VertexStageOutput {
 [[block]]
 struct PointLightUniform {
     position: vec3<f32>;
+    radius: f32;
     ambient_color: vec3<f32>;
     diffuse_color: vec3<f32>;
     specular_color: vec3<f32>;
-    constant: f32;
-    linear: f32;
-    quadratic: f32;
 };
 
 [[group(1), binding(0)]]
@@ -46,15 +44,17 @@ var s_position: sampler;
 
 [[stage(fragment)]]
 fn fs_main(input: VertexStageOutput) -> [[location(0)]] vec4<f32> {
-    let light_position = vec3<f32>(300.0, 300.0, 200.0);
     let frag_position = textureSample(t_position, s_position, input.texture_coordinates).rgb;
     let normal = textureSample(t_normal, s_normal, input.texture_coordinates).rgb * 2.0 - vec3<f32>(1.0);
     let albedo = textureSample(t_albedo, s_albedo, input.texture_coordinates).rgb;
 
-    var lighting = albedo * 0.05;
-    let light_direction = normalize(light_position - frag_position);
+    let light_direction = normalize(light.position - frag_position);
     var diffuse = light.diffuse_color * max(dot(normal, light_direction), 0.0) * albedo;
-    lighting = lighting + diffuse;
+
+    let distance = length(light.position - frag_position);
+    let attenuation = 1.0 / (1.0 + 25.0 * (distance / light.radius) * (distance / light.radius));
+
+    diffuse = diffuse * attenuation;
 
     return vec4<f32>(diffuse, 1.0);
 }
