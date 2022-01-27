@@ -1,0 +1,7 @@
+{
+  "identifier": "emissive_spritesheet",
+  "kind": "texture",
+  "metadata": {
+    "texture_data": "emissive_spritesheet.png"
+  }
+}
