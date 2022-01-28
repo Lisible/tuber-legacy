@@ -441,6 +441,8 @@ impl WGPUState {
         let render_view = render_texture.create_view(&wgpu::TextureViewDescriptor::default());
         self.light_renderer.prepare(
             &self.device,
+            &self.queue,
+            command_encoder,
             g_buffer,
             self.command_buffer.draw_light_commands(),
         );

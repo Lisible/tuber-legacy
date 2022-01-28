@@ -4,13 +4,20 @@ use crate::low_level::g_buffer::GBuffer;
 use wgpu::util::DeviceExt;
 
 const VERTEX_COUNT: usize = 6;
+const MIN_POINT_LIGHT_CAPACITY: usize = 20;
+const POINT_LIGHT_UNIFORM_BUFFER_LABEL: &'static str = "light_renderer_point_light_uniform_buffer";
 
 pub struct LightRenderer {
     vertex_buffer: wgpu::Buffer,
 
-    point_light_uniform_buffer: Option<wgpu::Buffer>,
-    point_light_uniform_bind_group_layout: wgpu::BindGroupLayout,
-    point_light_uniform_bind_group: Option<wgpu::BindGroup>,
+    global_uniform_buffer: wgpu::Buffer,
+    _global_uniform_bind_group_layout: wgpu::BindGroupLayout,
+    global_uniform_bind_group: wgpu::BindGroup,
+
+    point_light_uniform_buffer: wgpu::Buffer,
+    _point_light_uniform_bind_group_layout: wgpu::BindGroupLayout,
+    point_light_uniform_bind_group: wgpu::BindGroup,
+    point_light_capacity: usize,
 
     g_buffer_bind_group_layout: wgpu::BindGroupLayout,
     g_buffer_bind_group: Option<wgpu::BindGroup>,
@@ -22,23 +29,48 @@ impl LightRenderer {
     pub fn new(device: &wgpu::Device, surface_texture_format: wgpu::TextureFormat) -> Self {
         let vertex_buffer = Self::create_vertex_buffer(device);
 
+        let global_uniform_buffer = Self::create_global_uniform_buffer(device);
+        let global_uniform_bind_group_layout =
+            Self::create_global_uniform_bind_group_layout(device);
+        let global_uniform_bind_group = Self::create_global_uniform_bind_group(
+            device,
+            &global_uniform_bind_group_layout,
+            &global_uniform_buffer,
+        );
+
         let point_light_uniform_bind_group_layout =
             Self::create_point_light_uniform_bind_group_layout(device);
 
         let g_buffer_bind_group_layout = Self::create_g_buffer_bind_group_layout(device);
 
+        let point_light_uniform_buffer =
+            Self::create_point_light_uniform_buffer(device, MIN_POINT_LIGHT_CAPACITY as u32);
+        let point_light_uniform_bind_group = Self::create_point_light_uniform_bind_group(
+            device,
+            &point_light_uniform_bind_group_layout,
+            &point_light_uniform_buffer,
+        );
+
         let render_pipeline = Self::create_render_pipeline(
             device,
             surface_texture_format,
+            &global_uniform_bind_group_layout,
             &g_buffer_bind_group_layout,
             &point_light_uniform_bind_group_layout,
         );
 
         Self {
             vertex_buffer,
-            point_light_uniform_buffer: None,
-            point_light_uniform_bind_group_layout,
-            point_light_uniform_bind_group: None,
+
+            global_uniform_buffer,
+            _global_uniform_bind_group_layout: global_uniform_bind_group_layout,
+            global_uniform_bind_group,
+
+            point_light_uniform_buffer,
+            _point_light_uniform_bind_group_layout: point_light_uniform_bind_group_layout,
+            point_light_uniform_bind_group,
+            point_light_capacity: MIN_POINT_LIGHT_CAPACITY,
+
             g_buffer_bind_group_layout,
             g_buffer_bind_group: None,
             render_pipeline,
@@ -48,9 +80,17 @@ impl LightRenderer {
     pub fn prepare(
         &mut self,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        command_encoder: &mut wgpu::CommandEncoder,
         g_buffer: GBuffer,
         draw_light_commands: &[DrawLightCommand],
     ) {
+        self.ensure_point_light_uniform_capacity(
+            device,
+            command_encoder,
+            draw_light_commands.len(),
+        );
+
         self.g_buffer_bind_group = Some(Self::create_g_buffer_bind_group(
             device,
             &self.g_buffer_bind_group_layout,
@@ -71,39 +111,74 @@ impl LightRenderer {
             })
             .collect::<Vec<_>>();
 
-        self.point_light_uniform_buffer =
-            Some(self.create_point_light_uniform_buffer(device, &uniforms));
-        self.point_light_uniform_bind_group = Some(Self::create_point_light_uniform_bind_group(
-            device,
-            &self.point_light_uniform_bind_group_layout,
-            self.point_light_uniform_buffer.as_ref().unwrap(),
-        ));
+        queue.write_buffer(
+            &self.global_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&[GlobalUniform {
+                light_count: draw_light_commands.len() as i32,
+            }]),
+        );
+
+        queue.write_buffer(
+            &self.point_light_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&uniforms),
+        );
     }
 
-    fn create_point_light_uniform_buffer(
+    fn ensure_point_light_uniform_capacity(
         &mut self,
         device: &wgpu::Device,
-        uniforms: &[PointLightUniform],
-    ) -> wgpu::Buffer {
-        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("light_renderer_point_light_uniform_buffer"),
-            contents: bytemuck::cast_slice(uniforms),
+        command_encoder: &mut wgpu::CommandEncoder,
+        capacity: usize,
+    ) {
+        if self.point_light_capacity >= capacity {
+            return;
+        }
+
+        self.reallocate_light_uniform_buffer(device, command_encoder, capacity);
+    }
+
+    fn reallocate_light_uniform_buffer(
+        &mut self,
+        device: &wgpu::Device,
+        command_encoder: &mut wgpu::CommandEncoder,
+        capacity: usize,
+    ) {
+        let new_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(POINT_LIGHT_UNIFORM_BUFFER_LABEL),
+            size: (capacity as u32 * device.limits().min_uniform_buffer_offset_alignment)
+                as wgpu::BufferAddress,
             usage: wgpu::BufferUsages::UNIFORM
-                | wgpu::BufferUsages::COPY_DST
-                | wgpu::BufferUsages::COPY_SRC,
-        })
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let old_buffer_size =
+            self.point_light_capacity as u32 * device.limits().min_uniform_buffer_offset_alignment;
+        command_encoder.copy_buffer_to_buffer(
+            &self.point_light_uniform_buffer,
+            0,
+            &new_buffer,
+            0,
+            old_buffer_size as wgpu::BufferAddress,
+        );
+
+        self.point_light_uniform_buffer = new_buffer;
+        self.point_light_capacity = capacity;
     }
 
     pub fn render<'rpass: 'pass, 'pass>(&'rpass self, render_pass: &mut wgpu::RenderPass<'pass>) {
         render_pass.set_pipeline(&self.render_pipeline);
+
+        render_pass.set_bind_group(0, &self.global_uniform_bind_group, &[]);
+
         if let Some(g_buffer_bind_group) = &self.g_buffer_bind_group {
-            render_pass.set_bind_group(0, g_buffer_bind_group, &[]);
+            render_pass.set_bind_group(1, g_buffer_bind_group, &[]);
         }
 
-        if let Some(point_light_uniform_bind_group) = &self.point_light_uniform_bind_group {
-            render_pass.set_bind_group(1, &point_light_uniform_bind_group, &[]);
-        }
-
+        render_pass.set_bind_group(2, &self.point_light_uniform_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.draw(0..VERTEX_COUNT as u32, 0..1);
     }
@@ -111,6 +186,7 @@ impl LightRenderer {
     fn create_render_pipeline(
         device: &wgpu::Device,
         surface_texture_format: wgpu::TextureFormat,
+        global_uniform_bind_group_layout: &wgpu::BindGroupLayout,
         g_buffer_bind_group_layout: &wgpu::BindGroupLayout,
         point_light_uniform_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> wgpu::RenderPipeline {
@@ -123,6 +199,7 @@ impl LightRenderer {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("light_renderer_render_pipeline_layout"),
                 bind_group_layouts: &[
+                    global_uniform_bind_group_layout,
                     g_buffer_bind_group_layout,
                     point_light_uniform_bind_group_layout,
                 ],
@@ -205,6 +282,18 @@ impl LightRenderer {
         })
     }
 
+    fn create_point_light_uniform_buffer(device: &wgpu::Device, capacity: u32) -> wgpu::Buffer {
+        device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(POINT_LIGHT_UNIFORM_BUFFER_LABEL),
+            size: (capacity * device.limits().min_uniform_buffer_offset_alignment)
+                as wgpu::BufferAddress,
+            usage: wgpu::BufferUsages::UNIFORM
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })
+    }
+
     fn create_point_light_uniform_bind_group_layout(
         device: &wgpu::Device,
     ) -> wgpu::BindGroupLayout {
@@ -234,6 +323,47 @@ impl LightRenderer {
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: point_light_uniform_buffer.as_entire_binding(),
+            }],
+        })
+    }
+
+    fn create_global_uniform_buffer(device: &wgpu::Device) -> wgpu::Buffer {
+        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(POINT_LIGHT_UNIFORM_BUFFER_LABEL),
+            contents: bytemuck::cast_slice(&[GlobalUniform { light_count: 0 }]),
+            usage: wgpu::BufferUsages::UNIFORM
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+        })
+    }
+
+    fn create_global_uniform_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("light_renderer_global_uniform_bind_group_layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        })
+    }
+
+    fn create_global_uniform_bind_group(
+        device: &wgpu::Device,
+        global_uniform_bind_group_layout: &wgpu::BindGroupLayout,
+        global_uniform_buffer: &wgpu::Buffer,
+    ) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("light_renderer_global_uniform_bind_group"),
+            layout: &global_uniform_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: global_uniform_buffer.as_entire_binding(),
             }],
         })
     }
@@ -396,6 +526,12 @@ impl LightRenderer {
             ..Default::default()
         })
     }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct GlobalUniform {
+    light_count: i32,
 }
 
 #[repr(C)]

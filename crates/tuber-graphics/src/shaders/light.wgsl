@@ -9,7 +9,7 @@ struct VertexStageOutput {
     [[location(0)]] texture_coordinates: vec2<f32>;
 };
 
-[[block]]
+
 struct PointLightUniform {
     position: vec3<f32>;
     radius: f32;
@@ -18,8 +18,23 @@ struct PointLightUniform {
     specular_color: vec3<f32>;
 };
 
-[[group(1), binding(0)]]
-var<uniform> light: PointLightUniform;
+
+[[block]]
+struct GlobalUniform {
+    light_count: i32;
+};
+
+[[group(0), binding(0)]]
+var<uniform> global_uniform: GlobalUniform;
+
+[[block]]
+struct PointLightUniforms {
+    lights: array<PointLightUniform, 1000>;
+};
+
+
+[[group(2), binding(0)]]
+var<uniform> lights: PointLightUniforms;
 
 [[stage(vertex)]]
 fn vs_main(input: VertexStageInput) -> VertexStageOutput {
@@ -29,21 +44,21 @@ fn vs_main(input: VertexStageInput) -> VertexStageOutput {
     return output;
 }
 
-[[group(0), binding(0)]]
+[[group(1), binding(0)]]
 var t_albedo: texture_2d<f32>;
-[[group(0), binding(1)]]
+[[group(1), binding(1)]]
 var s_albedo: sampler;
-[[group(0), binding(2)]]
+[[group(1), binding(2)]]
 var t_normal: texture_2d<f32>;
-[[group(0), binding(3)]]
+[[group(1), binding(3)]]
 var s_normal: sampler;
-[[group(0), binding(4)]]
+[[group(1), binding(4)]]
 var t_emission: texture_2d<f32>;
-[[group(0), binding(5)]]
+[[group(1), binding(5)]]
 var s_emission: sampler;
-[[group(0), binding(6)]]
+[[group(1), binding(6)]]
 var t_position: texture_2d<f32>;
-[[group(0), binding(7)]]
+[[group(1), binding(7)]]
 var s_position: sampler;
 
 [[stage(fragment)]]
@@ -54,16 +69,18 @@ fn fs_main(input: VertexStageOutput) -> [[location(0)]] vec4<f32> {
 
     var lighting = vec3<f32>(0.0);
 
-    let light_direction = normalize(light.position - frag_position);
-    var diffuse = light.diffuse_color * max(dot(normal, light_direction), 0.0) * albedo;
-    let distance = length(light.position - frag_position);
-    let attenuation = 1.0 / (1.0 + 25.0 * (distance / light.radius) * (distance / light.radius));
+    for (var i = 0; i < global_uniform.light_count; i = i + 1) {
+        let light = lights.lights[i];
+        let light_direction = normalize(light.position - frag_position);
+        var diffuse = light.diffuse_color * max(dot(normal, light_direction), 0.0) * albedo;
+        let distance = length(light.position - frag_position);
+        let attenuation = 1.0 / (1.0 + 25.0 * (distance / light.radius) * (distance / light.radius));
 
-    var emission = textureSample(t_emission, s_emission, input.texture_coordinates).rgb;
-    var emitted = emission * albedo;
+        var emission = textureSample(t_emission, s_emission, input.texture_coordinates).rgb;
+        var emitted = emission * albedo;
 
-    lighting = lighting + diffuse * attenuation;
-    lighting = lighting + emitted;
+        lighting = lighting + diffuse * attenuation + emitted;
+    }
 
 
 

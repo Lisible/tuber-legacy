@@ -468,7 +468,7 @@ impl QuadRenderer {
             } else {
                 render_pass.set_bind_group(
                     2,
-                    &self.texture_bind_groups[dbg!(&quad_metadata.material_description)],
+                    &self.texture_bind_groups[&quad_metadata.material_description],
                     &[],
                 );
             }
