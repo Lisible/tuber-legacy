@@ -2,7 +2,6 @@ use crate::draw_command::DrawLightCommand;
 use crate::geometry::Vertex;
 use crate::low_level::g_buffer::GBuffer;
 use wgpu::util::DeviceExt;
-use wgpu::BufferDescriptor;
 
 const VERTEX_COUNT: usize = 6;
 
@@ -131,7 +130,7 @@ impl LightRenderer {
             });
 
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("compositor_render_pipeline"),
+            label: Some("light_renderer_render_pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader_module,
@@ -300,6 +299,25 @@ impl LightRenderer {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 6,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 7,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler {
+                        filtering: false,
+                        comparison: false,
+                    },
+                    count: None,
+                },
             ],
         })
     }
@@ -317,6 +335,10 @@ impl LightRenderer {
             .normal
             .create_view(&wgpu::TextureViewDescriptor::default());
         let normal_map_sampler = Self::create_sampler(device);
+        let emission_map_view = g_buffer
+            .emission
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let emission_map_sampler = Self::create_sampler(device);
         let position_map_view = g_buffer
             .position
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -344,10 +366,18 @@ impl LightRenderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::TextureView(&position_map_view),
+                    resource: wgpu::BindingResource::TextureView(&emission_map_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&emission_map_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: wgpu::BindingResource::TextureView(&position_map_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
                     resource: wgpu::BindingResource::Sampler(&position_map_sampler),
                 },
             ],

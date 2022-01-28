@@ -5,7 +5,9 @@ use crate::font::DEFAULT_FONT_IDENTIFIER;
 use crate::geometry::Vertex;
 use crate::primitives::Quad;
 use crate::renderable::light::PointLight;
-use crate::texture::{MISSING_TEXTURE_IDENTIFIER, WHITE_TEXTURE_IDENTIFIER};
+use crate::texture::{
+    BLACK_TEXTURE_IDENTIFIER, MISSING_TEXTURE_IDENTIFIER, WHITE_TEXTURE_IDENTIFIER,
+};
 use crate::{
     bitmap_font::font_loader, font, texture, texture_atlas_loader, texture_loader, Active,
     AnimatedSprite, BitmapFont, Color, GBufferComponent, GraphicsError, Material,
@@ -13,7 +15,7 @@ use crate::{
     TextureAtlas, TextureData, TextureMetadata, TextureRegion, Tile, Tilemap, WGPUState, Window,
     WindowSize, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
-use nalgebra::{point, Matrix4, Vector3};
+use nalgebra::{Matrix4, Vector3};
 use std::any::TypeId;
 use std::collections::HashMap;
 use tuber_core::asset::{AssetStore, GenericLoader};
@@ -41,6 +43,7 @@ impl Graphics {
         self.wgpu_state = Some(WGPUState::new(window, window_size));
         self.load_texture_in_vram(&font::create_default_bitmap_font_texture());
         self.load_texture_in_vram(&texture::create_white_texture());
+        self.load_texture_in_vram(&texture::create_black_texture());
         self.load_texture_in_vram(&texture::create_placeholder_texture());
         self.load_texture_in_vram(&texture::create_normal_map_texture());
     }
@@ -85,6 +88,7 @@ impl Graphics {
                 material: MaterialDescription {
                     albedo_map_id: self.texture_metadata[WHITE_TEXTURE_IDENTIFIER].texture_id,
                     normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
+                    emission_map_id: self.texture_metadata[BLACK_TEXTURE_IDENTIFIER].texture_id,
                 },
             }));
     }
@@ -121,6 +125,7 @@ impl Graphics {
                 material: MaterialDescription {
                     albedo_map_id: self.texture_metadata[WHITE_TEXTURE_IDENTIFIER].texture_id,
                     normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
+                    emission_map_id: self.texture_metadata[BLACK_TEXTURE_IDENTIFIER].texture_id,
                 },
             }));
     }
@@ -151,6 +156,11 @@ impl Graphics {
 
         let normal_map_metadata = match &sprite.material.normal_map {
             Some(normal_map) => self.texture_metadata.get(normal_map),
+            None => None,
+        };
+
+        let emission_map_metadata = match &sprite.material.emission_map {
+            Some(emission_map) => self.texture_metadata.get(emission_map),
             None => None,
         };
 
@@ -201,6 +211,10 @@ impl Graphics {
                         .or(Some(&self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER]))
                         .unwrap()
                         .texture_id,
+                    emission_map_id: emission_map_metadata
+                        .or(Some(&self.texture_metadata[BLACK_TEXTURE_IDENTIFIER]))
+                        .unwrap()
+                        .texture_id,
                 },
             }));
 
@@ -240,6 +254,10 @@ impl Graphics {
         let normal_map_id = match &animated_sprite.material.normal_map {
             Some(normal_map) => self.texture_metadata[normal_map].texture_id,
             None => self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
+        };
+        let emission_map_id = match &animated_sprite.material.emission_map {
+            Some(emission_map) => self.texture_metadata[emission_map].texture_id,
+            None => self.texture_metadata[BLACK_TEXTURE_IDENTIFIER].texture_id,
         };
 
         self.wgpu_state
@@ -285,6 +303,7 @@ impl Graphics {
                 material: MaterialDescription {
                     albedo_map_id,
                     normal_map_id,
+                    emission_map_id,
                 },
             }));
 
@@ -405,6 +424,12 @@ impl Graphics {
                         }
                         None => self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
                     },
+                    emission_map_id: match &tilemap_material.emission_map {
+                        Some(emission_map_identifier) => {
+                            self.texture_metadata[emission_map_identifier].texture_id
+                        }
+                        None => self.texture_metadata[BLACK_TEXTURE_IDENTIFIER].texture_id,
+                    },
                 },
             });
         }
@@ -494,6 +519,12 @@ impl Graphics {
                                 self.texture_metadata[normal_map_identifier].texture_id
                             }
                             None => self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
+                        },
+                        emission_map_id: match &tilemap_material.emission_map {
+                            Some(emission_map_identifier) => {
+                                self.texture_metadata[emission_map_identifier].texture_id
+                            }
+                            None => self.texture_metadata[BLACK_TEXTURE_IDENTIFIER].texture_id,
                         },
                     },
                 });
@@ -633,6 +664,7 @@ impl Graphics {
                         albedo_map_id: self.texture_metadata[font_texture].texture_id,
                         normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER]
                             .texture_id,
+                        emission_map_id: self.texture_metadata[BLACK_TEXTURE_IDENTIFIER].texture_id,
                     },
                 }));
 
@@ -648,6 +680,9 @@ impl Graphics {
         self.load_texture_in_vram_if_required(asset_manager, &material.albedo_map);
         if let Some(normal_map) = &material.normal_map {
             self.load_texture_in_vram_if_required(asset_manager, normal_map);
+        }
+        if let Some(emission_map) = &material.emission_map {
+            self.load_texture_in_vram_if_required(asset_manager, emission_map);
         }
     }
 

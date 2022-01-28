@@ -38,8 +38,12 @@ var t_normal: texture_2d<f32>;
 [[group(0), binding(3)]]
 var s_normal: sampler;
 [[group(0), binding(4)]]
-var t_position: texture_2d<f32>;
+var t_emission: texture_2d<f32>;
 [[group(0), binding(5)]]
+var s_emission: sampler;
+[[group(0), binding(6)]]
+var t_position: texture_2d<f32>;
+[[group(0), binding(7)]]
 var s_position: sampler;
 
 [[stage(fragment)]]
@@ -48,13 +52,20 @@ fn fs_main(input: VertexStageOutput) -> [[location(0)]] vec4<f32> {
     let normal = textureSample(t_normal, s_normal, input.texture_coordinates).rgb * 2.0 - vec3<f32>(1.0);
     let albedo = textureSample(t_albedo, s_albedo, input.texture_coordinates).rgb;
 
+    var lighting = vec3<f32>(0.0);
+
     let light_direction = normalize(light.position - frag_position);
     var diffuse = light.diffuse_color * max(dot(normal, light_direction), 0.0) * albedo;
-
     let distance = length(light.position - frag_position);
     let attenuation = 1.0 / (1.0 + 25.0 * (distance / light.radius) * (distance / light.radius));
 
-    diffuse = diffuse * attenuation;
+    var emission = textureSample(t_emission, s_emission, input.texture_coordinates).rgb;
+    var emitted = emission * albedo;
 
-    return vec4<f32>(diffuse, 1.0);
+    lighting = lighting + diffuse * attenuation;
+    lighting = lighting + emitted;
+
+
+
+    return vec4<f32>(lighting, 1.0);
 }

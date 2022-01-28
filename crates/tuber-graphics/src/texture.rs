@@ -176,6 +176,17 @@ pub(crate) fn create_white_texture() -> TextureData {
     }
 }
 
+pub const BLACK_TEXTURE_IDENTIFIER: &'static str = "_black";
+pub const BLACK_TEXTURE_SIZE: (f32, f32) = (1.0, 1.0);
+pub(crate) fn create_black_texture() -> TextureData {
+    TextureData {
+        identifier: BLACK_TEXTURE_IDENTIFIER.into(),
+        size: (1, 1),
+        bytes: vec![0x00, 0x00, 0x00, 0x00],
+        srgb: true,
+    }
+}
+
 pub const MISSING_TEXTURE_IDENTIFIER: &'static str = "_placeholder";
 pub const MISSING_TEXTURE_REGION: TextureRegion = TextureRegion {
     x: 0.0,

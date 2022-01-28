@@ -22,7 +22,6 @@ use tuber_graphics::camera::mouse_coordinates_to_world_coordinates;
 use tuber_graphics::low_level::polygon_mode::PolygonMode;
 use tuber_graphics::renderable::light::PointLight;
 use tuber_graphics::renderable::tilemap::Tilemap;
-use tuber_graphics::types::Color;
 use tuber_gui::widget::text::TextWidget;
 
 pub(crate) struct GameState {

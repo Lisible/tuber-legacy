@@ -1,5 +1,4 @@
 use crate::geometry::Vertex;
-use crate::low_level::g_buffer::GBuffer;
 use crate::GBufferComponent;
 use wgpu::util::DeviceExt;
 use wgpu::{

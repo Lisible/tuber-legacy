@@ -2,7 +2,7 @@ use crate::geometry::Vertex;
 use crate::types::Size2;
 use std::ops::Deref;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TextureId(pub usize);
 
 impl ToString for TextureId {
@@ -81,8 +81,9 @@ impl Default for Quad {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct MaterialDescription {
     pub albedo_map_id: TextureId,
     pub normal_map_id: TextureId,
+    pub emission_map_id: TextureId,
 }

@@ -37,6 +37,7 @@ fn create_orc_entity_definition(asset_store: &mut AssetStore) -> impl EntityDefi
             material: Material {
                 albedo_map: "spritesheet".to_string(),
                 normal_map: Some("normal_spritesheet".to_string()),
+                emission_map: Some("emissive_spritesheet".to_string()),
             },
             animation_state: AnimationState {
                 keyframes: vec![
@@ -66,6 +67,7 @@ fn create_orc_shadow_entity_definition(
             material: Material {
                 albedo_map: "spritesheet".to_string(),
                 normal_map: Some("normal_spritesheet".to_string()),
+                emission_map: Some("emissive_spritesheet".to_string()),
             },
         },
         Transform2D {

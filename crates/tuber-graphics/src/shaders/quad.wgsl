@@ -44,17 +44,21 @@ fn vs_main(input: VertexStageInput) -> VertexStageOutput {
 var t_diffuse: texture_2d<f32>;
 [[group(2), binding(1)]]
 var s_diffuse: sampler;
-
-[[group(3), binding(0)]]
+[[group(2), binding(2)]]
 var t_normal: texture_2d<f32>;
-[[group(3), binding(1)]]
+[[group(2), binding(3)]]
 var s_normal: sampler;
+[[group(2), binding(4)]]
+var t_emission: texture_2d<f32>;
+[[group(2), binding(5)]]
+var s_emission: sampler;
 
 
 struct FragmentStageOutput {
     [[location(0)]] albedo: vec4<f32>;
     [[location(1)]] normal: vec4<f32>;
-    [[location(2)]] position: vec4<f32>;
+    [[location(2)]] emission: vec4<f32>;
+    [[location(3)]] position: vec4<f32>;
 };
 
 [[stage(fragment)]]
@@ -62,6 +66,7 @@ fn fs_main(input: VertexStageOutput) -> FragmentStageOutput {
     var output: FragmentStageOutput;
     output.albedo = textureSample(t_diffuse, s_diffuse, input.texture_coordinates);
     output.normal = textureSample(t_normal, s_normal, input.texture_coordinates).rgba;
+    output.emission = textureSample(t_emission, s_emission, input.texture_coordinates);
     output.position = vec4<f32>(input.world_position.xyz, 1.0);
     return output;
 }

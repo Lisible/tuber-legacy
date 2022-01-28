@@ -21,6 +21,7 @@ pub fn create_tilemap(asset_store: &mut AssetStore) -> Tilemap {
         Material {
             albedo_map: "spritesheet".to_string(),
             normal_map: Some("normal_spritesheet".to_string()),
+            emission_map: Some("emissive_spritesheet".to_string()),
         },
         Some(Tile::StaticTile(StaticTile {
             texture_region: atlas.texture_region("stone").unwrap(),

@@ -23,6 +23,7 @@ impl Default for Sprite {
             material: Material {
                 albedo_map: "texture".to_string(),
                 normal_map: None,
+                emission_map: None,
             },
         }
     }

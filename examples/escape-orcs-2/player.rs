@@ -54,6 +54,7 @@ fn create_player_entity_definition(asset_store: &mut AssetStore) -> impl EntityD
             material: Material {
                 albedo_map: "spritesheet".to_string(),
                 normal_map: Some("normal_spritesheet".to_string()),
+                emission_map: Some("emissive_spritesheet".to_string()),
             },
             animation_state: AnimationState {
                 keyframes: vec![
@@ -84,6 +85,7 @@ fn create_player_shadow_entity_definition(
             material: Material {
                 albedo_map: "spritesheet".to_string(),
                 normal_map: Some("normal_spritesheet".to_string()),
+                emission_map: Some("emissive_spritesheet".to_string()),
             },
         },
         Transform2D {

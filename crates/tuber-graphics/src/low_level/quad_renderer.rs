@@ -2,10 +2,13 @@ use crate::draw_command::DrawQuadCommand;
 use crate::geometry::Vertex;
 use crate::low_level::polygon_mode::PolygonMode;
 use crate::low_level::primitives::TextureId;
-use crate::low_level::texture::create_texture_bind_group_layout;
 use crate::low_level::wgpu_state::IntoPolygonMode;
+use crate::MaterialDescription;
 use nalgebra::Matrix4;
-use wgpu::{BufferDescriptor, CommandEncoderDescriptor};
+use std::collections::HashMap;
+use wgpu::{
+    BindGroupDescriptor, BufferDescriptor, CommandEncoderDescriptor, TextureViewDescriptor,
+};
 
 const QUAD_UNIFORM_SIZE: u64 = std::mem::size_of::<QuadUniform>() as u64;
 const GLOBAL_UNIFORM_SIZE: u64 = std::mem::size_of::<GlobalUniform>() as u64;
@@ -28,6 +31,11 @@ pub(crate) struct QuadRenderer {
     quad_uniform_buffer: wgpu::Buffer,
     quad_bind_group_layout: wgpu::BindGroupLayout,
     quad_bind_group: wgpu::BindGroup,
+
+    texture_bind_group_layout: wgpu::BindGroupLayout,
+    ui_texture_bind_group_layout: wgpu::BindGroupLayout,
+    texture_bind_groups: HashMap<MaterialDescription, wgpu::BindGroup>,
+    ui_texture_bind_groups: HashMap<MaterialDescription, wgpu::BindGroup>,
 
     pre_render_pipeline: wgpu::RenderPipeline,
     render_pipeline: wgpu::RenderPipeline,
@@ -73,9 +81,13 @@ impl QuadRenderer {
         let quad_bind_group =
             Self::create_quad_bind_group(device, &quad_bind_group_layout, &quad_uniform_buffer);
 
+        let texture_bind_group_layout = Self::create_texture_bind_group_layout(device);
+        let ui_texture_bind_group_layout = Self::create_ui_texture_bind_group_layout(device);
+
         let pre_render_pipeline = Self::create_pre_render_pipeline(
             device,
             surface_texture_format,
+            &texture_bind_group_layout,
             &global_bind_group_layout,
             &quad_bind_group_layout,
             PolygonMode::Fill.into_polygon_mode(),
@@ -84,6 +96,7 @@ impl QuadRenderer {
         let render_pipeline = Self::create_render_pipeline(
             device,
             surface_texture_format,
+            &texture_bind_group_layout,
             &global_bind_group_layout,
             &quad_bind_group_layout,
             PolygonMode::Fill.into_polygon_mode(),
@@ -92,6 +105,7 @@ impl QuadRenderer {
         let ui_render_pipeline = Self::create_ui_render_pipeline(
             device,
             surface_texture_format,
+            &ui_texture_bind_group_layout,
             &global_bind_group_layout,
             &quad_bind_group_layout,
             PolygonMode::Fill.into_polygon_mode(),
@@ -110,6 +124,11 @@ impl QuadRenderer {
             quad_uniform_buffer,
             quad_bind_group_layout,
             quad_bind_group,
+
+            texture_bind_group_layout,
+            ui_texture_bind_group_layout,
+            texture_bind_groups: HashMap::new(),
+            ui_texture_bind_groups: HashMap::new(),
 
             pre_render_pipeline,
             render_pipeline,
@@ -134,9 +153,11 @@ impl QuadRenderer {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
+        textures: &HashMap<TextureId, wgpu::Texture>,
         projection_matrix: &Matrix4<f32>,
         view_transform: &Matrix4<f32>,
         draw_quad_commands: &[DrawQuadCommand],
+        ui: bool,
     ) -> QuadGroup {
         self.ensure_max_quad_count(
             device,
@@ -161,6 +182,20 @@ impl QuadRenderer {
             let mut effective_transform = draw_quad_command.world_transform.clone();
             effective_transform.column_mut(3).z = 0.0;
 
+            let material = draw_quad_command.material.clone();
+
+            if ui {
+                let texture_bind_group =
+                    self.create_ui_texture_bind_group(device, textures, &material);
+                self.ui_texture_bind_groups
+                    .insert(material, texture_bind_group);
+            } else {
+                let texture_bind_group =
+                    self.create_texture_bind_group(device, textures, &material);
+                self.texture_bind_groups
+                    .insert(material, texture_bind_group);
+            }
+
             self.pending_quad_uniforms.push(QuadUniform {
                 model: effective_transform.into(),
                 _padding: [0.0; 48],
@@ -176,8 +211,7 @@ impl QuadRenderer {
             ]);
 
             self.quad_metadata.push(QuadMetadata {
-                albedo_map_texture_id: draw_quad_command.material.albedo_map_id,
-                normal_map_texture_id: draw_quad_command.material.normal_map_id,
+                material_description: draw_quad_command.material.clone(),
                 uniform_offset: (self.quad_metadata.len() * self.min_uniform_alignment as usize)
                     as u32,
             });
@@ -186,6 +220,83 @@ impl QuadRenderer {
         self.quad_count += draw_quad_commands.len();
         self.global_uniform_count += 1;
         quad_group
+    }
+
+    pub fn create_texture_bind_group(
+        &mut self,
+        device: &wgpu::Device,
+        textures: &HashMap<TextureId, wgpu::Texture>,
+        material: &MaterialDescription,
+    ) -> wgpu::BindGroup {
+        let albedo_map_texture = &textures[&material.albedo_map_id];
+        let albedo_map_view = albedo_map_texture.create_view(&TextureViewDescriptor::default());
+        let albedo_map_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: None,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let normal_map_texture = &textures[&material.normal_map_id];
+        let normal_map_view = normal_map_texture.create_view(&TextureViewDescriptor::default());
+        let normal_map_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: None,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let emission_map_texture = &textures[&material.emission_map_id];
+        let emission_map_view = emission_map_texture.create_view(&TextureViewDescriptor::default());
+        let emission_map_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: None,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        device.create_bind_group(&BindGroupDescriptor {
+            label: None,
+            layout: &self.texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&albedo_map_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&albedo_map_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&normal_map_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&normal_map_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&emission_map_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&emission_map_sampler),
+                },
+            ],
+        })
     }
 
     pub fn finish_preparation(&mut self, queue: &wgpu::Queue) {
@@ -320,7 +431,6 @@ impl QuadRenderer {
     pub fn render_quad_group<'rpass: 'pass, 'pass>(
         &'rpass self,
         render_pass: &mut wgpu::RenderPass<'pass>,
-        texture_bind_groups: &'rpass Vec<wgpu::BindGroup>,
         quad_render_pass_type: QuadRenderPassType,
         quad_group: &QuadGroup,
     ) {
@@ -348,16 +458,20 @@ impl QuadRenderer {
                 &self.quad_bind_group,
                 &[quad_metadata.uniform_offset.into()],
             );
-            render_pass.set_bind_group(
-                2,
-                &texture_bind_groups[quad_metadata.albedo_map_texture_id.0],
-                &[],
-            );
-            render_pass.set_bind_group(
-                3,
-                &texture_bind_groups[quad_metadata.normal_map_texture_id.0],
-                &[],
-            );
+
+            if quad_render_pass_type == QuadRenderPassType::UI {
+                render_pass.set_bind_group(
+                    2,
+                    &self.ui_texture_bind_groups[&quad_metadata.material_description],
+                    &[],
+                );
+            } else {
+                render_pass.set_bind_group(
+                    2,
+                    &self.texture_bind_groups[dbg!(&quad_metadata.material_description)],
+                    &[],
+                );
+            }
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.draw(
                 (quad_group.start_quad as u32 + i as u32) * VERTEX_PER_QUAD as u32
@@ -378,6 +492,7 @@ impl QuadRenderer {
         self.render_pipeline = Self::create_render_pipeline(
             device,
             self.surface_texture_format,
+            &self.texture_bind_group_layout,
             &self.global_bind_group_layout,
             &self.quad_bind_group_layout,
             polygon_mode.into_polygon_mode(),
@@ -385,6 +500,7 @@ impl QuadRenderer {
         self.ui_render_pipeline = Self::create_ui_render_pipeline(
             device,
             self.surface_texture_format,
+            &self.texture_bind_group_layout,
             &self.global_bind_group_layout,
             &self.quad_bind_group_layout,
             polygon_mode.into_polygon_mode(),
@@ -497,6 +613,7 @@ impl QuadRenderer {
     fn create_render_pipeline(
         device: &wgpu::Device,
         surface_texture_format: wgpu::TextureFormat,
+        texture_bind_group_layout: &wgpu::BindGroupLayout,
         global_bind_group_layout: &wgpu::BindGroupLayout,
         quad_bind_group_layout: &wgpu::BindGroupLayout,
         polygon_mode: wgpu::PolygonMode,
@@ -512,8 +629,7 @@ impl QuadRenderer {
                 bind_group_layouts: &[
                     global_bind_group_layout,
                     quad_bind_group_layout,
-                    &create_texture_bind_group_layout(device),
-                    &create_texture_bind_group_layout(device),
+                    texture_bind_group_layout,
                 ],
                 push_constant_ranges: &[],
             });
@@ -532,6 +648,18 @@ impl QuadRenderer {
                 targets: &[
                     wgpu::ColorTargetState {
                         format: surface_texture_format,
+                        blend: Some(wgpu::BlendState {
+                            color: wgpu::BlendComponent {
+                                src_factor: wgpu::BlendFactor::SrcAlpha,
+                                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                                operation: wgpu::BlendOperation::Add,
+                            },
+                            alpha: Default::default(),
+                        }),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    },
+                    wgpu::ColorTargetState {
+                        format: wgpu::TextureFormat::Rgba8Unorm,
                         blend: Some(wgpu::BlendState {
                             color: wgpu::BlendComponent {
                                 src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -582,6 +710,7 @@ impl QuadRenderer {
     fn create_pre_render_pipeline(
         device: &wgpu::Device,
         surface_texture_format: wgpu::TextureFormat,
+        texture_bind_group_layout: &wgpu::BindGroupLayout,
         global_bind_group_layout: &wgpu::BindGroupLayout,
         quad_bind_group_layout: &wgpu::BindGroupLayout,
         polygon_mode: wgpu::PolygonMode,
@@ -597,8 +726,7 @@ impl QuadRenderer {
                 bind_group_layouts: &[
                     global_bind_group_layout,
                     quad_bind_group_layout,
-                    &create_texture_bind_group_layout(device),
-                    &create_texture_bind_group_layout(device),
+                    texture_bind_group_layout,
                 ],
                 push_constant_ranges: &[],
             });
@@ -628,7 +756,19 @@ impl QuadRenderer {
                         write_mask: wgpu::ColorWrites::ALL,
                     },
                     wgpu::ColorTargetState {
-                        format: surface_texture_format,
+                        format: wgpu::TextureFormat::Rgba8Unorm,
+                        blend: Some(wgpu::BlendState {
+                            color: wgpu::BlendComponent {
+                                src_factor: wgpu::BlendFactor::SrcAlpha,
+                                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                                operation: wgpu::BlendOperation::Add,
+                            },
+                            alpha: Default::default(),
+                        }),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    },
+                    wgpu::ColorTargetState {
+                        format: wgpu::TextureFormat::Rgba8Unorm,
                         blend: Some(wgpu::BlendState {
                             color: wgpu::BlendComponent {
                                 src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -662,6 +802,7 @@ impl QuadRenderer {
     fn create_ui_render_pipeline(
         device: &wgpu::Device,
         surface_texture_format: wgpu::TextureFormat,
+        texture_bind_group_layout: &wgpu::BindGroupLayout,
         global_bind_group_layout: &wgpu::BindGroupLayout,
         quad_bind_group_layout: &wgpu::BindGroupLayout,
         polygon_mode: wgpu::PolygonMode,
@@ -677,8 +818,7 @@ impl QuadRenderer {
                 bind_group_layouts: &[
                     global_bind_group_layout,
                     quad_bind_group_layout,
-                    &create_texture_bind_group_layout(device),
-                    &create_texture_bind_group_layout(device),
+                    texture_bind_group_layout,
                 ],
                 push_constant_ranges: &[],
             });
@@ -724,8 +864,136 @@ impl QuadRenderer {
             },
         })
     }
+
+    pub fn create_texture_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("quad_renderer_texture_bind_group_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler {
+                        filtering: true,
+                        comparison: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler {
+                        filtering: true,
+                        comparison: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler {
+                        filtering: true,
+                        comparison: false,
+                    },
+                    count: None,
+                },
+            ],
+        })
+    }
+
+    pub fn create_ui_texture_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("quad_renderer_ui_texture_bind_group_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler {
+                        filtering: true,
+                        comparison: false,
+                    },
+                    count: None,
+                },
+            ],
+        })
+    }
+
+    pub fn create_ui_texture_bind_group(
+        &self,
+        device: &wgpu::Device,
+        textures: &HashMap<TextureId, wgpu::Texture>,
+        material: &MaterialDescription,
+    ) -> wgpu::BindGroup {
+        let albedo_map_texture = &textures[&material.albedo_map_id];
+        let albedo_map_view = albedo_map_texture.create_view(&TextureViewDescriptor::default());
+        let albedo_map_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: None,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        device.create_bind_group(&BindGroupDescriptor {
+            label: None,
+            layout: &self.ui_texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&albedo_map_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&albedo_map_sampler),
+                },
+            ],
+        })
+    }
 }
 
+#[derive(PartialEq)]
 pub(crate) enum QuadRenderPassType {
     PreRender,
     Geometry,
@@ -740,8 +1008,7 @@ pub struct QuadGroup {
 }
 
 struct QuadMetadata {
-    albedo_map_texture_id: TextureId,
-    normal_map_texture_id: TextureId,
+    material_description: MaterialDescription,
     uniform_offset: u32,
 }
 
