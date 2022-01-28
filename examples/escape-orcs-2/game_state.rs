@@ -1,7 +1,7 @@
 use crate::character::Character;
 use crate::orc::{create_orc, Orc};
 use crate::player::{create_player, Player};
-use crate::terrain::{create_tilemap, TILE_SIZE};
+use crate::terrain::{create_lights, create_tilemap, TILE_SIZE};
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::f32::consts::PI;
@@ -18,9 +18,7 @@ use tuber::engine::state::{State, StateStackRequest};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::g_buffer::GBufferComponent;
 use tuber_core::transform::IntoMatrix4;
-use tuber_graphics::camera::mouse_coordinates_to_world_coordinates;
 use tuber_graphics::low_level::polygon_mode::PolygonMode;
-use tuber_graphics::renderable::light::PointLight;
 use tuber_graphics::renderable::tilemap::Tilemap;
 use tuber_gui::widget::text::TextWidget;
 
@@ -48,6 +46,7 @@ impl State for GameState {
     ) {
         self.tilemap = Some(create_tilemap(&mut engine_context.asset_store));
 
+        create_lights(ecs);
         ecs.insert_shared_resource(RandomNumberGenerator(rand::thread_rng()));
 
         ecs.insert(create_camera());
@@ -57,7 +56,6 @@ impl State for GameState {
 
         let mut system_bundle = SystemBundle::<EngineContext>::new();
         system_bundle.add_system(move_player);
-        system_bundle.add_system(update_light_position);
         system_bundle.add_system(update_score_label);
         system_bundle.add_system(update_character_position);
         system_bundle.add_system(update_camera_position);
@@ -99,24 +97,6 @@ impl State for GameState {
 
         vec![]
     }
-}
-
-fn update_light_position(ecs: &mut Ecs, engine_context: &mut EngineContext) {
-    let (_, (camera, view_transform, _)) = ecs
-        .query_one::<(R<OrthographicCamera>, R<Transform2D>, R<Active>)>()
-        .unwrap();
-    let mouse_position = mouse_coordinates_to_world_coordinates(
-        engine_context.input_state.mouse_position(),
-        (800.0, 600.0),
-        &camera.projection_matrix(),
-        &view_transform.into_matrix4(),
-    );
-
-    let (_, (_, mut transform)) = ecs.query_one::<(R<PointLight>, W<Transform2D>)>().unwrap();
-    *transform = Transform2D {
-        translation: (mouse_position.0, mouse_position.1, 50),
-        ..Default::default()
-    };
 }
 
 fn switch_rendered_g_buffer_component(_ecs: &mut Ecs, engine_context: &mut EngineContext) {

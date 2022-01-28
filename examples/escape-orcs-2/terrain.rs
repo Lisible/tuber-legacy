@@ -1,6 +1,9 @@
 use tuber_core::asset::AssetStore;
+use tuber_core::transform::Transform2D;
+use tuber_ecs::ecs::Ecs;
 use tuber_graphics::animation::AnimationState;
 use tuber_graphics::material::Material;
+use tuber_graphics::renderable::light::PointLight;
 use tuber_graphics::renderable::tilemap::{AnimatedTile, StaticTile, Tile, Tilemap};
 use tuber_graphics::texture::TextureAtlas;
 use tuber_graphics::types::Size2;
@@ -12,6 +15,53 @@ pub const WORLD_SIZE: Size2<usize> = Size2 {
 
 pub const TILE_SIZE: u32 = 48;
 
+pub fn create_lights(ecs: &mut Ecs) {
+    ecs.insert((
+        PointLight {
+            ambient: (0.4, 0.0, 0.0).into(),
+            diffuse: (0.8, 0.3, 0.0).into(),
+            specular: (1.0, 0.5, 0.0).into(),
+            radius: 1000.0,
+        },
+        Transform2D {
+            translation: ((WORLD_SIZE.width as f32 / 2.0) * TILE_SIZE as f32, 0.0, 100),
+            ..Default::default()
+        },
+    ));
+    ecs.insert((
+        PointLight {
+            ambient: (0.4, 0.0, 0.0).into(),
+            diffuse: (0.8, 0.3, 0.0).into(),
+            specular: (1.0, 0.5, 0.0).into(),
+            radius: 1000.0,
+        },
+        Transform2D {
+            translation: (
+                (WORLD_SIZE.width as f32 / 2.0) * TILE_SIZE as f32,
+                WORLD_SIZE.height as f32 * TILE_SIZE as f32,
+                100,
+            ),
+            ..Default::default()
+        },
+    ));
+    ecs.insert((
+        PointLight {
+            ambient: (0.4, 0.0, 0.0).into(),
+            diffuse: (0.0, 1.0, 0.0).into(),
+            specular: (0.0, 1.0, 0.0).into(),
+            radius: 1000.0,
+        },
+        Transform2D {
+            translation: (
+                (WORLD_SIZE.width as f32 / 2.0) * TILE_SIZE as f32,
+                (WORLD_SIZE.height as f32 / 2.0) * TILE_SIZE as f32,
+                100,
+            ),
+            ..Default::default()
+        },
+    ));
+}
+
 pub fn create_tilemap(asset_store: &mut AssetStore) -> Tilemap {
     let atlas = asset_store.asset::<TextureAtlas>("atlas").unwrap();
 
@@ -21,7 +71,7 @@ pub fn create_tilemap(asset_store: &mut AssetStore) -> Tilemap {
         Material {
             albedo_map: "spritesheet".to_string(),
             normal_map: Some("normal_spritesheet".to_string()),
-            emission_map: Some("emissive_spritesheet".to_string()),
+            emission_map: None,
         },
         Some(Tile::StaticTile(StaticTile {
             texture_region: atlas.texture_region("stone").unwrap(),
