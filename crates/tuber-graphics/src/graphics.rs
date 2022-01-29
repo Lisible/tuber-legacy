@@ -824,6 +824,13 @@ impl Graphics {
             .update_camera(camera_id, camera, transform_matrix);
     }
 
+    pub fn set_ambient_light(&mut self, ambient_light: Color) {
+        self.wgpu_state
+            .as_mut()
+            .unwrap()
+            .set_ambient_light(ambient_light);
+    }
+
     pub fn set_clear_color(&mut self, clear_color: Color) {
         self.wgpu_state
             .as_mut()

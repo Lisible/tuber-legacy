@@ -1,10 +1,12 @@
 use crate::low_level::g_buffer::GBuffer;
 use crate::low_level::texture::create_g_buffer_texture_descriptor;
 use crate::wgpu_state::RenderContext;
+use crate::Color;
 
 pub(crate) fn lighting_pass(
     context: &mut RenderContext,
     command_encoder: &mut wgpu::CommandEncoder,
+    ambient_light: Color,
     g_buffer: GBuffer,
 ) -> wgpu::Texture {
     let render_texture_descriptor =
@@ -15,6 +17,7 @@ pub(crate) fn lighting_pass(
         &context.device,
         &context.queue,
         command_encoder,
+        ambient_light,
         g_buffer,
         context.command_buffer.draw_light_commands(),
     );

@@ -20,6 +20,7 @@ use tuber::graphics::g_buffer::GBufferComponent;
 use tuber_core::transform::IntoMatrix4;
 use tuber_graphics::low_level::polygon_mode::PolygonMode;
 use tuber_graphics::renderable::tilemap::Tilemap;
+use tuber_graphics::types::Color;
 use tuber_gui::widget::text::TextWidget;
 
 pub(crate) struct GameState {
@@ -44,6 +45,11 @@ impl State for GameState {
         system_bundles: &mut Vec<SystemBundle<EngineContext>>,
         engine_context: &mut EngineContext,
     ) {
+        engine_context
+            .graphics
+            .as_mut()
+            .unwrap()
+            .set_ambient_light(Color::BLACK);
         self.tilemap = Some(create_tilemap(&mut engine_context.asset_store));
 
         create_lights(ecs);

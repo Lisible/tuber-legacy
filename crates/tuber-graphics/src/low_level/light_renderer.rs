@@ -1,11 +1,13 @@
 use crate::draw_command::DrawLightCommand;
 use crate::geometry::Vertex;
 use crate::low_level::g_buffer::GBuffer;
+use crate::Color;
 use wgpu::util::DeviceExt;
 
 const VERTEX_COUNT: usize = 6;
 const MIN_POINT_LIGHT_CAPACITY: usize = 20;
 const POINT_LIGHT_UNIFORM_BUFFER_LABEL: &'static str = "light_renderer_point_light_uniform_buffer";
+const DEFAULT_AMBIENT_LIGHT: [f32; 3] = [1.0, 1.0, 1.0];
 
 pub struct LightRenderer {
     vertex_buffer: wgpu::Buffer,
@@ -82,6 +84,7 @@ impl LightRenderer {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         command_encoder: &mut wgpu::CommandEncoder,
+        ambient_light: Color,
         g_buffer: GBuffer,
         draw_light_commands: &[DrawLightCommand],
     ) {
@@ -115,6 +118,7 @@ impl LightRenderer {
             &self.global_uniform_buffer,
             0,
             bytemuck::cast_slice(&[GlobalUniform {
+                ambient_light: ambient_light.into(),
                 light_count: draw_light_commands.len() as i32,
             }]),
         );
@@ -330,7 +334,10 @@ impl LightRenderer {
     fn create_global_uniform_buffer(device: &wgpu::Device) -> wgpu::Buffer {
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(POINT_LIGHT_UNIFORM_BUFFER_LABEL),
-            contents: bytemuck::cast_slice(&[GlobalUniform { light_count: 0 }]),
+            contents: bytemuck::cast_slice(&[GlobalUniform {
+                ambient_light: DEFAULT_AMBIENT_LIGHT,
+                light_count: 0,
+            }]),
             usage: wgpu::BufferUsages::UNIFORM
                 | wgpu::BufferUsages::COPY_SRC
                 | wgpu::BufferUsages::COPY_DST,
@@ -531,6 +538,7 @@ impl LightRenderer {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct GlobalUniform {
+    ambient_light: [f32; 3],
     light_count: i32,
 }
 

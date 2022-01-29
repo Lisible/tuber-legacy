@@ -21,6 +21,7 @@ struct PointLightUniform {
 
 [[block]]
 struct GlobalUniform {
+    ambient_light: vec3<f32>;
     light_count: i32;
 };
 
@@ -67,8 +68,10 @@ fn fs_main(input: VertexStageOutput) -> [[location(0)]] vec4<f32> {
     let normal = textureSample(t_normal, s_normal, input.texture_coordinates).rgb * 2.0 - vec3<f32>(1.0);
     let albedo = textureSample(t_albedo, s_albedo, input.texture_coordinates).rgb;
 
-    var lighting = vec3<f32>(0.0);
 
+    let ambient = global_uniform.ambient_light * albedo;
+
+    var lighting = ambient;
     for (var i = 0; i < global_uniform.light_count; i = i + 1) {
         let light = lights.lights[i];
         let light_direction = normalize(light.position - frag_position);
@@ -81,8 +84,6 @@ fn fs_main(input: VertexStageOutput) -> [[location(0)]] vec4<f32> {
 
         lighting = lighting + diffuse * attenuation + emitted;
     }
-
-
 
     return vec4<f32>(lighting, 1.0);
 }

@@ -33,13 +33,14 @@ pub struct WGPUState {
 
     next_texture_id: usize,
     textures: HashMap<TextureId, wgpu::Texture>,
+    pre_renders: Vec<PreRender>,
 
     projection_matrix: Matrix4<f32>,
     view_transform: Matrix4<f32>,
 
-    pre_renders: Vec<PreRender>,
-
     command_buffer: CommandBuffer,
+
+    ambient_light: Color,
 }
 
 impl WGPUState {
@@ -95,6 +96,8 @@ impl WGPUState {
             view_transform: Matrix4::identity(),
             pre_renders: vec![],
             command_buffer: CommandBuffer::new(),
+
+            ambient_light: Color::WHITE,
         }
     }
 
@@ -172,7 +175,12 @@ impl WGPUState {
             pre_render_pass(&mut render_context, &mut command_encoder);
             let ui_render = ui_pass(&mut render_context, &mut command_encoder);
             let g_buffer = geometry_pass(&mut render_context, &mut command_encoder);
-            let lit_render = lighting_pass(&mut render_context, &mut command_encoder, g_buffer);
+            let lit_render = lighting_pass(
+                &mut render_context,
+                &mut command_encoder,
+                self.ambient_light,
+                g_buffer,
+            );
             composition_pass(
                 &mut render_context,
                 &mut command_encoder,
@@ -193,6 +201,10 @@ impl WGPUState {
 
     pub fn set_clear_color(&mut self, color: Color) {
         self.clear_color = color;
+    }
+
+    pub fn set_ambient_light(&mut self, ambient_light: Color) {
+        self.ambient_light = ambient_light;
     }
 
     pub fn set_rendered_g_buffer_component(&mut self, g_buffer_component: GBufferComponent) {
