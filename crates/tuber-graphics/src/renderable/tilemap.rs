@@ -105,7 +105,10 @@ mod tests {
         let mut tilemap = Tilemap::new(
             (10, 10).into(),
             (32, 32).into(),
-            Material::new("albedo_map", None),
+            Material {
+                albedo_map: "albedo_map".into(),
+                ..Default::default()
+            },
             None,
         );
 

@@ -61,6 +61,7 @@ impl State for MainState {
                 material: Material {
                     albedo_map: "sprite".to_string(),
                     normal_map: None,
+                    emission_map: None,
                 },
                 ..Default::default()
             },
@@ -77,7 +78,7 @@ impl State for MainState {
                 texture_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
                 material: Material {
                     albedo_map: "sprite".to_string(),
-                    normal_map: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -94,7 +95,7 @@ impl State for MainState {
                 texture_region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
                 material: Material {
                     albedo_map: "dfhgfhfh".to_string(),
-                    normal_map: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -111,7 +112,7 @@ impl State for MainState {
                 texture_region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
                 material: Material {
                     albedo_map: "dfhgfhfh".to_string(),
-                    normal_map: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -132,7 +133,7 @@ impl State for MainState {
                 texture_region: texture_atlas.texture_region("tree").unwrap(),
                 material: Material {
                     albedo_map: "atlas_texture".to_string(),
-                    normal_map: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -149,7 +150,7 @@ impl State for MainState {
                 texture_region: texture_atlas.texture_region("house").unwrap(),
                 material: Material {
                     albedo_map: "atlas_texture".to_string(),
-                    normal_map: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -165,7 +166,7 @@ impl State for MainState {
                 height: 100.0,
                 material: Material {
                     albedo_map: "animated_sprite".into(),
-                    normal_map: None,
+                    ..Default::default()
                 },
                 animation_state: AnimationState {
                     keyframes: vec![

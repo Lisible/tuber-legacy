@@ -89,6 +89,13 @@ pub fn create_texture_descriptor(
     }
 }
 
+pub fn create_g_buffer_texture_descriptor(
+    label: &'static str,
+    size: Size2<u32>,
+) -> wgpu::TextureDescriptor {
+    create_texture_descriptor(Some(label), size, wgpu::TextureFormat::Bgra8UnormSrgb)
+}
+
 fn create_wgpu_texture_label(texture_id: TextureId) -> String {
     "wgputexture_".to_owned() + &*texture_id.to_string()
 }

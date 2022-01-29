@@ -6,5 +6,6 @@ pub(crate) mod light_renderer;
 pub mod polygon_mode;
 pub(crate) mod primitives;
 pub(crate) mod quad_renderer;
+mod render_passes;
 pub(crate) mod texture;
 pub(crate) mod wgpu_state;
