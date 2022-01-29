@@ -1,3 +1,5 @@
 # Summary
 
-- [Chapter 1](./chapter_1.md)
+- [Tutorial](./tutorial/summary.md)
+    - [Introduction](./tutorial/introduction.md)
+    - [Project setup](./tutorial/project-setup.md)

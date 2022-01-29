@@ -8,4 +8,20 @@
 
 You can run the examples by going into the ``examples/<example>`` directory and running the following example
   
-``cargo run --example <example>``
+```bash
+cargo run --example <example>
+```
+
+# How to build the book
+
+In order to build the book, you need to install [mdbook](https://rust-lang.github.io/mdBook/).
+
+To build the book, navigate to the ``book`` directory use the following command
+```bash
+mdbook build
+```
+\
+Similarly, to serve it on a local server use the following command
+```bash
+mdbook serve
+```
