@@ -34,12 +34,26 @@ pub trait State {
 }
 
 pub struct StateStack {
+    initial_state: Option<Box<dyn State>>,
     states: Vec<Box<dyn State>>,
 }
 
 impl StateStack {
-    pub fn new() -> Self {
-        Self { states: vec![] }
+    pub fn new(initial_state: Option<Box<dyn State>>) -> Self {
+        Self {
+            initial_state,
+            states: vec![],
+        }
+    }
+
+    pub fn push_initial_state(
+        &mut self,
+        ecs: &mut Ecs,
+        system_bundle: &mut Vec<SystemBundle<EngineContext>>,
+        engine_context: &mut EngineContext,
+    ) {
+        let initial_state = self.initial_state.take().expect("No initial state");
+        self.push_state(initial_state, ecs, system_bundle, engine_context);
     }
 
     pub fn push_state(

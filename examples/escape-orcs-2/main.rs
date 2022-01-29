@@ -10,11 +10,10 @@ mod player;
 mod terrain;
 
 fn main() -> Result<()> {
-    let mut engine = Engine::new(EngineSettings {
+    let engine = Engine::new(EngineSettings {
         application_title: Some("Escape Orcs 2".into()),
+        initial_state: Some(Box::new(GameState::new())),
     });
-
-    engine.push_initial_state(Box::new(GameState::new()));
 
     WinitTuberRunner.run(engine)
 }

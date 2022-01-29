@@ -47,11 +47,11 @@ struct Velocity {
 struct Score(u32);
 
 fn main() -> Result<()> {
-    let mut engine = Engine::new(EngineSettings {
-        ..Default::default()
+    let engine = Engine::new(EngineSettings {
+        application_title: Some("Snake".into()),
+        initial_state: Some(Box::new(MainState)),
     });
 
-    engine.push_initial_state(Box::new(MainState));
     WinitTuberRunner.run(engine)
 }
 

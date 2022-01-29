@@ -13,7 +13,7 @@ use tuber_engine::engine_context::EngineContext;
 use tuber_engine::system_bundle;
 use tuber_graphics::types::Color;
 
-const BALL_COUNT: usize = 2000;
+const BALL_COUNT: usize = 10;
 const PADDLE_WIDTH: f32 = 20.0;
 const PADDLE_HEIGHT: f32 = 100.0;
 const BALL_SIZE: f32 = 10.0;
@@ -31,11 +31,10 @@ struct Velocity {
 }
 
 fn main() -> Result<()> {
-    let mut engine = Engine::new(EngineSettings {
-        ..Default::default()
+    let engine = Engine::new(EngineSettings {
+        application_title: Some("Tennis".into()),
+        initial_state: Some(Box::new(MainState)),
     });
-
-    engine.push_initial_state(Box::new(MainState));
 
     WinitTuberRunner.run(engine)
 }

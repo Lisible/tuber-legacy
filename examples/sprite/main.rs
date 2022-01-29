@@ -16,11 +16,10 @@ use tuber_graphics::texture::TextureAtlas;
 
 fn main() -> Result<()> {
     env_logger::init();
-    let mut engine = Engine::new(EngineSettings {
-        ..Default::default()
+    let engine = Engine::new(EngineSettings {
+        application_title: Some("Sprite".into()),
+        initial_state: Some(Box::new(MainState)),
     });
-
-    engine.push_initial_state(Box::new(MainState));
 
     WinitTuberRunner.run(engine)
 }

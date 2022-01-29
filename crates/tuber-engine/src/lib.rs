@@ -15,12 +15,14 @@ pub mod system_bundle;
 
 pub struct EngineSettings {
     pub application_title: Option<String>,
+    pub initial_state: Option<Box<dyn State>>,
 }
 
 impl Default for EngineSettings {
     fn default() -> Self {
         Self {
             application_title: None,
+            initial_state: None,
         }
     }
 }
@@ -55,7 +57,7 @@ impl Engine {
         };
 
         Self {
-            state_stack: StateStack::new(),
+            state_stack: StateStack::new(settings.initial_state),
             ecs: create_ecs(),
             application_title: settings
                 .application_title
@@ -79,13 +81,12 @@ impl Engine {
         &self.application_title
     }
 
-    pub fn push_initial_state(&mut self, state: Box<dyn State>) {
-        self.state_stack.push_state(
-            state,
+    pub fn push_initial_state(&mut self) {
+        self.state_stack.push_initial_state(
             &mut self.ecs,
             &mut self.system_bundles,
             &mut self.context,
-        )
+        );
     }
 
     pub fn step(&mut self, delta_time: f64) {
