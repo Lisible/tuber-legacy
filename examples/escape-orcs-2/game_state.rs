@@ -49,7 +49,7 @@ impl State for GameState {
             .graphics
             .as_mut()
             .unwrap()
-            .set_ambient_light(Color::BLACK);
+            .set_ambient_light((0.3, 0.3, 0.3).into());
         self.tilemap = Some(create_tilemap(&mut engine_context.asset_store));
 
         create_lights(ecs);

@@ -65,7 +65,7 @@ struct FragmentStageOutput {
 fn fs_main(input: VertexStageOutput) -> FragmentStageOutput {
     var output: FragmentStageOutput;
     output.albedo = textureSample(t_diffuse, s_diffuse, input.texture_coordinates);
-    output.normal = textureSample(t_normal, s_normal, input.texture_coordinates).rgba;
+    output.normal = textureSample(t_normal, s_normal, input.texture_coordinates);
     output.emission = textureSample(t_emission, s_emission, input.texture_coordinates);
     output.position = vec4<f32>(input.world_position.xyz, 1.0);
     return output;
