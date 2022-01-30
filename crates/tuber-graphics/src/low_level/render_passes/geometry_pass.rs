@@ -1,8 +1,8 @@
 use crate::draw_command::DrawQuadCommand;
 use crate::low_level::g_buffer::GBuffer;
+use crate::low_level::renderers::quad_renderer::QuadRenderPassType;
 use crate::low_level::texture::{create_g_buffer_texture_descriptor, create_texture_descriptor};
 use crate::primitives::Quad;
-use crate::quad_renderer::QuadRenderPassType;
 use crate::wgpu_state::RenderContext;
 
 pub(crate) fn geometry_pass(

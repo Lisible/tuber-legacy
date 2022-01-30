@@ -18,6 +18,7 @@ use crate::{
 use nalgebra::{Matrix4, Vector3};
 use std::any::TypeId;
 use std::collections::HashMap;
+use std::default::Default;
 use tuber_core::asset::{AssetStore, GenericLoader};
 use tuber_core::transform::{IntoMatrix4, Transform2D};
 use tuber_ecs::ecs::Ecs;
@@ -66,22 +67,22 @@ impl Graphics {
                     top_left: Vertex {
                         position: [0.0, 0.0, 0.0],
                         texture_coordinates: [0.0, 0.0],
-                        color: rectangle.color.into(),
+                        ..Default::default()
                     },
                     bottom_left: Vertex {
                         position: [0.0, rectangle.height, 0.0],
                         texture_coordinates: [0.0, 0.0],
-                        color: rectangle.color.into(),
+                        ..Default::default()
                     },
                     top_right: Vertex {
                         position: [rectangle.width, 0.0, 0.0],
                         texture_coordinates: [0.0, 0.0],
-                        color: rectangle.color.into(),
+                        ..Default::default()
                     },
                     bottom_right: Vertex {
                         position: [rectangle.width, rectangle.height, 0.0],
                         texture_coordinates: [0.0, 0.0],
-                        color: rectangle.color.into(),
+                        ..Default::default()
                     },
                 },
                 world_transform: transform_matrix,
@@ -103,22 +104,22 @@ impl Graphics {
                     top_left: Vertex {
                         position: [0.0, 0.0, 0.0],
                         texture_coordinates: [0.0, 0.0],
-                        color: rectangle.color.into(),
+                        ..Default::default()
                     },
                     bottom_left: Vertex {
                         position: [0.0, rectangle.height, 0.0],
                         texture_coordinates: [0.0, 0.0],
-                        color: rectangle.color.into(),
+                        ..Default::default()
                     },
                     top_right: Vertex {
                         position: [rectangle.width, 0.0, 0.0],
                         texture_coordinates: [0.0, 0.0],
-                        color: rectangle.color.into(),
+                        ..Default::default()
                     },
                     bottom_right: Vertex {
                         position: [rectangle.width, rectangle.height, 0.0],
                         texture_coordinates: [0.0, 0.0],
-                        color: rectangle.color.into(),
+                        ..Default::default()
                     },
                 },
                 world_transform: transform_matrix,
@@ -383,32 +384,32 @@ impl Graphics {
                 quad: Quad {
                     top_left: Vertex {
                         position: [0.0, 0.0, 0.0],
-                        color: Default::default(),
                         texture_coordinates: [texture_region.x, texture_region.y],
+                        ..Default::default()
                     },
                     bottom_left: Vertex {
                         position: [0.0, tile_size.height as f32, 0.0],
-                        color: Default::default(),
                         texture_coordinates: [
                             texture_region.x,
                             texture_region.y + texture_region.height,
                         ],
+                        ..Default::default()
                     },
                     top_right: Vertex {
                         position: [tile_size.width as f32, 0.0, 0.0],
-                        color: Default::default(),
                         texture_coordinates: [
                             texture_region.x + texture_region.width,
                             texture_region.y,
                         ],
+                        ..Default::default()
                     },
                     bottom_right: Vertex {
                         position: [tile_size.width as f32, tile_size.height as f32, 0.0],
-                        color: Default::default(),
                         texture_coordinates: [
                             texture_region.x + texture_region.width,
                             texture_region.y + texture_region.height,
                         ],
+                        ..Default::default()
                     },
                 },
                 world_transform: Matrix4::identity().append_translation(&Vector3::new(
@@ -479,32 +480,32 @@ impl Graphics {
                     quad: Quad {
                         top_left: Vertex {
                             position: [0.0, 0.0, 0.0],
-                            color: Default::default(),
                             texture_coordinates: [texture_region.x, texture_region.y],
+                            ..Default::default()
                         },
                         bottom_left: Vertex {
                             position: [0.0, tile_size.height as f32, 0.0],
-                            color: Default::default(),
                             texture_coordinates: [
                                 texture_region.x,
                                 texture_region.y + texture_region.height,
                             ],
+                            ..Default::default()
                         },
                         top_right: Vertex {
                             position: [tile_size.width as f32, 0.0, 0.0],
-                            color: Default::default(),
                             texture_coordinates: [
                                 texture_region.x + texture_region.width,
                                 texture_region.y,
                             ],
+                            ..Default::default()
                         },
                         bottom_right: Vertex {
                             position: [tile_size.width as f32, tile_size.height as f32, 0.0],
-                            color: Default::default(),
                             texture_coordinates: [
                                 texture_region.x + texture_region.width,
                                 texture_region.y + texture_region.height,
                             ],
+                            ..Default::default()
                         },
                     },
                     world_transform: Matrix4::identity().append_translation(&Vector3::new(
@@ -628,35 +629,35 @@ impl Graphics {
                     quad: Quad {
                         top_left: Vertex {
                             position: [0.0, 0.0, 0.0],
-                            color: Color::WHITE.into(),
                             texture_coordinates: [
                                 glyph_texture_coordinates.x,
                                 glyph_texture_coordinates.y,
                             ],
+                            ..Default::default()
                         },
                         bottom_left: Vertex {
                             position: [0.0, glyph_region.height, 0.0],
-                            color: Color::WHITE.into(),
                             texture_coordinates: [
                                 glyph_texture_coordinates.x,
                                 glyph_texture_coordinates.y + glyph_texture_coordinates.height,
                             ],
+                            ..Default::default()
                         },
                         top_right: Vertex {
                             position: [glyph_region.width, 0.0, 0.0],
-                            color: Color::WHITE.into(),
                             texture_coordinates: [
                                 glyph_texture_coordinates.x + glyph_texture_coordinates.width,
                                 glyph_texture_coordinates.y,
                             ],
+                            ..Default::default()
                         },
                         bottom_right: Vertex {
                             position: [glyph_region.width, glyph_region.height, 0.0],
-                            color: Color::WHITE.into(),
                             texture_coordinates: [
                                 glyph_texture_coordinates.x + glyph_texture_coordinates.width,
                                 glyph_texture_coordinates.y + glyph_texture_coordinates.height,
                             ],
+                            ..Default::default()
                         },
                     },
                     world_transform: glyph_transform_matrix,

@@ -1,4 +1,4 @@
-use crate::quad_renderer::QuadRenderPassType;
+use crate::low_level::renderers::quad_renderer::QuadRenderPassType;
 use crate::wgpu_state::RenderContext;
 use nalgebra::Matrix4;
 use wgpu::TextureViewDescriptor;

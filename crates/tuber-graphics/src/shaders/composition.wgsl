@@ -1,6 +1,6 @@
 struct VertexStageInput {
     [[location(0)]] position: vec3<f32>;
-    [[location(1)]] color: vec3<f32>;
+    [[location(1)]] normal: vec3<f32>;
     [[location(2)]] texture_coordinates: vec2<f32>;
 };
 

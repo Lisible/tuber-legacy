@@ -620,7 +620,7 @@ impl QuadRenderer {
     ) -> wgpu::RenderPipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("quad_renderer_shader_module"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/quad.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../../shaders/quad.wgsl").into()),
         });
 
         let render_pipeline_layout =
@@ -717,7 +717,7 @@ impl QuadRenderer {
     ) -> wgpu::RenderPipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("quad_renderer_shader_module"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/quad.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../../shaders/quad.wgsl").into()),
         });
 
         let render_pipeline_layout =
@@ -809,7 +809,7 @@ impl QuadRenderer {
     ) -> wgpu::RenderPipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("quad_renderer_ui_shader_module"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/ui.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../../shaders/ui.wgsl").into()),
         });
 
         let render_pipeline_layout =

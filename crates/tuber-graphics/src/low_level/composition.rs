@@ -114,33 +114,33 @@ impl Compositor {
         let vertices = vec![
             Vertex {
                 position: [-1.0, 1.0, 1.0],
-                color: [1.0, 1.0, 1.0],
                 texture_coordinates: [0.0, 0.0],
+                ..Default::default()
             },
             Vertex {
                 position: [-1.0, -1.0, 1.0],
-                color: [1.0, 1.0, 1.0],
                 texture_coordinates: [0.0, 1.0],
+                ..Default::default()
             },
             Vertex {
                 position: [1.0, 1.0, 1.0],
-                color: [1.0, 1.0, 1.0],
                 texture_coordinates: [1.0, 0.0],
+                ..Default::default()
             },
             Vertex {
                 position: [1.0, 1.0, 1.0],
-                color: [1.0, 1.0, 1.0],
                 texture_coordinates: [1.0, 0.0],
+                ..Default::default()
             },
             Vertex {
                 position: [-1.0, -1.0, 1.0],
-                color: [1.0, 1.0, 1.0],
                 texture_coordinates: [0.0, 1.0],
+                ..Default::default()
             },
             Vertex {
                 position: [1.0, -1.0, 1.0],
-                color: [1.0, 1.0, 1.0],
                 texture_coordinates: [1.0, 1.0],
+                ..Default::default()
             },
         ];
 

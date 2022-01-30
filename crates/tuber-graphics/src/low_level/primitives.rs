@@ -19,6 +19,47 @@ impl Deref for TextureId {
     }
 }
 
+pub type Index = u64;
+
+#[derive(Debug, Clone)]
+pub struct Mesh {
+    vertices: Vec<Vertex>,
+    indices: Vec<Index>,
+}
+
+impl Mesh {
+    pub fn new() -> Self {
+        Self {
+            vertices: vec![],
+            indices: vec![],
+        }
+    }
+
+    pub fn append_vertices(&mut self, vertices: &[Vertex]) {
+        self.vertices.extend_from_slice(vertices);
+    }
+
+    pub fn append_indices(&mut self, indices: &[Index]) {
+        self.indices.extend_from_slice(indices);
+    }
+
+    pub fn vertices(&self) -> &[Vertex] {
+        &self.vertices
+    }
+
+    pub fn indices(&self) -> &[Index] {
+        &self.indices
+    }
+
+    pub fn vertex_count(&self) -> usize {
+        self.vertices().len()
+    }
+
+    pub fn index_count(&self) -> usize {
+        self.indices().len()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Quad {
     pub top_left: Vertex,
@@ -32,23 +73,23 @@ impl Quad {
         Self {
             top_left: Vertex {
                 position: [0.0, 0.0, 0.0],
-                color: Default::default(),
                 texture_coordinates: [0.0, 0.0],
+                ..Default::default()
             },
             bottom_left: Vertex {
                 position: [0.0, size.height, 0.0],
-                color: Default::default(),
                 texture_coordinates: [0.0, 1.0],
+                ..Default::default()
             },
             top_right: Vertex {
                 position: [size.width, 0.0, 0.0],
-                color: Default::default(),
                 texture_coordinates: [1.0, 0.0],
+                ..Default::default()
             },
             bottom_right: Vertex {
                 position: [size.width, size.height, 0.0],
-                color: Default::default(),
                 texture_coordinates: [1.0, 1.0],
+                ..Default::default()
             },
         }
     }
@@ -59,23 +100,23 @@ impl Default for Quad {
         Self {
             top_left: Vertex {
                 position: [0.0, 0.0, 0.0],
-                color: Default::default(),
                 texture_coordinates: [0.0, 0.0],
+                ..Default::default()
             },
             bottom_left: Vertex {
                 position: [0.0, 1.0, 0.0],
-                color: Default::default(),
                 texture_coordinates: [0.0, 1.0],
+                ..Default::default()
             },
             top_right: Vertex {
                 position: [1.0, 0.0, 0.0],
-                color: Default::default(),
                 texture_coordinates: [1.0, 0.0],
+                ..Default::default()
             },
             bottom_right: Vertex {
                 position: [1.0, 1.0, 0.0],
-                color: Default::default(),
                 texture_coordinates: [1.0, 1.0],
+                ..Default::default()
             },
         }
     }

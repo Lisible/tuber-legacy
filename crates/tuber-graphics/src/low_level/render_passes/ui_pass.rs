@@ -1,5 +1,5 @@
+use crate::low_level::renderers::quad_renderer::QuadRenderPassType;
 use crate::low_level::texture::create_g_buffer_texture_descriptor;
-use crate::quad_renderer::QuadRenderPassType;
 use crate::wgpu_state::RenderContext;
 use nalgebra::Matrix4;
 

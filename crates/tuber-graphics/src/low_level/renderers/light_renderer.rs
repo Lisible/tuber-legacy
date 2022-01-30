@@ -196,7 +196,7 @@ impl LightRenderer {
     ) -> wgpu::RenderPipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("light_renderer_shader_module"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/light.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../../shaders/light.wgsl").into()),
         });
 
         let render_pipeline_layout =
@@ -249,33 +249,33 @@ impl LightRenderer {
         let vertices = vec![
             Vertex {
                 position: [-1.0, 1.0, 1.0],
-                color: [1.0, 1.0, 1.0],
                 texture_coordinates: [0.0, 0.0],
+                ..Default::default()
             },
             Vertex {
                 position: [-1.0, -1.0, 1.0],
-                color: [1.0, 1.0, 1.0],
                 texture_coordinates: [0.0, 1.0],
+                ..Default::default()
             },
             Vertex {
                 position: [1.0, 1.0, 1.0],
-                color: [1.0, 1.0, 1.0],
                 texture_coordinates: [1.0, 0.0],
+                ..Default::default()
             },
             Vertex {
                 position: [1.0, 1.0, 1.0],
-                color: [1.0, 1.0, 1.0],
                 texture_coordinates: [1.0, 0.0],
+                ..Default::default()
             },
             Vertex {
                 position: [-1.0, -1.0, 1.0],
-                color: [1.0, 1.0, 1.0],
                 texture_coordinates: [0.0, 1.0],
+                ..Default::default()
             },
             Vertex {
                 position: [1.0, -1.0, 1.0],
-                color: [1.0, 1.0, 1.0],
                 texture_coordinates: [1.0, 1.0],
+                ..Default::default()
             },
         ];
 

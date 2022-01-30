@@ -1,10 +1,8 @@
-use crate::Color;
-
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     pub position: [f32; 3],
-    pub color: [f32; 3],
+    pub normal: [f32; 3],
     pub texture_coordinates: [f32; 2],
 }
 
@@ -12,7 +10,7 @@ impl Default for Vertex {
     fn default() -> Self {
         Self {
             position: [0.0, 0.0, 0.0],
-            color: Color::WHITE.into(),
+            normal: [0.0, 0.0, 0.0],
             texture_coordinates: [0.0, 0.0],
         }
     }
