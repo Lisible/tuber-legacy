@@ -5,7 +5,7 @@ use crate::graphics::RenderId;
 use crate::light_renderer::LightRenderer;
 use crate::low_level::composition::Compositor;
 use crate::low_level::polygon_mode::PolygonMode;
-use crate::low_level::primitives::{MaterialDescription, TextureId};
+use crate::low_level::primitives::{Material, TextureId};
 use crate::low_level::quad_renderer::QuadRenderer;
 use crate::low_level::render_passes::composition_pass::composition_pass;
 use crate::low_level::render_passes::geometry_pass::geometry_pass;
@@ -111,8 +111,8 @@ impl WGPUState {
         RenderId(self.pre_renders.len() - 1)
     }
 
-    fn allocate_material(&mut self, size_pixel: Size2<u32>) -> MaterialDescription {
-        MaterialDescription {
+    fn allocate_material(&mut self, size_pixel: Size2<u32>) -> Material {
+        Material {
             albedo_map_id: self.allocate_texture(size_pixel, wgpu::TextureFormat::Bgra8UnormSrgb),
             normal_map_id: self.allocate_texture(size_pixel, wgpu::TextureFormat::Rgba8Unorm),
             emission_map_id: self.allocate_texture(size_pixel, wgpu::TextureFormat::Rgba8Unorm),
@@ -259,7 +259,7 @@ pub(crate) struct RenderContext<'a> {
 
 pub struct PreRender {
     pub size: Size2,
-    pub material: MaterialDescription,
+    pub material: Material,
 }
 
 pub trait IntoPolygonMode {

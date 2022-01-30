@@ -85,7 +85,7 @@ impl Graphics {
                     },
                 },
                 world_transform: transform_matrix,
-                material: MaterialDescription {
+                material: Material {
                     albedo_map_id: self.texture_metadata[WHITE_TEXTURE_IDENTIFIER].texture_id,
                     normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
                     emission_map_id: self.texture_metadata[BLACK_TEXTURE_IDENTIFIER].texture_id,
@@ -122,7 +122,7 @@ impl Graphics {
                     },
                 },
                 world_transform: transform_matrix,
-                material: MaterialDescription {
+                material: Material {
                     albedo_map_id: self.texture_metadata[WHITE_TEXTURE_IDENTIFIER].texture_id,
                     normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
                     emission_map_id: self.texture_metadata[BLACK_TEXTURE_IDENTIFIER].texture_id,
@@ -205,7 +205,7 @@ impl Graphics {
                     },
                 },
                 world_transform: transform_matrix,
-                material: MaterialDescription {
+                material: Material {
                     albedo_map_id: albedo_map_metadata.texture_id,
                     normal_map_id: normal_map_metadata
                         .or(Some(&self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER]))
@@ -300,7 +300,7 @@ impl Graphics {
                     },
                 },
                 world_transform: transform_matrix,
-                material: MaterialDescription {
+                material: Material {
                     albedo_map_id,
                     normal_map_id,
                     emission_map_id,
@@ -416,7 +416,7 @@ impl Graphics {
                     (tile_y * tilemap.tile_size().height as usize) as f32,
                     0.0,
                 )),
-                material: MaterialDescription {
+                material: Material {
                     albedo_map_id: albedo_map_texture_metadata.texture_id,
                     normal_map_id: match &tilemap_material.normal_map {
                         Some(normal_map_identifier) => {
@@ -512,7 +512,7 @@ impl Graphics {
                         (tile_y * tilemap.tile_size().height as usize) as f32,
                         0.0,
                     )),
-                    material: MaterialDescription {
+                    material: Material {
                         albedo_map_id: albedo_map_texture_metadata.texture_id,
                         normal_map_id: match &tilemap_material.normal_map {
                             Some(normal_map_identifier) => {
@@ -660,7 +660,7 @@ impl Graphics {
                         },
                     },
                     world_transform: glyph_transform_matrix,
-                    material: MaterialDescription {
+                    material: Material {
                         albedo_map_id: self.texture_metadata[font_texture].texture_id,
                         normal_map_id: self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER]
                             .texture_id,
@@ -675,7 +675,7 @@ impl Graphics {
     fn load_material_in_vram_if_required(
         &mut self,
         asset_manager: &mut AssetStore,
-        material: &Material,
+        material: &MaterialDescription,
     ) {
         self.load_texture_in_vram_if_required(asset_manager, &material.albedo_map);
         if let Some(normal_map) = &material.normal_map {

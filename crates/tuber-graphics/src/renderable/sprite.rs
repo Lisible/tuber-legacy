@@ -1,12 +1,12 @@
 use crate::animation::AnimationState;
-use crate::material::Material;
+use crate::material::MaterialDescription;
 use crate::texture::TextureRegion;
 
 pub struct Sprite {
     pub width: f32,
     pub height: f32,
     pub texture_region: TextureRegion,
-    pub material: Material,
+    pub material: MaterialDescription,
 }
 
 impl Default for Sprite {
@@ -20,7 +20,7 @@ impl Default for Sprite {
                 width: 32.0,
                 height: 32.0,
             },
-            material: Material {
+            material: MaterialDescription {
                 albedo_map: "texture".to_string(),
                 normal_map: None,
                 emission_map: None,
@@ -32,6 +32,6 @@ impl Default for Sprite {
 pub struct AnimatedSprite {
     pub width: f32,
     pub height: f32,
-    pub material: Material,
+    pub material: MaterialDescription,
     pub animation_state: AnimationState,
 }

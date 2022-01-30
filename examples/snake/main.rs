@@ -12,7 +12,7 @@ use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::WinitTuberRunner;
 use tuber_engine::engine_context::EngineContext;
 use tuber_engine::system_bundle;
-use tuber_graphics::material::Material;
+use tuber_graphics::material::MaterialDescription;
 use tuber_graphics::renderable::sprite::Sprite;
 use tuber_graphics::texture::TextureRegion;
 
@@ -204,7 +204,7 @@ fn spawn_apple(ecs: &mut Ecs) {
         Sprite {
             width: 64.0,
             height: 64.0,
-            material: Material {
+            material: MaterialDescription {
                 albedo_map: "apple_texture".into(),
                 ..Default::default()
             },
@@ -230,7 +230,7 @@ fn spawn_snake(ecs: &mut Ecs) {
         Sprite {
             width: BODY_PART_SIZE,
             height: BODY_PART_SIZE,
-            material: Material {
+            material: MaterialDescription {
                 albedo_map: "snake_tail_texture".into(),
                 ..Default::default()
             },
@@ -260,7 +260,7 @@ fn spawn_snake(ecs: &mut Ecs) {
         Sprite {
             width: BODY_PART_SIZE,
             height: BODY_PART_SIZE,
-            material: Material {
+            material: MaterialDescription {
                 albedo_map: "snake_face_texture".into(),
                 ..Default::default()
             },
@@ -372,7 +372,7 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
                 Sprite {
                     width: 64.0,
                     height: 64.0,
-                    material: Material {
+                    material: MaterialDescription {
                         albedo_map: "snake_tail_texture".into(),
                         ..Default::default()
                     },
@@ -398,7 +398,7 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
                     .query_one_by_id::<(W<SnakeBodyPart>, W<Sprite>)>(old_tail_id)
                     .unwrap();
                 old_tail_body_part.next_body_part = Some(new_tail_id);
-                sprite.material = Material {
+                sprite.material = MaterialDescription {
                     albedo_map: "snake_body_texture".into(),
                     ..sprite.material.clone()
                 };

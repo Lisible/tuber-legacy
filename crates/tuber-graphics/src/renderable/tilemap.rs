@@ -1,12 +1,12 @@
 use crate::animation::AnimationState;
 use crate::graphics::RenderId;
-use crate::{Material, Size2, TextureRegion};
+use crate::{MaterialDescription, Size2, TextureRegion};
 
 pub struct Tilemap {
     size: Size2<usize>,
     tile_size: Size2<u32>,
     tiles: Vec<Option<Tile>>,
-    material: Material,
+    material: MaterialDescription,
     render_id: Option<RenderId>,
 }
 
@@ -14,7 +14,7 @@ impl Tilemap {
     pub fn new(
         size: Size2<usize>,
         tile_size: Size2<u32>,
-        material: Material,
+        material: MaterialDescription,
         default_tile: Option<Tile>,
     ) -> Self {
         Self {
@@ -61,7 +61,7 @@ impl Tilemap {
         &self.tiles[x + y * self.size.width]
     }
 
-    pub fn material(&self) -> &Material {
+    pub fn material(&self) -> &MaterialDescription {
         &self.material
     }
 
@@ -105,7 +105,7 @@ mod tests {
         let mut tilemap = Tilemap::new(
             (10, 10).into(),
             (32, 32).into(),
-            Material {
+            MaterialDescription {
                 albedo_map: "albedo_map".into(),
                 ..Default::default()
             },

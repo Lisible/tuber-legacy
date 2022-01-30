@@ -1,7 +1,7 @@
 use crate::graphics::RenderId;
 use crate::primitives::Quad;
 use crate::renderable::light::PointLight;
-use crate::{MaterialDescription, Size2};
+use crate::{Material, Size2};
 use nalgebra::Matrix4;
 
 pub struct CommandBuffer {
@@ -104,5 +104,5 @@ pub struct DrawPreRenderCommand {
 pub struct DrawQuadCommand {
     pub quad: Quad,
     pub world_transform: Matrix4<f32>,
-    pub material: MaterialDescription,
+    pub material: Material,
 }

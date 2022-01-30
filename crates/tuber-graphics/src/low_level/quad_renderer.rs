@@ -3,7 +3,7 @@ use crate::geometry::Vertex;
 use crate::low_level::polygon_mode::PolygonMode;
 use crate::low_level::primitives::TextureId;
 use crate::low_level::wgpu_state::IntoPolygonMode;
-use crate::MaterialDescription;
+use crate::Material;
 use nalgebra::Matrix4;
 use std::collections::HashMap;
 use wgpu::{
@@ -34,8 +34,8 @@ pub(crate) struct QuadRenderer {
 
     texture_bind_group_layout: wgpu::BindGroupLayout,
     ui_texture_bind_group_layout: wgpu::BindGroupLayout,
-    texture_bind_groups: HashMap<MaterialDescription, wgpu::BindGroup>,
-    ui_texture_bind_groups: HashMap<MaterialDescription, wgpu::BindGroup>,
+    texture_bind_groups: HashMap<Material, wgpu::BindGroup>,
+    ui_texture_bind_groups: HashMap<Material, wgpu::BindGroup>,
 
     pre_render_pipeline: wgpu::RenderPipeline,
     render_pipeline: wgpu::RenderPipeline,
@@ -226,7 +226,7 @@ impl QuadRenderer {
         &mut self,
         device: &wgpu::Device,
         textures: &HashMap<TextureId, wgpu::Texture>,
-        material: &MaterialDescription,
+        material: &Material,
     ) -> wgpu::BindGroup {
         let albedo_map_texture = &textures[&material.albedo_map_id];
         let albedo_map_view = albedo_map_texture.create_view(&TextureViewDescriptor::default());
@@ -961,7 +961,7 @@ impl QuadRenderer {
         &self,
         device: &wgpu::Device,
         textures: &HashMap<TextureId, wgpu::Texture>,
-        material: &MaterialDescription,
+        material: &Material,
     ) -> wgpu::BindGroup {
         let albedo_map_texture = &textures[&material.albedo_map_id];
         let albedo_map_view = albedo_map_texture.create_view(&TextureViewDescriptor::default());
@@ -1008,7 +1008,7 @@ pub struct QuadGroup {
 }
 
 struct QuadMetadata {
-    material_description: MaterialDescription,
+    material_description: Material,
     uniform_offset: u32,
 }
 

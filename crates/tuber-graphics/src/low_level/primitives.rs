@@ -82,7 +82,7 @@ impl Default for Quad {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct MaterialDescription {
+pub struct Material {
     pub albedo_map_id: TextureId,
     pub normal_map_id: TextureId,
     pub emission_map_id: TextureId,
