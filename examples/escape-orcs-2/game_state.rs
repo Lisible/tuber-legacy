@@ -7,7 +7,7 @@ use rand::Rng;
 use std::f32::consts::PI;
 use tuber::core::input::keyboard::Key;
 use tuber::core::input::Input;
-use tuber::core::transform::Transform2D;
+use tuber::core::transform::Transform;
 use tuber::core::DeltaTime;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::ecs::EntityDefinition;
@@ -20,7 +20,6 @@ use tuber::graphics::g_buffer::GBufferComponent;
 use tuber_core::transform::IntoMatrix4;
 use tuber_graphics::low_level::polygon_mode::PolygonMode;
 use tuber_graphics::renderable::tilemap::Tilemap;
-use tuber_graphics::types::Color;
 use tuber_gui::widget::text::TextWidget;
 
 pub(crate) struct GameState {
@@ -88,8 +87,8 @@ impl State for GameState {
         engine_context.graphics.as_mut().unwrap().draw_tilemap(
             &mut engine_context.asset_store,
             self.tilemap.as_mut().unwrap(),
-            Transform2D {
-                translation: (0.0, 0.0, -4),
+            Transform {
+                translation: (0.0, 0.0, -4.0),
                 ..Default::default()
             }
             .into_matrix4(),
@@ -160,17 +159,17 @@ fn create_camera() -> impl EntityDefinition {
             far: 100.0,
         },
         Active,
-        Transform2D {
-            translation: (-368.0, -268.0, 0),
+        Transform {
+            translation: (-368.0, -268.0, 0.0),
             ..Default::default()
         },
     )
 }
 
 pub(crate) fn update_camera_position(ecs: &mut Ecs, _: &mut EngineContext) {
-    let (_, (_, player_transform)) = ecs.query_one::<(R<Player>, R<Transform2D>)>().unwrap();
+    let (_, (_, player_transform)) = ecs.query_one::<(R<Player>, R<Transform>)>().unwrap();
     let (_, (_, mut camera_transform)) = ecs
-        .query_one::<(R<OrthographicCamera>, W<Transform2D>)>()
+        .query_one::<(R<OrthographicCamera>, W<Transform>)>()
         .unwrap();
 
     camera_transform.translation.0 = player_transform.translation.0 - 368f32;
@@ -206,7 +205,7 @@ fn move_player(ecs: &mut Ecs, engine_context: &mut EngineContext) {
     move_orcs(ecs);
 
     if let Some((_, (mut player, mut character, transform))) =
-        ecs.query_one::<(W<Player>, W<Character>, R<Transform2D>)>()
+        ecs.query_one::<(W<Player>, W<Character>, R<Transform>)>()
     {
         if character.movement == Movement::Idle {
             player.score += 1;
@@ -231,8 +230,7 @@ fn move_orcs(ecs: &mut Ecs) {
         Movement::Right,
     ];
 
-    for (_, (_, mut character, transform)) in ecs.query::<(R<Orc>, W<Character>, R<Transform2D>)>()
-    {
+    for (_, (_, mut character, transform)) in ecs.query::<(R<Orc>, W<Character>, R<Transform>)>() {
         if character.movement == Movement::Idle {
             character.movement = MOVEMENTS[rng.gen_range(0..4)];
             character.animation_time = 0.0;
@@ -246,7 +244,7 @@ fn update_character_position(ecs: &mut Ecs, _: &mut EngineContext) {
     const ANIMATION_SPEED: f32 = 2f32;
     let delta_time = ecs.shared_resource::<DeltaTime>().unwrap().0 as f32;
 
-    for (_, (mut character, mut transform)) in ecs.query::<(W<Character>, W<Transform2D>)>() {
+    for (_, (mut character, mut transform)) in ecs.query::<(W<Character>, W<Transform>)>() {
         let target_position =
             compute_target_position(character.initial_position, character.movement);
         character.animation_time += delta_time * ANIMATION_SPEED;

@@ -1,6 +1,6 @@
 use tuber::core::input::keyboard::Key;
 use tuber::core::input::Input;
-use tuber::core::transform::Transform2D;
+use tuber::core::transform::Transform;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::{SystemBundle, SystemResult};
@@ -17,9 +17,9 @@ const BALL_COUNT: usize = 10;
 const PADDLE_WIDTH: f32 = 20.0;
 const PADDLE_HEIGHT: f32 = 100.0;
 const BALL_SIZE: f32 = 10.0;
-const LEFT_PADDLE_INITIAL_POSITION: (f32, f32, i32) = (50.0, 250.0, 0);
-const RIGHT_PADDLE_INITIAL_POSITION: (f32, f32, i32) = (730.0, 250.0, 0);
-const BALL_INITIAL_POSITION: (f32, f32, i32) = (395.0, 295.0, 0);
+const LEFT_PADDLE_INITIAL_POSITION: (f32, f32, f32) = (50.0, 250.0, 0.0);
+const RIGHT_PADDLE_INITIAL_POSITION: (f32, f32, f32) = (730.0, 250.0, 0.0);
+const BALL_INITIAL_POSITION: (f32, f32, f32) = (395.0, 295.0, 0.0);
 
 struct Ball;
 struct Paddle;
@@ -56,8 +56,8 @@ impl State for MainState {
                 near: -100.0,
                 far: 100.0,
             },
-            Transform2D {
-                translation: (0.0, 0.0, 0),
+            Transform {
+                translation: (0.0, 0.0, 0.0),
                 ..Default::default()
             },
             Active,
@@ -69,7 +69,7 @@ impl State for MainState {
                 height: PADDLE_HEIGHT,
                 color: Color::WHITE,
             },
-            Transform2D {
+            Transform {
                 translation: LEFT_PADDLE_INITIAL_POSITION,
                 ..Default::default()
             },
@@ -83,7 +83,7 @@ impl State for MainState {
                 height: PADDLE_HEIGHT,
                 color: Color::WHITE,
             },
-            Transform2D {
+            Transform {
                 translation: RIGHT_PADDLE_INITIAL_POSITION,
                 ..Default::default()
             },
@@ -108,9 +108,9 @@ impl State for MainState {
                     x: rng.gen_range(-10.0..=-5.0),
                     y: rng.gen_range(-10.0..=5.0),
                 },
-                Transform2D {
+                Transform {
                     translation: BALL_INITIAL_POSITION,
-                    rotation_center: (BALL_SIZE / 2.0, BALL_SIZE / 2.0),
+                    rotation_center: (BALL_SIZE / 2.0, BALL_SIZE / 2.0, 0.0),
                     ..Default::default()
                 },
                 Ball,
@@ -128,7 +128,7 @@ impl State for MainState {
 
 fn move_paddle_system(ecs: &mut Ecs, engine_context: &mut EngineContext) -> SystemResult {
     let input_state = &engine_context.input_state;
-    for (_id, (mut transform, _)) in ecs.query::<(W<Transform2D>, R<Player>)>() {
+    for (_id, (mut transform, _)) in ecs.query::<(W<Transform>, R<Player>)>() {
         if input_state.is(Input::KeyDown(Key::Z)) {
             transform.translation.1 -= 5.0;
         } else if input_state.is(Input::KeyDown(Key::S)) {
@@ -141,7 +141,7 @@ fn move_paddle_system(ecs: &mut Ecs, engine_context: &mut EngineContext) -> Syst
 
 fn move_ball_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     for (_id, (rectangle_shape, mut transform, mut velocity)) in
-        ecs.query::<(R<RectangleShape>, W<Transform2D>, W<Velocity>)>()
+        ecs.query::<(R<RectangleShape>, W<Transform>, W<Velocity>)>()
     {
         if (transform.translation.0 + rectangle_shape.width >= 800.0)
             || (transform.translation.0 <= 0.0)
@@ -157,7 +157,7 @@ fn move_ball_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
 
         transform.translation.0 += velocity.x;
         transform.translation.1 += velocity.y;
-        transform.angle += 1.0;
+        transform.angle.2 += 1.0;
     }
 
     Ok(())
@@ -166,11 +166,11 @@ fn move_ball_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
 fn collision_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     {
         for (_paddle_id, (paddle_transform, paddle_shape, _)) in
-            ecs.query::<(R<Transform2D>, R<RectangleShape>, R<Paddle>)>()
+            ecs.query::<(R<Transform>, R<RectangleShape>, R<Paddle>)>()
         {
             let paddle_position = paddle_transform.translation;
             for (_ball_id, (mut ball_transform, mut velocity, _)) in
-                ecs.query::<(W<Transform2D>, W<Velocity>, R<Ball>)>()
+                ecs.query::<(W<Transform>, W<Velocity>, R<Ball>)>()
             {
                 let ball_position = ball_transform.translation;
 
@@ -217,9 +217,9 @@ fn collision_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
 }
 
 fn ball_is_close_to_paddle(
-    ball_position: (f32, f32, i32),
+    ball_position: (f32, f32, f32),
     ball_size: f32,
-    paddle_position: (f32, f32, i32),
+    paddle_position: (f32, f32, f32),
     paddle_width: f32,
     paddle_height: f32,
 ) -> bool {

@@ -2,7 +2,7 @@ use crate::character::Character;
 use crate::game_state::Movement;
 use std::time::Instant;
 use tuber::core::asset::AssetStore;
-use tuber::core::transform::Transform2D;
+use tuber::core::transform::Transform;
 use tuber::ecs::ecs::EntityDefinition;
 use tuber::graphics::renderable::sprite::{AnimatedSprite, Sprite};
 use tuber::graphics::texture::TextureAtlas;
@@ -33,7 +33,7 @@ fn create_player_entity_definition(asset_store: &mut AssetStore) -> impl EntityD
             animation_time: 0.0,
             movement: Movement::Idle,
         },
-        Transform2D::default(),
+        Transform::default(),
         AnimatedSprite {
             width: 64.0,
             height: 64.0,
@@ -74,8 +74,8 @@ fn create_player_shadow_entity_definition(
                 emission_map: Some("emissive_spritesheet".to_string()),
             },
         },
-        Transform2D {
-            translation: (14.0, 52.0, -1),
+        Transform {
+            translation: (14.0, 52.0, -1.0),
             ..Default::default()
         },
     )

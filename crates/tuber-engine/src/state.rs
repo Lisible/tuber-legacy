@@ -1,6 +1,6 @@
 use crate::engine_context::EngineContext;
 use tuber_core::input::Input;
-use tuber_core::transform::Transform2D;
+use tuber_core::transform::Transform;
 use tuber_core::DeltaTime;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
@@ -23,7 +23,7 @@ pub trait State {
                 far: 100.0,
             },
             Active,
-            Transform2D::default(),
+            Transform::default(),
         ));
     }
     fn update(&mut self, _ecs: &mut Ecs, _engine_context: &mut EngineContext) {}

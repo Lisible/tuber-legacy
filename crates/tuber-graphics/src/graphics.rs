@@ -20,7 +20,7 @@ use std::any::TypeId;
 use std::collections::HashMap;
 use std::default::Default;
 use tuber_core::asset::{AssetStore, GenericLoader};
-use tuber_core::transform::{IntoMatrix4, Transform2D};
+use tuber_core::transform::{IntoMatrix4, Transform};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::query::accessors::Opt;
 use tuber_ecs::query::accessors::R;
@@ -727,19 +727,19 @@ impl Graphics {
 
     pub fn render_scene(&mut self, ecs: &Ecs, asset_store: &mut AssetStore) {
         let (camera_id, (camera, _, camera_transform)) = ecs
-            .query_one::<(R<OrthographicCamera>, R<Active>, R<Transform2D>)>()
+            .query_one::<(R<OrthographicCamera>, R<Active>, R<Transform>)>()
             .expect("There is no camera");
         self.update_camera(camera_id, &camera, camera_transform.into_matrix4());
 
         for (_, (rectangle_shape, transform, parent)) in
-            ecs.query::<(R<RectangleShape>, R<Transform2D>, Opt<R<Parent>>)>()
+            ecs.query::<(R<RectangleShape>, R<Transform>, Opt<R<Parent>>)>()
         {
             let mut parent_transform = Matrix4::<f32>::identity();
             let mut parent = parent;
             while let Some(parent_ref) = &parent {
                 let parent_id = parent_ref.0;
                 let (_, (transform, p)) = ecs
-                    .query_one_by_id::<(R<Transform2D>, Opt<R<Parent>>)>(parent_id)
+                    .query_one_by_id::<(R<Transform>, Opt<R<Parent>>)>(parent_id)
                     .unwrap();
                 parent_transform *= transform.into_matrix4();
                 parent = p;
@@ -751,14 +751,14 @@ impl Graphics {
             );
         }
         for (_, (sprite, transform, parent)) in
-            ecs.query::<(R<Sprite>, R<Transform2D>, Opt<R<Parent>>)>()
+            ecs.query::<(R<Sprite>, R<Transform>, Opt<R<Parent>>)>()
         {
             let mut parent_transform = Matrix4::<f32>::identity();
             let mut parent = parent;
             while let Some(parent_ref) = &parent {
                 let parent_id = parent_ref.0;
                 let (_, (transform, p)) = ecs
-                    .query_one_by_id::<(R<Transform2D>, Opt<R<Parent>>)>(parent_id)
+                    .query_one_by_id::<(R<Transform>, Opt<R<Parent>>)>(parent_id)
                     .unwrap();
                 parent_transform *= transform.into_matrix4();
                 parent = p;
@@ -772,14 +772,14 @@ impl Graphics {
             .unwrap();
         }
         for (_, (animated_sprite, transform, parent)) in
-            ecs.query::<(R<AnimatedSprite>, R<Transform2D>, Opt<R<Parent>>)>()
+            ecs.query::<(R<AnimatedSprite>, R<Transform>, Opt<R<Parent>>)>()
         {
             let mut parent_transform = Matrix4::<f32>::identity();
             let mut parent = parent;
             while let Some(parent_ref) = &parent {
                 let parent_id = parent_ref.0;
                 let (_, (transform, p)) = ecs
-                    .query_one_by_id::<(R<Transform2D>, Opt<R<Parent>>)>(parent_id)
+                    .query_one_by_id::<(R<Transform>, Opt<R<Parent>>)>(parent_id)
                     .unwrap();
                 parent_transform *= transform.into_matrix4();
                 parent = p;
@@ -794,14 +794,14 @@ impl Graphics {
         }
 
         for (_, (point_light, transform, parent)) in
-            ecs.query::<(R<PointLight>, R<Transform2D>, Opt<R<Parent>>)>()
+            ecs.query::<(R<PointLight>, R<Transform>, Opt<R<Parent>>)>()
         {
             let mut parent_transform = Matrix4::<f32>::identity();
             let mut parent = parent;
             while let Some(parent_ref) = &parent {
                 let parent_id = parent_ref.0;
                 let (_, (transform, p)) = ecs
-                    .query_one_by_id::<(R<Transform2D>, Opt<R<Parent>>)>(parent_id)
+                    .query_one_by_id::<(R<Transform>, Opt<R<Parent>>)>(parent_id)
                     .unwrap();
                 parent_transform *= transform.into_matrix4();
                 parent = p;

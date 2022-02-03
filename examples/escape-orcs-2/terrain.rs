@@ -1,5 +1,5 @@
 use tuber_core::asset::AssetStore;
-use tuber_core::transform::Transform2D;
+use tuber_core::transform::Transform;
 use tuber_ecs::ecs::Ecs;
 use tuber_graphics::animation::AnimationState;
 use tuber_graphics::material::MaterialDescription;
@@ -23,8 +23,12 @@ pub fn create_lights(ecs: &mut Ecs) {
             specular: (1.0, 0.5, 0.0).into(),
             radius: 1000.0,
         },
-        Transform2D {
-            translation: ((WORLD_SIZE.width as f32 / 2.0) * TILE_SIZE as f32, 0.0, 100),
+        Transform {
+            translation: (
+                (WORLD_SIZE.width as f32 / 2.0) * TILE_SIZE as f32,
+                0.0,
+                100.0,
+            ),
             ..Default::default()
         },
     ));
@@ -35,11 +39,11 @@ pub fn create_lights(ecs: &mut Ecs) {
             specular: (1.0, 0.5, 0.0).into(),
             radius: 1000.0,
         },
-        Transform2D {
+        Transform {
             translation: (
                 (WORLD_SIZE.width as f32 / 2.0) * TILE_SIZE as f32,
                 WORLD_SIZE.height as f32 * TILE_SIZE as f32,
-                100,
+                100.0,
             ),
             ..Default::default()
         },
@@ -51,11 +55,11 @@ pub fn create_lights(ecs: &mut Ecs) {
             specular: (0.0, 1.0, 0.0).into(),
             radius: 1000.0,
         },
-        Transform2D {
+        Transform {
             translation: (
                 (WORLD_SIZE.width as f32 / 2.0) * TILE_SIZE as f32,
                 (WORLD_SIZE.height as f32 / 2.0) * TILE_SIZE as f32,
-                100,
+                100.0,
             ),
             ..Default::default()
         },

@@ -7,7 +7,7 @@ use crate::low_level::utils::{
 use crate::primitives::{Index, Mesh};
 use crate::Material;
 use nalgebra::Matrix4;
-use tuber_core::transform::Transform2D;
+use tuber_core::transform::Transform;
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupLayout, BindGroupLayoutDescriptor, Buffer,
     BufferAddress, BufferSize, BufferUsages, Device, PolygonMode, RenderPipeline, TextureFormat,

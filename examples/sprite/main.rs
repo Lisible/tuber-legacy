@@ -1,5 +1,5 @@
 use std::time::Instant;
-use tuber::core::transform::Transform2D;
+use tuber::core::transform::Transform;
 use tuber::engine::state::State;
 use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
@@ -41,16 +41,16 @@ impl State for MainState {
                 near: -100.0,
                 far: 100.0,
             },
-            Transform2D {
-                translation: (0.0, 0.0, 0),
+            Transform {
+                translation: (0.0, 0.0, 0.0),
                 ..Default::default()
             },
             Active,
         ));
 
         ecs.insert((
-            Transform2D {
-                translation: (375.0, 275.0, 0),
+            Transform {
+                translation: (375.0, 275.0, 0.0),
                 ..Default::default()
             },
             Sprite {
@@ -67,8 +67,8 @@ impl State for MainState {
         ));
 
         ecs.insert((
-            Transform2D {
-                translation: (500.0, 275.0, 0),
+            Transform {
+                translation: (500.0, 275.0, 0.0),
                 ..Default::default()
             },
             Sprite {
@@ -84,8 +84,8 @@ impl State for MainState {
         ));
 
         ecs.insert((
-            Transform2D {
-                translation: (250.0, 275.0, 0),
+            Transform {
+                translation: (250.0, 275.0, 0.0),
                 ..Default::default()
             },
             Sprite {
@@ -101,8 +101,8 @@ impl State for MainState {
         ));
 
         ecs.insert((
-            Transform2D {
-                translation: (250.0, 350.0, 0),
+            Transform {
+                translation: (250.0, 350.0, 0.0),
                 ..Default::default()
             },
             Sprite {
@@ -122,8 +122,8 @@ impl State for MainState {
             .asset::<TextureAtlas>("atlas")
             .unwrap();
         ecs.insert((
-            Transform2D {
-                translation: (375.0, 350.0, 0),
+            Transform {
+                translation: (375.0, 350.0, 0.0),
                 ..Default::default()
             },
             Sprite {
@@ -139,8 +139,8 @@ impl State for MainState {
         ));
 
         ecs.insert((
-            Transform2D {
-                translation: (475.0, 400.0, 0),
+            Transform {
+                translation: (475.0, 400.0, 0.0),
                 ..Default::default()
             },
             Sprite {
@@ -156,8 +156,8 @@ impl State for MainState {
         ));
 
         ecs.insert((
-            Transform2D {
-                translation: (0.0, 0.0, 0),
+            Transform {
+                translation: (0.0, 0.0, 0.0),
                 ..Default::default()
             },
             AnimatedSprite {

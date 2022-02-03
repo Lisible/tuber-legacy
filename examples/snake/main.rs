@@ -1,7 +1,7 @@
 use rand::{thread_rng, Rng};
 use std::collections::VecDeque;
 use tuber::core::input::Input::ActionDown;
-use tuber::core::transform::Transform2D;
+use tuber::core::transform::Transform;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::{SystemBundle, SystemResult};
@@ -29,7 +29,7 @@ struct SnakeBodyPart {
 
 #[derive(Copy, Clone)]
 struct Pivot {
-    position: (f32, f32, i32),
+    position: (f32, f32, f32),
     angle: f32,
 }
 
@@ -72,8 +72,8 @@ impl State for MainState {
                 near: -100.0,
                 far: 100.0,
             },
-            Transform2D {
-                translation: (0.0, 0.0, 0),
+            Transform {
+                translation: (0.0, 0.0, 0.0),
                 ..Default::default()
             },
             Active,
@@ -99,11 +99,11 @@ fn check_collision_with_body_system(ecs: &mut Ecs, _: &mut EngineContext) -> Sys
     let mut is_game_over = false;
     {
         let (head_id, (_, head_body_part, head_transform)) = ecs
-            .query_one::<(R<SnakeHead>, R<SnakeBodyPart>, R<Transform2D>)>()
+            .query_one::<(R<SnakeHead>, R<SnakeBodyPart>, R<Transform>)>()
             .unwrap();
         let next_id = head_body_part.next_body_part.unwrap();
         for (body_part_id, (_, body_part_transform)) in
-            ecs.query::<(R<SnakeBodyPart>, R<Transform2D>)>()
+            ecs.query::<(R<SnakeBodyPart>, R<Transform>)>()
         {
             if head_id == body_part_id || next_id == body_part_id {
                 continue;
@@ -139,25 +139,25 @@ fn move_head_system(ecs: &mut Ecs, engine_context: &mut EngineContext) -> System
     let is_game_over = {
         let input_state = &engine_context.input_state;
         let (_, (_, mut velocity, mut transform)) = ecs
-            .query_one::<(R<SnakeHead>, W<Velocity>, W<Transform2D>)>()
+            .query_one::<(R<SnakeHead>, W<Velocity>, W<Transform>)>()
             .unwrap();
 
         let mut pivot_list = ecs.shared_resource_mut::<PivotList>().unwrap();
         if input_state.is(ActionDown("rotate_head_left".into())) {
-            transform.angle -= 2.0;
+            transform.angle.2 -= 2.0;
             pivot_list.0.push_back(Pivot {
                 position: transform.translation,
-                angle: transform.angle,
+                angle: transform.angle.2,
             });
         } else if input_state.is(ActionDown("rotate_head_right".into())) {
-            transform.angle += 2.0;
+            transform.angle.2 += 2.0;
             pivot_list.0.push_back(Pivot {
                 position: transform.translation,
-                angle: transform.angle,
+                angle: transform.angle.2,
             });
         }
 
-        *velocity = compute_new_segment_velocity(transform.angle);
+        *velocity = compute_new_segment_velocity(transform.angle.2);
         *transform = compute_new_segment_position(*transform, &velocity);
 
         transform.translation.0 < -BODY_PART_SIZE
@@ -193,11 +193,11 @@ fn respawn_snake(ecs: &mut Ecs) {
 fn spawn_apple(ecs: &mut Ecs) {
     let mut rng = thread_rng();
     let _apple = ecs.insert((
-        Transform2D {
+        Transform {
             translation: (
                 rng.gen_range(0.0..800.0 - 64.0),
                 rng.gen_range(0.0..600.0 - 64.0),
-                0,
+                0.0,
             ),
             ..Default::default()
         },
@@ -222,9 +222,9 @@ fn spawn_apple(ecs: &mut Ecs) {
 
 fn spawn_snake(ecs: &mut Ecs) {
     let snake_tail = ecs.insert((
-        Transform2D {
-            translation: (300.0, 300.0 + BODY_PART_SIZE, 0),
-            rotation_center: (32.0, BODY_PART_SIZE),
+        Transform {
+            translation: (300.0, 300.0 + BODY_PART_SIZE, 0.0),
+            rotation_center: (32.0, BODY_PART_SIZE, 0.0),
             ..Default::default()
         },
         Sprite {
@@ -252,9 +252,9 @@ fn spawn_snake(ecs: &mut Ecs) {
         SnakeTail,
     ));
     let _snake_head = ecs.insert((
-        Transform2D {
-            translation: (300.0, 300.0, 0),
-            rotation_center: (BODY_PART_SIZE / 2.0, BODY_PART_SIZE),
+        Transform {
+            translation: (300.0, 300.0, 0.0),
+            rotation_center: (BODY_PART_SIZE / 2.0, BODY_PART_SIZE, 0.0),
             ..Default::default()
         },
         Sprite {
@@ -288,8 +288,7 @@ fn move_body_parts_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult 
     let (tail_id, _) = ecs.query_one::<(R<SnakeTail>,)>().unwrap();
     let mut pivots = ecs.shared_resource_mut::<PivotList>().unwrap();
     let mut pivots_to_delete = vec![];
-    for (body_part_id, (mut transform, mut velocity)) in
-        ecs.query::<(W<Transform2D>, W<Velocity>)>()
+    for (body_part_id, (mut transform, mut velocity)) in ecs.query::<(W<Transform>, W<Velocity>)>()
     {
         if body_part_id == head_id {
             continue;
@@ -302,10 +301,10 @@ fn move_body_parts_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult 
                 if body_part_id == tail_id {
                     pivots_to_delete.push(pivot_index);
                 }
-                transform.angle = pivot.angle;
+                transform.angle.2 = pivot.angle;
             }
         }
-        *velocity = compute_new_segment_velocity(transform.angle);
+        *velocity = compute_new_segment_velocity(transform.angle.2);
         *transform = compute_new_segment_position(*transform, &velocity);
     }
 
@@ -320,7 +319,7 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     let mut grow_snake = false;
     {
         let (_, (_, head_transform, head_sprite)) = ecs
-            .query_one::<(R<SnakeHead>, R<Transform2D>, R<Sprite>)>()
+            .query_one::<(R<SnakeHead>, R<Transform>, R<Sprite>)>()
             .unwrap();
         let mut score = ecs.shared_resource_mut::<Score>().unwrap();
         let head_rectangle = (
@@ -332,7 +331,7 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
 
         let mut rng = thread_rng();
         for (_, (_, mut apple_transform, apple_sprite)) in
-            ecs.query::<(R<Apple>, W<Transform2D>, R<Sprite>)>()
+            ecs.query::<(R<Apple>, W<Transform>, R<Sprite>)>()
         {
             let apple_rectangle = (
                 apple_transform.translation.0,
@@ -354,18 +353,18 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     if grow_snake {
         let (old_tail_id, tail_transform, tail_velocity) = {
             let (tail_id, (_, tail_transform, tail_velocity)) = ecs
-                .query_one::<(R<SnakeTail>, R<Transform2D>, R<Velocity>)>()
+                .query_one::<(R<SnakeTail>, R<Transform>, R<Velocity>)>()
                 .unwrap();
             (tail_id, *tail_transform, *tail_velocity)
         };
 
         let new_tail_id = {
             ecs.insert((
-                Transform2D {
+                Transform {
                     translation: (
                         tail_transform.translation.0 - BODY_PART_SIZE / 4.0 * tail_velocity.x,
                         tail_transform.translation.1 - BODY_PART_SIZE / 4.0 * tail_velocity.y,
-                        0,
+                        0.0,
                     ),
                     ..tail_transform
                 },
@@ -418,12 +417,12 @@ fn compute_new_segment_velocity(angle_degrees: f32) -> Velocity {
     }
 }
 
-fn compute_new_segment_position(transform: Transform2D, velocity: &Velocity) -> Transform2D {
-    Transform2D {
+fn compute_new_segment_position(transform: Transform, velocity: &Velocity) -> Transform {
+    Transform {
         translation: (
             transform.translation.0 + velocity.x,
             transform.translation.1 + velocity.y,
-            0,
+            0.0,
         ),
         ..transform
     }
