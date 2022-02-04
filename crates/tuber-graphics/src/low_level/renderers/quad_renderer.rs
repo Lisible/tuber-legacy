@@ -2,12 +2,14 @@ use crate::draw_command::DrawQuadCommand;
 use crate::geometry::Vertex;
 use crate::low_level::polygon_mode::PolygonMode;
 use crate::low_level::primitives::TextureId;
+use crate::low_level::uniform_buffer::UniformBuffer;
 use crate::low_level::wgpu_state::IntoPolygonMode;
 use crate::Material;
 use nalgebra::Matrix4;
 use std::collections::HashMap;
 use wgpu::{
-    BindGroupDescriptor, BufferDescriptor, CommandEncoderDescriptor, TextureViewDescriptor,
+    BindGroupDescriptor, BufferDescriptor, CommandEncoder, CommandEncoderDescriptor, Device,
+    TextureViewDescriptor,
 };
 
 const QUAD_UNIFORM_SIZE: u64 = std::mem::size_of::<QuadUniform>() as u64;
@@ -27,10 +29,7 @@ pub(crate) struct QuadRenderer {
     global_bind_group_layout: wgpu::BindGroupLayout,
     global_bind_group: wgpu::BindGroup,
 
-    quad_uniform_buffer_size: u64,
-    quad_uniform_buffer: wgpu::Buffer,
-    quad_bind_group_layout: wgpu::BindGroupLayout,
-    quad_bind_group: wgpu::BindGroup,
+    quad_uniform_buffer: UniformBuffer<QuadUniform>,
 
     texture_bind_group_layout: wgpu::BindGroupLayout,
     ui_texture_bind_group_layout: wgpu::BindGroupLayout,
@@ -73,13 +72,7 @@ impl QuadRenderer {
             &global_uniform_buffer,
         );
 
-        let quad_uniform_buffer_size = MIN_QUAD_COUNT as u64 * min_uniform_alignment;
-        assert!(std::mem::size_of::<QuadUniform>() <= min_uniform_alignment as usize);
-        let quad_uniform_buffer =
-            Self::create_quad_uniform_buffer(device, quad_uniform_buffer_size);
-        let quad_bind_group_layout = Self::create_quad_bind_group_layout(device);
-        let quad_bind_group =
-            Self::create_quad_bind_group(device, &quad_bind_group_layout, &quad_uniform_buffer);
+        let quad_uniform_buffer = UniformBuffer::new(device, "quad_renderer_quad_uniform", 10);
 
         let texture_bind_group_layout = Self::create_texture_bind_group_layout(device);
         let ui_texture_bind_group_layout = Self::create_ui_texture_bind_group_layout(device);
@@ -89,7 +82,7 @@ impl QuadRenderer {
             surface_texture_format,
             &texture_bind_group_layout,
             &global_bind_group_layout,
-            &quad_bind_group_layout,
+            quad_uniform_buffer.bind_group_layout(),
             PolygonMode::Fill.into_polygon_mode(),
         );
 
@@ -98,7 +91,7 @@ impl QuadRenderer {
             surface_texture_format,
             &texture_bind_group_layout,
             &global_bind_group_layout,
-            &quad_bind_group_layout,
+            quad_uniform_buffer.bind_group_layout(),
             PolygonMode::Fill.into_polygon_mode(),
         );
 
@@ -107,7 +100,7 @@ impl QuadRenderer {
             surface_texture_format,
             &ui_texture_bind_group_layout,
             &global_bind_group_layout,
-            &quad_bind_group_layout,
+            quad_uniform_buffer.bind_group_layout(),
             PolygonMode::Fill.into_polygon_mode(),
         );
 
@@ -120,10 +113,7 @@ impl QuadRenderer {
             global_bind_group_layout,
             global_bind_group,
 
-            quad_uniform_buffer_size,
             quad_uniform_buffer,
-            quad_bind_group_layout,
-            quad_bind_group,
 
             texture_bind_group_layout,
             ui_texture_bind_group_layout,
@@ -153,6 +143,7 @@ impl QuadRenderer {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
+        command_encoder: &mut wgpu::CommandEncoder,
         textures: &HashMap<TextureId, wgpu::Texture>,
         projection_matrix: &Matrix4<f32>,
         view_transform: &Matrix4<f32>,
@@ -163,6 +154,12 @@ impl QuadRenderer {
             device,
             queue,
             (self.quad_count + draw_quad_commands.len()) as u64,
+        );
+
+        self.quad_uniform_buffer.ensure_capacity(
+            device,
+            command_encoder,
+            self.quad_count + draw_quad_commands.len(),
         );
 
         self.ensure_max_global_uniform_count(device, queue, (self.global_uniform_count + 1) as u64);
@@ -177,7 +174,7 @@ impl QuadRenderer {
             end_quad: (self.quad_count + draw_quad_commands.len()) as u64,
             global_uniform: self.global_uniform_count as u64,
         };
-
+        dbg!(&quad_group);
         for draw_quad_command in draw_quad_commands {
             let mut effective_transform = draw_quad_command.world_transform.clone();
             effective_transform.column_mut(3).z = 0.0;
@@ -299,7 +296,12 @@ impl QuadRenderer {
         })
     }
 
-    pub fn finish_preparation(&mut self, queue: &wgpu::Queue) {
+    pub fn finish_preparation(
+        &mut self,
+        device: &Device,
+        command_encoder: &mut CommandEncoder,
+        queue: &wgpu::Queue,
+    ) {
         queue.write_buffer(
             &self.vertex_buffer,
             0,
@@ -312,10 +314,11 @@ impl QuadRenderer {
             bytemuck::cast_slice(&self.pending_global_uniforms),
         );
 
-        queue.write_buffer(
-            &self.quad_uniform_buffer,
-            0,
-            bytemuck::cast_slice(&self.pending_quad_uniforms),
+        self.quad_uniform_buffer.append_uniforms(
+            command_encoder,
+            device,
+            queue,
+            &self.pending_quad_uniforms,
         );
 
         self.pending_vertices.clear();
@@ -390,17 +393,6 @@ impl QuadRenderer {
             mapped_at_creation: false,
         });
 
-        let new_quad_uniform_buffer_size =
-            new_max_quad_count as u64 * device.limits().min_uniform_buffer_offset_alignment as u64;
-        let new_quad_uniform_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("quad_renderer_quad_uniform_buffer"),
-            size: new_quad_uniform_buffer_size,
-            usage: wgpu::BufferUsages::UNIFORM
-                | wgpu::BufferUsages::COPY_DST
-                | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("quad_renderer_reallocate_vertex_buffer_encoder"),
         });
@@ -411,20 +403,10 @@ impl QuadRenderer {
             0,
             self.vertex_buffer_size,
         );
-        encoder.copy_buffer_to_buffer(
-            &self.quad_uniform_buffer,
-            0,
-            &new_quad_uniform_buffer,
-            0,
-            self.quad_uniform_buffer_size,
-        );
         queue.submit(std::iter::once(encoder.finish()));
 
         self.vertex_buffer_size = new_vertex_buffer_size.into();
         self.vertex_buffer = new_vertex_buffer;
-
-        self.quad_uniform_buffer_size = new_quad_uniform_buffer_size;
-        self.quad_uniform_buffer = new_quad_uniform_buffer;
         self.max_quad_count = new_max_quad_count as usize;
     }
 
@@ -455,7 +437,7 @@ impl QuadRenderer {
             let i = i as u32;
             render_pass.set_bind_group(
                 1,
-                &self.quad_bind_group,
+                self.quad_uniform_buffer.bind_group(),
                 &[quad_metadata.uniform_offset.into()],
             );
 
@@ -485,6 +467,7 @@ impl QuadRenderer {
         self.quad_metadata.clear();
         self.global_uniform_count = 0;
         self.quad_count = 0;
+        self.quad_uniform_buffer.clear();
     }
 
     pub fn set_polygon_mode(&mut self, device: &wgpu::Device, polygon_mode: PolygonMode) {
@@ -494,7 +477,7 @@ impl QuadRenderer {
             self.surface_texture_format,
             &self.texture_bind_group_layout,
             &self.global_bind_group_layout,
-            &self.quad_bind_group_layout,
+            self.quad_uniform_buffer.bind_group_layout(),
             polygon_mode.into_polygon_mode(),
         );
         self.ui_render_pipeline = Self::create_ui_render_pipeline(
@@ -502,7 +485,7 @@ impl QuadRenderer {
             self.surface_texture_format,
             &self.texture_bind_group_layout,
             &self.global_bind_group_layout,
-            &self.quad_bind_group_layout,
+            self.quad_uniform_buffer.bind_group_layout(),
             polygon_mode.into_polygon_mode(),
         );
     }
@@ -572,22 +555,6 @@ impl QuadRenderer {
                 | wgpu::BufferUsages::COPY_SRC
                 | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
-        })
-    }
-
-    fn create_quad_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("quad_renderer_quad_bind_group_layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: true,
-                    min_binding_size: wgpu::BufferSize::new(QUAD_UNIFORM_SIZE),
-                },
-                count: None,
-            }],
         })
     }
 

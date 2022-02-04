@@ -7,5 +7,6 @@ pub(crate) mod primitives;
 mod render_passes;
 mod renderers;
 pub(crate) mod texture;
+mod uniform_buffer;
 mod utils;
 pub(crate) mod wgpu_state;

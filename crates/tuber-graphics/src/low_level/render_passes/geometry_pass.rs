@@ -55,20 +55,6 @@ pub(crate) fn geometry_pass(
         .cloned()
         .collect::<Vec<_>>();
 
-    let mut render_draw_commands = context
-        .command_buffer
-        .draw_pre_render_commands()
-        .iter()
-        .map(|pre_render_command| DrawQuadCommand {
-            quad: Quad::with_size(pre_render_command.size),
-            world_transform: pre_render_command.world_transform,
-            material: context.pre_renders[pre_render_command.render_id.0]
-                .material
-                .clone(),
-        })
-        .collect::<Vec<_>>();
-
-    draw_commands.append(&mut render_draw_commands);
     draw_commands.sort_by(|first_draw_command, second_draw_command| {
         (first_draw_command.world_transform.column(3).z as f32)
             .partial_cmp(&(second_draw_command.world_transform.column(3).z as f32))
@@ -78,6 +64,7 @@ pub(crate) fn geometry_pass(
     let quad_group = context.quad_renderer.prepare_quad_group(
         context.device,
         context.queue,
+        command_encoder,
         context.textures,
         context.projection_matrix,
         context.view_transform,

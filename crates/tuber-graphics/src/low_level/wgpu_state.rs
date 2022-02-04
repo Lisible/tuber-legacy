@@ -8,7 +8,6 @@ use crate::low_level::primitives::{Material, TextureId};
 use crate::low_level::render_passes::composition_pass::composition_pass;
 use crate::low_level::render_passes::geometry_pass::geometry_pass;
 use crate::low_level::render_passes::lighting_pass::lighting_pass;
-use crate::low_level::render_passes::pre_render_pass::pre_render_pass;
 use crate::low_level::render_passes::ui_pass::ui_pass;
 use crate::low_level::renderers::light_renderer::LightRenderer;
 use crate::low_level::renderers::quad_renderer::QuadRenderer;
@@ -33,7 +32,6 @@ pub struct WGPUState {
 
     next_texture_id: usize,
     textures: HashMap<TextureId, wgpu::Texture>,
-    pre_renders: Vec<PreRender>,
 
     projection_matrix: Matrix4<f32>,
     view_transform: Matrix4<f32>,
@@ -94,21 +92,10 @@ impl WGPUState {
 
             projection_matrix: Matrix4::identity(),
             view_transform: Matrix4::identity(),
-            pre_renders: vec![],
             command_buffer: CommandBuffer::new(),
 
             ambient_light: Color::WHITE,
         }
-    }
-
-    pub fn allocate_pre_render(&mut self, size_pixel: Size2<u32>) -> RenderId {
-        let material = self.allocate_material(size_pixel);
-        self.pre_renders.push(PreRender {
-            size: Size2::new(size_pixel.width as f32, size_pixel.height as f32),
-            material,
-        });
-
-        RenderId(self.pre_renders.len() - 1)
     }
 
     fn allocate_material(&mut self, size_pixel: Size2<u32>) -> Material {
@@ -163,7 +150,6 @@ impl WGPUState {
                 command_buffer: &self.command_buffer,
                 viewport_size: self.size.into(),
                 textures: &self.textures,
-                pre_renders: &self.pre_renders,
                 clear_color: self.clear_color,
                 projection_matrix: &self.projection_matrix,
                 view_transform: &self.view_transform,
@@ -172,7 +158,6 @@ impl WGPUState {
                 compositor: &mut self.compositor,
             };
 
-            pre_render_pass(&mut render_context, &mut command_encoder);
             let ui_render = ui_pass(&mut render_context, &mut command_encoder);
             let g_buffer = geometry_pass(&mut render_context, &mut command_encoder);
             let lit_render = lighting_pass(
@@ -190,9 +175,9 @@ impl WGPUState {
             )
         };
 
-        self.quad_renderer.finish_preparation(&self.queue);
+        self.quad_renderer
+            .finish_preparation(&self.device, &mut command_encoder, &self.queue);
         self.queue.submit(std::iter::once(command_encoder.finish()));
-
         final_render.present();
 
         self.quad_renderer.clear_pending_quads();
@@ -248,7 +233,6 @@ pub(crate) struct RenderContext<'a> {
     pub command_buffer: &'a CommandBuffer,
     pub viewport_size: Size2<u32>,
     pub textures: &'a HashMap<TextureId, wgpu::Texture>,
-    pub pre_renders: &'a Vec<PreRender>,
     pub clear_color: Color,
     pub projection_matrix: &'a Matrix4<f32>,
     pub view_transform: &'a Matrix4<f32>,
