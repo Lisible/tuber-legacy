@@ -114,6 +114,18 @@
       "width": 16,
       "height": 16
     },
+    "lava_1": {
+      "x": 192,
+      "y": 0,
+      "width": 16,
+      "height": 16
+    },
+    "lava_2": {
+      "x": 192,
+      "y": 16,
+      "width": 16,
+      "height": 16
+    },
     "corner_south_east_2": {
       "x": 176,
       "y": 16,
