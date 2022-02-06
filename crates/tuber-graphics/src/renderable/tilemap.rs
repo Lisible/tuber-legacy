@@ -1,20 +1,18 @@
 use crate::animation::AnimationState;
-use crate::graphics::RenderId;
-use crate::{MaterialDescription, Size2, TextureRegion};
+use crate::{MaterialDescriptor, Size2, TextureRegion};
 
 pub struct Tilemap {
     size: Size2<usize>,
     tile_size: Size2<u32>,
     tiles: Vec<Option<Tile>>,
-    material: MaterialDescription,
-    render_id: Option<RenderId>,
+    material: MaterialDescriptor,
 }
 
 impl Tilemap {
     pub fn new(
         size: Size2<usize>,
         tile_size: Size2<u32>,
-        material: MaterialDescription,
+        material: MaterialDescriptor,
         default_tile: Option<Tile>,
     ) -> Self {
         Self {
@@ -22,7 +20,6 @@ impl Tilemap {
             tile_size,
             tiles: vec![default_tile.clone(); size.width * size.height],
             material,
-            render_id: None,
         }
     }
 
@@ -61,16 +58,8 @@ impl Tilemap {
         &self.tiles[x + y * self.size.width]
     }
 
-    pub fn material(&self) -> &MaterialDescription {
+    pub fn material(&self) -> &MaterialDescriptor {
         &self.material
-    }
-
-    pub fn render_id(&self) -> &Option<RenderId> {
-        &self.render_id
-    }
-
-    pub(crate) fn set_render_id(&mut self, render_id: RenderId) {
-        self.render_id = Some(render_id);
     }
 }
 
@@ -105,7 +94,7 @@ mod tests {
         let mut tilemap = Tilemap::new(
             (10, 10).into(),
             (32, 32).into(),
-            MaterialDescription {
+            MaterialDescriptor {
                 albedo_map: "albedo_map".into(),
                 ..Default::default()
             },

@@ -1,4 +1,4 @@
-use crate::low_level::utils::{create_copyable_buffer, create_uniform_buffer};
+use crate::low_level::utils::create_uniform_buffer;
 use nalgebra::max;
 use std::marker::PhantomData;
 use wgpu::{
@@ -147,6 +147,14 @@ where
             &self.buffer,
             &self.bind_group_layout,
         );
+    }
+
+    pub fn count(&self) -> usize {
+        self.uniform_count
+    }
+
+    pub fn current_offset(&self) -> usize {
+        self.count() * self.uniform_offset
     }
 
     fn create_buffer(

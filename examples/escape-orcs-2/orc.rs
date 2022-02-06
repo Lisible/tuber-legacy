@@ -9,7 +9,7 @@ use tuber::graphics::texture::TextureAtlas;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::{EntityIndex, Parent};
 use tuber_graphics::animation::AnimationState;
-use tuber_graphics::material::MaterialDescription;
+use tuber_graphics::material::MaterialDescriptor;
 
 pub(crate) struct Orc;
 
@@ -34,7 +34,7 @@ fn create_orc_entity_definition(asset_store: &mut AssetStore) -> impl EntityDefi
         AnimatedSprite {
             width: 64.0,
             height: 64.0,
-            material: MaterialDescription {
+            material: MaterialDescriptor {
                 albedo_map: "spritesheet".to_string(),
                 normal_map: Some("normal_spritesheet".to_string()),
                 emission_map: Some("emissive_spritesheet".to_string()),
@@ -64,7 +64,7 @@ fn create_orc_shadow_entity_definition(
             width: 48.0,
             height: 14.0,
             texture_region: atlas.texture_region("shadow").unwrap(),
-            material: MaterialDescription {
+            material: MaterialDescriptor {
                 albedo_map: "spritesheet".to_string(),
                 normal_map: Some("normal_spritesheet".to_string()),
                 emission_map: Some("emissive_spritesheet".to_string()),

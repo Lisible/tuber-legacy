@@ -1,5 +1,4 @@
 use crate::geometry::Vertex;
-use crate::types::Size2;
 use std::ops::Deref;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -19,7 +18,7 @@ impl Deref for TextureId {
     }
 }
 
-pub type Index = u64;
+pub type Index = u32;
 
 #[derive(Debug, Clone)]
 pub struct Mesh {
@@ -66,33 +65,6 @@ pub struct Quad {
     pub bottom_left: Vertex,
     pub top_right: Vertex,
     pub bottom_right: Vertex,
-}
-
-impl Quad {
-    pub fn with_size(size: Size2) -> Self {
-        Self {
-            top_left: Vertex {
-                position: [0.0, 0.0, 0.0],
-                texture_coordinates: [0.0, 0.0],
-                ..Default::default()
-            },
-            bottom_left: Vertex {
-                position: [0.0, size.height, 0.0],
-                texture_coordinates: [0.0, 1.0],
-                ..Default::default()
-            },
-            top_right: Vertex {
-                position: [size.width, 0.0, 0.0],
-                texture_coordinates: [1.0, 0.0],
-                ..Default::default()
-            },
-            bottom_right: Vertex {
-                position: [size.width, size.height, 0.0],
-                texture_coordinates: [1.0, 1.0],
-                ..Default::default()
-            },
-        }
-    }
 }
 
 impl Default for Quad {

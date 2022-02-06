@@ -1,73 +1,49 @@
 use crate::geometry::Vertex;
-use crate::low_level::uniform_buffer::UniformBuffer;
-use crate::low_level::utils::{
-    create_copyable_buffer, create_global_uniform_bind_group,
-    create_global_uniform_bind_group_layout, create_global_uniform_buffer,
-    create_uniform_bind_group,
-};
-use crate::low_level::vertex_buffer::VertexBuffer;
-use crate::primitives::{Index, Mesh};
+use crate::low_level::buffers::index_buffer::IndexBuffer;
+use crate::low_level::buffers::uniform_buffer::UniformBuffer;
+use crate::low_level::buffers::vertex_buffer::VertexBuffer;
+use crate::low_level::texture::create_default_sampler;
+use crate::primitives::{Mesh, TextureId};
 use crate::Material;
 use nalgebra::Matrix4;
-use tuber_core::transform::Transform;
+use std::collections::HashMap;
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupLayout, BindGroupLayoutDescriptor, Buffer,
-    BufferAddress, BufferSize, BufferUsages, Device, PolygonMode, RenderPipeline, TextureFormat,
+    BindGroupDescriptor, BindGroupLayout, CommandEncoder, Device, IndexFormat, PolygonMode, Queue,
+    RenderPass, RenderPipeline, Texture, TextureFormat, TextureViewDescriptor,
 };
 
-const INITIAL_VERTEX_BUFFER_CAPACITY: usize = 1024;
-const INITIAL_VERTEX_BUFFER_SIZE: BufferAddress =
-    (INITIAL_VERTEX_BUFFER_CAPACITY * std::mem::size_of::<Vertex>()) as u64;
-const INITIAL_INDEX_BUFFER_CAPACITY: usize = 1024;
-const INITIAL_INDEX_BUFFER_SIZE: BufferAddress =
-    (INITIAL_INDEX_BUFFER_CAPACITY * std::mem::size_of::<Index>()) as u64;
-const INITIAL_MESH_UNIFORM_BUFFER_CAPACITY: usize = 100;
-const INITIAL_MESH_UNIFORM_BUFFER_SIZE: BufferAddress =
-    (INITIAL_INDEX_BUFFER_CAPACITY * std::mem::size_of::<MeshUniform>()) as u64;
+const INITIAL_VERTEX_BUFFER_CAPACITY: usize = 1000;
+const INITIAL_INDEX_BUFFER_CAPACITY: usize = 3000;
+const INITIAL_MESH_BUFFER_CAPACITY: usize = 100;
 
 pub struct MeshRenderer {
     vertex_buffer: VertexBuffer,
-    index_buffer: Buffer,
-
-    global_uniform_buffer: Buffer,
-    global_uniform_bind_group_layout: BindGroupLayout,
-    global_uniform_bind_group: BindGroup,
+    index_buffer: IndexBuffer,
 
     mesh_uniform_buffer: UniformBuffer<MeshUniform>,
 
     texture_bind_group_layout: BindGroupLayout,
+    texture_bind_groups: HashMap<Material, wgpu::BindGroup>,
 
     render_pipeline: RenderPipeline,
+    draw_metadata: Vec<DrawMetadata>,
 }
 
 impl MeshRenderer {
     pub fn new(device: &Device, surface_texture_format: TextureFormat) -> Self {
-        let vertex_buffer =
-            VertexBuffer::with_capacity(device, "mesh_renderer_vertex_buffer", 1000);
-        let index_buffer = create_copyable_buffer(
+        let vertex_buffer = VertexBuffer::with_capacity(
+            device,
+            "mesh_renderer_vertex_buffer",
+            INITIAL_VERTEX_BUFFER_CAPACITY,
+        );
+        let index_buffer = IndexBuffer::with_capacity(
             device,
             "mesh_renderer_index_buffer",
-            INITIAL_INDEX_BUFFER_SIZE,
-            BufferUsages::INDEX,
+            INITIAL_INDEX_BUFFER_CAPACITY,
         );
 
-        let global_uniform_buffer = create_global_uniform_buffer(
-            device,
-            "mesh_renderer_global_uniform_buffer",
-            GlobalUniform,
-        );
-        let global_uniform_bind_group_layout = create_global_uniform_bind_group_layout(
-            device,
-            "mesh_renderer_global_uniform_bind_group_layout",
-        );
-        let global_uniform_bind_group = create_global_uniform_bind_group(
-            device,
-            "mesh_renderer_global_uniform_bind_group",
-            &global_uniform_bind_group_layout,
-            &global_uniform_buffer,
-        );
-
-        let mesh_uniform_buffer = UniformBuffer::new(device, "mesh_uniform", 1000);
+        let mesh_uniform_buffer =
+            UniformBuffer::new(device, "mesh_uniform", INITIAL_MESH_BUFFER_CAPACITY);
 
         let texture_bind_group_layout = Self::create_texture_bind_group_layout(device);
 
@@ -75,7 +51,6 @@ impl MeshRenderer {
             device,
             surface_texture_format,
             &texture_bind_group_layout,
-            &global_uniform_bind_group_layout,
             mesh_uniform_buffer.bind_group_layout(),
         );
 
@@ -83,22 +58,131 @@ impl MeshRenderer {
             vertex_buffer,
             index_buffer,
 
-            global_uniform_buffer,
-            global_uniform_bind_group_layout,
-            global_uniform_bind_group,
-
             mesh_uniform_buffer,
 
             texture_bind_group_layout,
+            texture_bind_groups: HashMap::new(),
             render_pipeline,
+            draw_metadata: vec![],
         }
     }
 
     /// Submits a mesh for rendering
-    pub fn draw_mesh(&mut self, parameters: DrawMeshParameters) {}
+    pub fn draw_mesh(
+        &mut self,
+        command_encoder: &mut CommandEncoder,
+        device: &Device,
+        queue: &Queue,
+        textures: &HashMap<TextureId, Texture>,
+        params: DrawMeshParameters,
+    ) {
+        self.vertex_buffer
+            .append_vertices(command_encoder, device, queue, params.mesh.vertices());
+        let current_offset = self.index_buffer.current_offset();
+        self.index_buffer
+            .append_indices(command_encoder, device, queue, params.mesh.indices());
+
+        let mesh_uniform_offset = self.mesh_uniform_buffer.current_offset();
+        self.mesh_uniform_buffer.append_uniforms(
+            command_encoder,
+            device,
+            queue,
+            &[MeshUniform {
+                transform_matrix: params.transform.into(),
+                projection_matrix: params.projection.into(),
+                view_matrix: params.view.into(),
+            }],
+        );
+
+        let texture_bind_group = self.create_texture_bind_group(device, textures, &params.material);
+        self.texture_bind_groups
+            .insert(params.material.clone(), texture_bind_group);
+
+        self.draw_metadata.push(DrawMetadata {
+            start_offset: current_offset as u32,
+            length: params.mesh.indices().len() as u32,
+            mesh_uniform_offset: mesh_uniform_offset as u32,
+            material: params.material.clone(),
+        });
+    }
 
     /// Renders
-    pub fn render(&mut self) {}
+    pub fn render<'rpass: 'pass, 'pass>(&'rpass self, render_pass: &mut RenderPass<'pass>) {
+        render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
+
+        for draw_metadata in &self.draw_metadata {
+            render_pass.set_bind_group(1, &self.texture_bind_groups[&draw_metadata.material], &[]);
+            render_pass.set_bind_group(
+                0,
+                self.mesh_uniform_buffer.bind_group(),
+                &[draw_metadata.mesh_uniform_offset],
+            );
+            render_pass.draw_indexed(
+                draw_metadata.start_offset..(draw_metadata.start_offset + draw_metadata.length),
+                0,
+                0..1,
+            )
+        }
+    }
+
+    pub fn cleanup(&mut self) {
+        self.draw_metadata.clear();
+        self.vertex_buffer.clear();
+        self.index_buffer.clear();
+        self.mesh_uniform_buffer.clear();
+    }
+
+    fn create_texture_bind_group(
+        &mut self,
+        device: &wgpu::Device,
+        textures: &HashMap<TextureId, wgpu::Texture>,
+        material: &Material,
+    ) -> wgpu::BindGroup {
+        let albedo_map_texture = &textures[&material.albedo_map_id];
+        let albedo_map_view = albedo_map_texture.create_view(&TextureViewDescriptor::default());
+        let albedo_map_sampler = create_default_sampler(device);
+
+        let normal_map_texture = &textures[&material.normal_map_id];
+        let normal_map_view = normal_map_texture.create_view(&TextureViewDescriptor::default());
+        let normal_map_sampler = create_default_sampler(device);
+
+        let emission_map_texture = &textures[&material.emission_map_id];
+        let emission_map_view = emission_map_texture.create_view(&TextureViewDescriptor::default());
+        let emission_map_sampler = create_default_sampler(device);
+
+        device.create_bind_group(&BindGroupDescriptor {
+            label: None,
+            layout: &self.texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&albedo_map_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&albedo_map_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&normal_map_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&normal_map_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&emission_map_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&emission_map_sampler),
+                },
+            ],
+        })
+    }
 
     fn create_texture_bind_group_layout(device: &Device) -> BindGroupLayout {
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -169,22 +253,17 @@ impl MeshRenderer {
         device: &wgpu::Device,
         surface_texture_format: wgpu::TextureFormat,
         texture_bind_group_layout: &wgpu::BindGroupLayout,
-        global_uniform_bind_group_layout: &wgpu::BindGroupLayout,
         mesh_uniform_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> wgpu::RenderPipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("mesh_renderer_shader_module"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../../shaders/quad.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../../shaders/mesh.wgsl").into()),
         });
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("mesh_renderer_render_pipeline_layout"),
-                bind_group_layouts: &[
-                    global_uniform_bind_group_layout,
-                    mesh_uniform_bind_group_layout,
-                    texture_bind_group_layout,
-                ],
+                bind_group_layouts: &[mesh_uniform_bind_group_layout, texture_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -247,7 +326,7 @@ impl MeshRenderer {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
+                cull_mode: None,
                 polygon_mode: PolygonMode::Fill,
                 clamp_depth: false,
                 conservative: false,
@@ -276,18 +355,17 @@ pub struct DrawMeshParameters {
     pub projection: Matrix4<f32>,
 }
 
-#[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct MeshUniform;
-impl MeshUniform {
-    pub fn create_bind_group_layout(device: &Device) -> BindGroupLayout {
-        device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("mesh_renderer_mesh_uniform_bind_group_layout"),
-            entries: &[],
-        })
-    }
+struct DrawMetadata {
+    pub start_offset: u32,
+    pub length: u32,
+    pub mesh_uniform_offset: u32,
+    pub material: Material,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct GlobalUniform;
+struct MeshUniform {
+    transform_matrix: [[f32; 4]; 4],
+    view_matrix: [[f32; 4]; 4],
+    projection_matrix: [[f32; 4]; 4],
+}

@@ -1,15 +1,16 @@
-use crate::draw_command::{Command, DrawLightCommand, DrawQuadCommand};
+use crate::draw_command::{Command, DrawLightCommand, DrawMeshCommand, DrawQuadCommand};
 use crate::font::DEFAULT_FONT_IDENTIFIER;
 use crate::geometry::Vertex;
 use crate::primitives::Quad;
 use crate::renderable::light::PointLight;
+use crate::renderable::mesh::MeshDescriptor;
 use crate::texture::{
     BLACK_TEXTURE_IDENTIFIER, MISSING_TEXTURE_IDENTIFIER, WHITE_TEXTURE_IDENTIFIER,
 };
 use crate::{
     bitmap_font::font_loader, font, texture, texture_atlas_loader, texture_loader, Active,
     AnimatedSprite, BitmapFont, Color, GBufferComponent, GraphicsError, Material,
-    MaterialDescription, OrthographicCamera, PolygonMode, RectangleShape, Size2, Sprite,
+    MaterialDescriptor, OrthographicCamera, PolygonMode, RectangleShape, Size2, Sprite,
     TextureAtlas, TextureData, TextureMetadata, TextureRegion, Tile, Tilemap, WGPUState, Window,
     WindowSize, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
@@ -140,28 +141,77 @@ impl Graphics {
             }))
     }
 
+    pub fn draw_mesh(
+        &mut self,
+        mesh: &MeshDescriptor,
+        transform_matrix: Matrix4<f32>,
+        asset_manager: &mut AssetStore,
+    ) {
+        self.load_material_in_vram_if_required(asset_manager, mesh.material());
+        let material = self.create_material(mesh.material());
+
+        self.wgpu_state
+            .as_mut()
+            .unwrap()
+            .command_buffer_mut()
+            .add(Command::DrawMesh(DrawMeshCommand {
+                mesh: mesh.create_mesh(),
+                world_transform: transform_matrix,
+                material,
+            }))
+    }
+
+    pub fn create_material(&self, material_descriptor: &MaterialDescriptor) -> Material {
+        let default_albedo_map = self
+            .texture_metadata
+            .get(MISSING_TEXTURE_IDENTIFIER)
+            .expect("Default albedo map not found");
+        let albedo_map_metadata = match self.texture_metadata.get(&material_descriptor.albedo_map) {
+            Some(albedo_map_medata) => albedo_map_medata,
+            None => default_albedo_map,
+        };
+
+        let default_normal_map = self
+            .texture_metadata
+            .get(DEFAULT_NORMAL_MAP_IDENTIFIER)
+            .expect("Default normal map not found");
+        let normal_map_metadata = match &material_descriptor.normal_map {
+            Some(normal_map) => match self.texture_metadata.get(normal_map) {
+                Some(normal_map_metadata) => normal_map_metadata,
+                None => default_normal_map,
+            },
+            None => default_normal_map,
+        };
+
+        let default_emission_map = self
+            .texture_metadata
+            .get(BLACK_TEXTURE_IDENTIFIER)
+            .expect("Default emission map not found");
+        let emission_map_metadata = match &material_descriptor.emission_map {
+            Some(emission_map) => match self.texture_metadata.get(emission_map) {
+                Some(texture_metadata) => texture_metadata,
+                None => default_emission_map,
+            },
+            None => default_emission_map,
+        };
+
+        Material {
+            albedo_map_id: albedo_map_metadata.texture_id,
+            normal_map_id: normal_map_metadata.texture_id,
+            emission_map_id: emission_map_metadata.texture_id,
+        }
+    }
+
     pub fn draw_sprite(
         &mut self,
         sprite: &Sprite,
         transform_matrix: Matrix4<f32>,
         asset_manager: &mut AssetStore,
     ) -> Result<(), GraphicsError> {
-        self.load_texture_in_vram_if_required(asset_manager, &sprite.material.albedo_map);
+        self.load_material_in_vram_if_required(asset_manager, &sprite.material);
 
-        let albedo_map_metadata = match self.texture_metadata.get(&sprite.material.albedo_map) {
-            Some(albedo_map_medata) => albedo_map_medata,
-            None => &self.texture_metadata[MISSING_TEXTURE_IDENTIFIER],
-        };
-
-        let normal_map_metadata = match &sprite.material.normal_map {
-            Some(normal_map) => self.texture_metadata.get(normal_map),
-            None => None,
-        };
-
-        let emission_map_metadata = match &sprite.material.emission_map {
-            Some(emission_map) => self.texture_metadata.get(emission_map),
-            None => None,
-        };
+        let albedo_map_metadata = &self.texture_metadata[&sprite.material.albedo_map];
+        let material = self.create_material(&sprite.material);
 
         let texture_region = sprite
             .texture_region
@@ -204,17 +254,7 @@ impl Graphics {
                     },
                 },
                 world_transform: transform_matrix,
-                material: Material {
-                    albedo_map_id: albedo_map_metadata.texture_id,
-                    normal_map_id: normal_map_metadata
-                        .or(Some(&self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER]))
-                        .unwrap()
-                        .texture_id,
-                    emission_map_id: emission_map_metadata
-                        .or(Some(&self.texture_metadata[BLACK_TEXTURE_IDENTIFIER]))
-                        .unwrap()
-                        .texture_id,
-                },
+                material,
             }));
 
         Ok(())
@@ -249,15 +289,7 @@ impl Graphics {
             normalized_texture_region = normalized_texture_region.flip_x();
         }
 
-        let albedo_map_id = self.texture_metadata[&animated_sprite.material.albedo_map].texture_id;
-        let normal_map_id = match &animated_sprite.material.normal_map {
-            Some(normal_map) => self.texture_metadata[normal_map].texture_id,
-            None => self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id,
-        };
-        let emission_map_id = match &animated_sprite.material.emission_map {
-            Some(emission_map) => self.texture_metadata[emission_map].texture_id,
-            None => self.texture_metadata[BLACK_TEXTURE_IDENTIFIER].texture_id,
-        };
+        let material = self.create_material(&animated_sprite.material);
 
         self.wgpu_state
             .as_mut()
@@ -299,11 +331,7 @@ impl Graphics {
                     },
                 },
                 world_transform: transform_matrix,
-                material: Material {
-                    albedo_map_id,
-                    normal_map_id,
-                    emission_map_id,
-                },
+                material,
             }));
 
         Ok(())
@@ -315,10 +343,10 @@ impl Graphics {
         tilemap: &mut Tilemap,
         transform_matrix: Matrix4<f32>,
     ) {
-        let tilemap_material = tilemap.material();
-        self.load_material_in_vram_if_required(asset_store, tilemap_material);
+        self.load_material_in_vram_if_required(asset_store, tilemap.material());
+        let material = self.create_material(tilemap.material());
 
-        let albedo_map_texture_metadata = &self.texture_metadata[&tilemap_material.albedo_map];
+        let albedo_map_texture_metadata = &self.texture_metadata[&tilemap.material().albedo_map];
         let tilemap_size = tilemap.size();
         let tile_size = tilemap.tile_size();
         for (tile_index, tile) in tilemap.tiles().iter().enumerate() {
@@ -379,23 +407,7 @@ impl Graphics {
                             (tile_y * tilemap.tile_size().height as usize) as f32,
                             0.0,
                         )),
-                        material: Material {
-                            albedo_map_id: albedo_map_texture_metadata.texture_id,
-                            normal_map_id: match &tilemap_material.normal_map {
-                                Some(normal_map_identifier) => {
-                                    self.texture_metadata[normal_map_identifier].texture_id
-                                }
-                                None => {
-                                    self.texture_metadata[DEFAULT_NORMAL_MAP_IDENTIFIER].texture_id
-                                }
-                            },
-                            emission_map_id: match &tilemap_material.emission_map {
-                                Some(emission_map_identifier) => {
-                                    self.texture_metadata[emission_map_identifier].texture_id
-                                }
-                                None => self.texture_metadata[BLACK_TEXTURE_IDENTIFIER].texture_id,
-                            },
-                        },
+                        material: material.clone(),
                     }));
             }
         }
@@ -535,7 +547,7 @@ impl Graphics {
     fn load_material_in_vram_if_required(
         &mut self,
         asset_manager: &mut AssetStore,
-        material: &MaterialDescription,
+        material: &MaterialDescriptor,
     ) {
         self.load_texture_in_vram_if_required(asset_manager, &material.albedo_map);
         if let Some(normal_map) = &material.normal_map {
@@ -630,6 +642,28 @@ impl Graphics {
             )
             .unwrap();
         }
+
+        for (_, (mesh, transform, parent)) in
+            ecs.query::<(R<MeshDescriptor>, R<Transform>, Opt<R<Parent>>)>()
+        {
+            let mut parent_transform = Matrix4::<f32>::identity();
+            let mut parent = parent;
+            while let Some(parent_ref) = &parent {
+                let parent_id = parent_ref.0;
+                let (_, (transform, p)) = ecs
+                    .query_one_by_id::<(R<Transform>, Opt<R<Parent>>)>(parent_id)
+                    .unwrap();
+                parent_transform *= transform.into_matrix4();
+                parent = p;
+            }
+
+            self.draw_mesh(
+                &mesh,
+                parent_transform * transform.into_matrix4(),
+                asset_store,
+            )
+        }
+
         for (_, (animated_sprite, transform, parent)) in
             ecs.query::<(R<AnimatedSprite>, R<Transform>, Opt<R<Parent>>)>()
         {

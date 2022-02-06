@@ -1,3 +1,4 @@
+mod buffers;
 pub(crate) mod composition;
 pub(crate) mod draw_command;
 pub(crate) mod g_buffer;
@@ -7,7 +8,5 @@ pub(crate) mod primitives;
 mod render_passes;
 mod renderers;
 pub(crate) mod texture;
-mod uniform_buffer;
 mod utils;
-mod vertex_buffer;
 pub(crate) mod wgpu_state;

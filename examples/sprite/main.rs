@@ -11,7 +11,7 @@ use tuber_ecs::system::SystemBundle;
 use tuber_engine::engine_context::EngineContext;
 use tuber_engine::system_bundle;
 use tuber_graphics::animation::AnimationState;
-use tuber_graphics::material::MaterialDescription;
+use tuber_graphics::material::MaterialDescriptor;
 use tuber_graphics::texture::TextureAtlas;
 
 fn main() -> Result<()> {
@@ -57,7 +57,7 @@ impl State for MainState {
                 width: 50.0,
                 height: 50.0,
                 texture_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
-                material: MaterialDescription {
+                material: MaterialDescriptor {
                     albedo_map: "sprite".to_string(),
                     normal_map: None,
                     emission_map: None,
@@ -75,7 +75,7 @@ impl State for MainState {
                 width: 50.0,
                 height: 50.0,
                 texture_region: TextureRegion::new(0.0, 0.0, 32.0, 32.0),
-                material: MaterialDescription {
+                material: MaterialDescriptor {
                     albedo_map: "sprite".to_string(),
                     ..Default::default()
                 },
@@ -92,7 +92,7 @@ impl State for MainState {
                 width: 50.0,
                 height: 50.0,
                 texture_region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
-                material: MaterialDescription {
+                material: MaterialDescriptor {
                     albedo_map: "dfhgfhfh".to_string(),
                     ..Default::default()
                 },
@@ -109,7 +109,7 @@ impl State for MainState {
                 width: 100.0,
                 height: 100.0,
                 texture_region: TextureRegion::new(0.0, 0.0, 16.0, 16.0),
-                material: MaterialDescription {
+                material: MaterialDescriptor {
                     albedo_map: "dfhgfhfh".to_string(),
                     ..Default::default()
                 },
@@ -130,7 +130,7 @@ impl State for MainState {
                 width: 100.0,
                 height: 100.0,
                 texture_region: texture_atlas.texture_region("tree").unwrap(),
-                material: MaterialDescription {
+                material: MaterialDescriptor {
                     albedo_map: "atlas_texture".to_string(),
                     ..Default::default()
                 },
@@ -147,7 +147,7 @@ impl State for MainState {
                 width: 50.0,
                 height: 50.0,
                 texture_region: texture_atlas.texture_region("house").unwrap(),
-                material: MaterialDescription {
+                material: MaterialDescriptor {
                     albedo_map: "atlas_texture".to_string(),
                     ..Default::default()
                 },
@@ -163,7 +163,7 @@ impl State for MainState {
             AnimatedSprite {
                 width: 100.0,
                 height: 100.0,
-                material: MaterialDescription {
+                material: MaterialDescriptor {
                     albedo_map: "animated_sprite".into(),
                     ..Default::default()
                 },

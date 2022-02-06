@@ -1,8 +1,7 @@
-use crate::draw_command::DrawQuadCommand;
 use crate::low_level::g_buffer::GBuffer;
+use crate::low_level::renderers::mesh_renderer::DrawMeshParameters;
 use crate::low_level::renderers::quad_renderer::QuadRenderPassType;
 use crate::low_level::texture::{create_g_buffer_texture_descriptor, create_texture_descriptor};
-use crate::primitives::Quad;
 use crate::wgpu_state::RenderContext;
 
 pub(crate) fn geometry_pass(
@@ -71,6 +70,23 @@ pub(crate) fn geometry_pass(
         false,
     );
 
+    for command in context.command_buffer.draw_mesh_commands() {
+        let command = command.clone();
+        context.mesh_renderer.draw_mesh(
+            command_encoder,
+            context.device,
+            context.queue,
+            context.textures,
+            DrawMeshParameters {
+                mesh: command.mesh,
+                material: command.material,
+                transform: command.world_transform,
+                view: context.view_transform.clone(),
+                projection: context.projection_matrix.clone(),
+            },
+        );
+    }
+
     {
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("geometry_pass"),
@@ -135,7 +151,9 @@ pub(crate) fn geometry_pass(
             &mut render_pass,
             QuadRenderPassType::Geometry,
             &quad_group,
-        )
+        );
+
+        context.mesh_renderer.render(&mut render_pass);
     }
 
     GBuffer {

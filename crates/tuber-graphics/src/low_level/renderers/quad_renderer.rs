@@ -1,26 +1,18 @@
 use crate::draw_command::DrawQuadCommand;
 use crate::geometry::Vertex;
+use crate::low_level::buffers::uniform_buffer::UniformBuffer;
+use crate::low_level::buffers::vertex_buffer::VertexBuffer;
 use crate::low_level::polygon_mode::PolygonMode;
 use crate::low_level::primitives::TextureId;
 use crate::low_level::texture::create_default_sampler;
-use crate::low_level::uniform_buffer::UniformBuffer;
-use crate::low_level::vertex_buffer::VertexBuffer;
 use crate::low_level::wgpu_state::IntoPolygonMode;
 use crate::Material;
 use nalgebra::Matrix4;
 use std::collections::HashMap;
-use wgpu::{
-    BindGroupDescriptor, BufferDescriptor, CommandEncoder, CommandEncoderDescriptor, Device,
-    TextureViewDescriptor,
-};
+use wgpu::{BindGroupDescriptor, CommandEncoder, Device, TextureViewDescriptor};
 
-const QUAD_UNIFORM_SIZE: u64 = std::mem::size_of::<QuadUniform>() as u64;
-const GLOBAL_UNIFORM_SIZE: u64 = std::mem::size_of::<QuadGroupUniform>() as u64;
-const VERTEX_SIZE: u64 = std::mem::size_of::<Vertex>() as u64;
 const VERTEX_PER_QUAD: u64 = 6;
-const QUAD_SIZE: u64 = VERTEX_PER_QUAD * VERTEX_SIZE;
 const MIN_QUAD_COUNT: usize = 1000;
-const MIN_GLOBAL_UNIFORM_COUNT: usize = 10;
 
 pub(crate) struct QuadRenderer {
     vertex_buffer: VertexBuffer,
@@ -33,7 +25,6 @@ pub(crate) struct QuadRenderer {
     texture_bind_groups: HashMap<Material, wgpu::BindGroup>,
     ui_texture_bind_groups: HashMap<Material, wgpu::BindGroup>,
 
-    pre_render_pipeline: wgpu::RenderPipeline,
     render_pipeline: wgpu::RenderPipeline,
     ui_render_pipeline: wgpu::RenderPipeline,
 
@@ -68,15 +59,6 @@ impl QuadRenderer {
         let texture_bind_group_layout = Self::create_texture_bind_group_layout(device);
         let ui_texture_bind_group_layout = Self::create_ui_texture_bind_group_layout(device);
 
-        let pre_render_pipeline = Self::create_pre_render_pipeline(
-            device,
-            surface_texture_format,
-            &texture_bind_group_layout,
-            quad_group_uniform_buffer.bind_group_layout(),
-            quad_uniform_buffer.bind_group_layout(),
-            PolygonMode::Fill.into_polygon_mode(),
-        );
-
         let render_pipeline = Self::create_render_pipeline(
             device,
             surface_texture_format,
@@ -105,8 +87,6 @@ impl QuadRenderer {
             ui_texture_bind_group_layout,
             texture_bind_groups: HashMap::new(),
             ui_texture_bind_groups: HashMap::new(),
-
-            pre_render_pipeline,
             render_pipeline,
             ui_render_pipeline,
 
@@ -195,7 +175,7 @@ impl QuadRenderer {
             ]);
 
             self.quad_metadata.push(QuadMetadata {
-                material_description: draw_quad_command.material.clone(),
+                material: draw_quad_command.material.clone(),
                 uniform_offset: (self.quad_metadata.len() * self.min_uniform_alignment as usize)
                     as u32,
             });
@@ -290,7 +270,6 @@ impl QuadRenderer {
         quad_group: &QuadGroup,
     ) {
         let render_pipeline = match quad_render_pass_type {
-            QuadRenderPassType::PreRender => &self.pre_render_pipeline,
             QuadRenderPassType::Geometry => &self.render_pipeline,
             QuadRenderPassType::UI => &self.ui_render_pipeline,
         };
@@ -317,13 +296,13 @@ impl QuadRenderer {
             if quad_render_pass_type == QuadRenderPassType::UI {
                 render_pass.set_bind_group(
                     2,
-                    &self.ui_texture_bind_groups[&quad_metadata.material_description],
+                    &self.ui_texture_bind_groups[&quad_metadata.material],
                     &[],
                 );
             } else {
                 render_pass.set_bind_group(
                     2,
-                    &self.texture_bind_groups[&quad_metadata.material_description],
+                    &self.texture_bind_groups[&quad_metadata.material],
                     &[],
                 );
             }
@@ -363,17 +342,6 @@ impl QuadRenderer {
             self.quad_uniform_buffer.bind_group_layout(),
             polygon_mode.into_polygon_mode(),
         );
-    }
-
-    fn create_vertex_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
-        device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("quad_renderer_vertex_buffer"),
-            size,
-            usage: wgpu::BufferUsages::VERTEX
-                | wgpu::BufferUsages::COPY_DST
-                | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        })
     }
 
     fn create_render_pipeline(
@@ -451,98 +419,6 @@ impl QuadRenderer {
                     wgpu::ColorTargetState {
                         format: wgpu::TextureFormat::Rgba16Float,
                         blend: None,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    },
-                ],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
-                polygon_mode,
-                clamp_depth: false,
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-        })
-    }
-
-    fn create_pre_render_pipeline(
-        device: &wgpu::Device,
-        surface_texture_format: wgpu::TextureFormat,
-        texture_bind_group_layout: &wgpu::BindGroupLayout,
-        global_bind_group_layout: &wgpu::BindGroupLayout,
-        quad_bind_group_layout: &wgpu::BindGroupLayout,
-        polygon_mode: wgpu::PolygonMode,
-    ) -> wgpu::RenderPipeline {
-        let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
-            label: Some("quad_renderer_shader_module"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../../shaders/quad.wgsl").into()),
-        });
-
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("quad_renderer_render_pipeline_layout"),
-                bind_group_layouts: &[
-                    global_bind_group_layout,
-                    quad_bind_group_layout,
-                    texture_bind_group_layout,
-                ],
-                push_constant_ranges: &[],
-            });
-
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("quad_renderer_render_pipeline"),
-            layout: Some(&render_pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader_module,
-                entry_point: "vs_main",
-                buffers: &[Vertex::buffer_layout()],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader_module,
-                entry_point: "fs_main",
-                targets: &[
-                    wgpu::ColorTargetState {
-                        format: surface_texture_format,
-                        blend: Some(wgpu::BlendState {
-                            color: wgpu::BlendComponent {
-                                src_factor: wgpu::BlendFactor::SrcAlpha,
-                                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                                operation: wgpu::BlendOperation::Add,
-                            },
-                            alpha: Default::default(),
-                        }),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    },
-                    wgpu::ColorTargetState {
-                        format: wgpu::TextureFormat::Rgba8Unorm,
-                        blend: Some(wgpu::BlendState {
-                            color: wgpu::BlendComponent {
-                                src_factor: wgpu::BlendFactor::SrcAlpha,
-                                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                                operation: wgpu::BlendOperation::Add,
-                            },
-                            alpha: Default::default(),
-                        }),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    },
-                    wgpu::ColorTargetState {
-                        format: wgpu::TextureFormat::Rgba8Unorm,
-                        blend: Some(wgpu::BlendState {
-                            color: wgpu::BlendComponent {
-                                src_factor: wgpu::BlendFactor::SrcAlpha,
-                                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                                operation: wgpu::BlendOperation::Add,
-                            },
-                            alpha: Default::default(),
-                        }),
                         write_mask: wgpu::ColorWrites::ALL,
                     },
                 ],
@@ -761,7 +637,6 @@ impl QuadRenderer {
 
 #[derive(PartialEq)]
 pub(crate) enum QuadRenderPassType {
-    PreRender,
     Geometry,
     UI,
 }
@@ -774,7 +649,7 @@ pub struct QuadGroup {
 }
 
 struct QuadMetadata {
-    material_description: Material,
+    material: Material,
     uniform_offset: u32,
 }
 

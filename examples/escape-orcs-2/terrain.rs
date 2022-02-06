@@ -2,7 +2,7 @@ use tuber_core::asset::AssetStore;
 use tuber_core::transform::Transform;
 use tuber_ecs::ecs::Ecs;
 use tuber_graphics::animation::AnimationState;
-use tuber_graphics::material::MaterialDescription;
+use tuber_graphics::material::MaterialDescriptor;
 use tuber_graphics::renderable::light::PointLight;
 use tuber_graphics::renderable::tilemap::{AnimatedTile, StaticTile, Tile, Tilemap};
 use tuber_graphics::texture::TextureAtlas;
@@ -72,7 +72,7 @@ pub fn create_tilemap(asset_store: &mut AssetStore) -> Tilemap {
     let mut tilemap = Tilemap::new(
         Size2::new(10, 10),
         Size2::new(TILE_SIZE, TILE_SIZE),
-        MaterialDescription {
+        MaterialDescriptor {
             albedo_map: "spritesheet".to_string(),
             normal_map: Some("normal_spritesheet".to_string()),
             emission_map: Some("emissive_spritesheet".to_string()),

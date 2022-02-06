@@ -1,23 +1,25 @@
+use std::collections::HashMap;
+
+use futures::executor::block_on;
+use nalgebra::Matrix4;
+use wgpu::CommandEncoderDescriptor;
+
+use tuber_ecs::EntityIndex;
+
 use crate::camera::OrthographicCamera;
 use crate::draw_command::CommandBuffer;
 use crate::g_buffer::GBufferComponent;
-use crate::graphics::RenderId;
 use crate::low_level::composition::Compositor;
 use crate::low_level::polygon_mode::PolygonMode;
-use crate::low_level::primitives::{Material, TextureId};
+use crate::low_level::primitives::TextureId;
 use crate::low_level::render_passes::composition_pass::composition_pass;
 use crate::low_level::render_passes::geometry_pass::geometry_pass;
 use crate::low_level::render_passes::lighting_pass::lighting_pass;
 use crate::low_level::render_passes::ui_pass::ui_pass;
 use crate::low_level::renderers::light_renderer::LightRenderer;
+use crate::low_level::renderers::mesh_renderer::MeshRenderer;
 use crate::low_level::renderers::quad_renderer::QuadRenderer;
-use crate::low_level::texture::create_texture_descriptor;
 use crate::{low_level, Color, Size2, TextureData, Window, WindowSize};
-use futures::executor::block_on;
-use nalgebra::Matrix4;
-use std::collections::HashMap;
-use tuber_ecs::EntityIndex;
-use wgpu::CommandEncoderDescriptor;
 
 pub struct WGPUState {
     clear_color: Color,
@@ -26,7 +28,9 @@ pub struct WGPUState {
     queue: wgpu::Queue,
     surface_configuration: wgpu::SurfaceConfiguration,
     size: WindowSize,
+
     quad_renderer: QuadRenderer,
+    mesh_renderer: MeshRenderer,
     light_renderer: LightRenderer,
     compositor: Compositor,
 
@@ -73,6 +77,7 @@ impl WGPUState {
         surface.configure(&device, &surface_configuration);
 
         let quad_renderer = QuadRenderer::new(&device, surface_configuration.format);
+        let mesh_renderer = MeshRenderer::new(&device, surface_configuration.format);
         let light_renderer = LightRenderer::new(&device, surface_configuration.format);
         let compositor = Compositor::new(&device, surface_configuration.format);
 
@@ -83,6 +88,7 @@ impl WGPUState {
             queue,
             surface_configuration,
             size: window_size,
+            mesh_renderer,
             quad_renderer,
             light_renderer,
             compositor,
@@ -96,26 +102,6 @@ impl WGPUState {
 
             ambient_light: Color::WHITE,
         }
-    }
-
-    fn allocate_material(&mut self, size_pixel: Size2<u32>) -> Material {
-        Material {
-            albedo_map_id: self.allocate_texture(size_pixel, wgpu::TextureFormat::Bgra8UnormSrgb),
-            normal_map_id: self.allocate_texture(size_pixel, wgpu::TextureFormat::Rgba8Unorm),
-            emission_map_id: self.allocate_texture(size_pixel, wgpu::TextureFormat::Rgba8Unorm),
-        }
-    }
-
-    fn allocate_texture(
-        &mut self,
-        texture_size: Size2<u32>,
-        format: wgpu::TextureFormat,
-    ) -> TextureId {
-        let texture_id = self.next_texture_id();
-        let texture_descriptor = create_texture_descriptor(None, texture_size, format);
-        self.textures
-            .insert(texture_id, self.device.create_texture(&texture_descriptor));
-        texture_id
     }
 
     fn next_texture_id(&mut self) -> TextureId {
@@ -154,6 +140,7 @@ impl WGPUState {
                 projection_matrix: &self.projection_matrix,
                 view_transform: &self.view_transform,
                 quad_renderer: &mut self.quad_renderer,
+                mesh_renderer: &mut self.mesh_renderer,
                 light_renderer: &mut self.light_renderer,
                 compositor: &mut self.compositor,
             };
@@ -181,6 +168,7 @@ impl WGPUState {
         final_render.present();
 
         self.quad_renderer.clear_pending_quads();
+        self.mesh_renderer.cleanup();
         self.command_buffer_mut().clear();
     }
 
@@ -237,13 +225,9 @@ pub(crate) struct RenderContext<'a> {
     pub projection_matrix: &'a Matrix4<f32>,
     pub view_transform: &'a Matrix4<f32>,
     pub quad_renderer: &'a mut QuadRenderer,
+    pub mesh_renderer: &'a mut MeshRenderer,
     pub light_renderer: &'a mut LightRenderer,
     pub compositor: &'a mut Compositor,
-}
-
-pub struct PreRender {
-    pub size: Size2,
-    pub material: Material,
 }
 
 pub trait IntoPolygonMode {

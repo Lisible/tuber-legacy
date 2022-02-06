@@ -5,7 +5,7 @@ use crate::bitmap_font::BitmapFont;
 use crate::camera::{Active, OrthographicCamera};
 use crate::g_buffer::GBufferComponent;
 use crate::low_level::*;
-use crate::material::MaterialDescription;
+use crate::material::MaterialDescriptor;
 use crate::polygon_mode::PolygonMode;
 use crate::primitives::Material;
 use crate::renderable::shape::RectangleShape;
