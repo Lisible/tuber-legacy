@@ -1,9 +1,11 @@
 use crate::geometry::Vertex;
+use crate::low_level::uniform_buffer::UniformBuffer;
 use crate::low_level::utils::{
     create_copyable_buffer, create_global_uniform_bind_group,
     create_global_uniform_bind_group_layout, create_global_uniform_buffer,
     create_uniform_bind_group,
 };
+use crate::low_level::vertex_buffer::VertexBuffer;
 use crate::primitives::{Index, Mesh};
 use crate::Material;
 use nalgebra::Matrix4;
@@ -24,16 +26,14 @@ const INITIAL_MESH_UNIFORM_BUFFER_SIZE: BufferAddress =
     (INITIAL_INDEX_BUFFER_CAPACITY * std::mem::size_of::<MeshUniform>()) as u64;
 
 pub struct MeshRenderer {
-    vertex_buffer: Buffer,
+    vertex_buffer: VertexBuffer,
     index_buffer: Buffer,
 
     global_uniform_buffer: Buffer,
     global_uniform_bind_group_layout: BindGroupLayout,
     global_uniform_bind_group: BindGroup,
 
-    mesh_uniform_buffer: Buffer,
-    mesh_uniform_bind_group_layout: BindGroupLayout,
-    mesh_uniform_bind_group: BindGroup,
+    mesh_uniform_buffer: UniformBuffer<MeshUniform>,
 
     texture_bind_group_layout: BindGroupLayout,
 
@@ -42,12 +42,8 @@ pub struct MeshRenderer {
 
 impl MeshRenderer {
     pub fn new(device: &Device, surface_texture_format: TextureFormat) -> Self {
-        let vertex_buffer = create_copyable_buffer(
-            device,
-            "mesh_renderer_vertex_buffer",
-            INITIAL_VERTEX_BUFFER_SIZE,
-            BufferUsages::VERTEX,
-        );
+        let vertex_buffer =
+            VertexBuffer::with_capacity(device, "mesh_renderer_vertex_buffer", 1000);
         let index_buffer = create_copyable_buffer(
             device,
             "mesh_renderer_index_buffer",
@@ -71,19 +67,7 @@ impl MeshRenderer {
             &global_uniform_buffer,
         );
 
-        let mesh_uniform_buffer = create_copyable_buffer(
-            device,
-            "mesh_renderer_mesh_uniform_buffer",
-            INITIAL_MESH_UNIFORM_BUFFER_SIZE,
-            BufferUsages::UNIFORM,
-        );
-        let mesh_uniform_bind_group_layout = MeshUniform::create_bind_group_layout(device);
-        let mesh_uniform_bind_group = create_uniform_bind_group::<MeshUniform>(
-            device,
-            "mesh_renderer_mesh_uniform_bind_group",
-            &mesh_uniform_bind_group_layout,
-            &mesh_uniform_buffer,
-        );
+        let mesh_uniform_buffer = UniformBuffer::new(device, "mesh_uniform", 1000);
 
         let texture_bind_group_layout = Self::create_texture_bind_group_layout(device);
 
@@ -92,7 +76,7 @@ impl MeshRenderer {
             surface_texture_format,
             &texture_bind_group_layout,
             &global_uniform_bind_group_layout,
-            &mesh_uniform_bind_group_layout,
+            mesh_uniform_buffer.bind_group_layout(),
         );
 
         Self {
@@ -104,8 +88,6 @@ impl MeshRenderer {
             global_uniform_bind_group,
 
             mesh_uniform_buffer,
-            mesh_uniform_bind_group_layout,
-            mesh_uniform_bind_group,
 
             texture_bind_group_layout,
             render_pipeline,

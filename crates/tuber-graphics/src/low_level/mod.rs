@@ -9,4 +9,5 @@ mod renderers;
 pub(crate) mod texture;
 mod uniform_buffer;
 mod utils;
+mod vertex_buffer;
 pub(crate) mod wgpu_state;

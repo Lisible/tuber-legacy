@@ -1,3 +1,5 @@
+use crate::geometry::Vertex;
+use crate::low_level::vertex_buffer::VertexBuffer;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupLayout, BindGroupLayoutDescriptor,
@@ -73,6 +75,15 @@ where
 
 pub fn create_uniform_buffer(device: &Device, label: &str, size: BufferAddress) -> Buffer {
     create_copyable_buffer(device, label, size, wgpu::BufferUsages::UNIFORM)
+}
+
+pub fn create_vertex_buffer(device: &Device, label: &str, capacity: usize) -> Buffer {
+    create_copyable_buffer(
+        device,
+        label,
+        (capacity * std::mem::size_of::<Vertex>()) as BufferAddress,
+        BufferUsages::VERTEX,
+    )
 }
 
 pub fn create_copyable_buffer(

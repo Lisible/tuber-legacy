@@ -63,7 +63,6 @@ pub(crate) fn geometry_pass(
 
     let quad_group = context.quad_renderer.prepare_quad_group(
         context.device,
-        context.queue,
         command_encoder,
         context.textures,
         context.projection_matrix,
