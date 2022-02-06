@@ -1,10 +1,10 @@
 [[block]]
-struct GlobalUniform {
+struct QuadGroupUniform {
     view_projection: mat4x4<f32>;
 };
 
 [[group(0), binding(0)]]
-var<uniform> u_global: GlobalUniform;
+var<uniform> u_quad_group: QuadGroupUniform;
 
 [[block]]
 struct QuadUniform {
@@ -33,7 +33,7 @@ fn vs_main(input: VertexStageInput) -> VertexStageOutput {
 
     let world_position = u_quad.model * vec4<f32>(input.position.x, input.position.y, 0.0, 1.0);
     output.world_position = world_position.xyz;
-    output.clip_position = u_global.view_projection * world_position;
+    output.clip_position = u_quad_group.view_projection * world_position;
     return output;
 }
 

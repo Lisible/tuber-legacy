@@ -1,6 +1,7 @@
 use crate::low_level::primitives::TextureId;
 use crate::texture::{TextureData, TextureSize};
 use crate::types::Size2;
+use wgpu::{AddressMode, Device, FilterMode, Sampler};
 
 const BYTES_PER_PIXEL: usize = 4;
 
@@ -94,6 +95,35 @@ pub fn create_g_buffer_texture_descriptor(
     size: Size2<u32>,
 ) -> wgpu::TextureDescriptor {
     create_texture_descriptor(Some(label), size, wgpu::TextureFormat::Bgra8UnormSrgb)
+}
+
+pub fn create_default_sampler(device: &Device) -> Sampler {
+    create_sampler(
+        device,
+        AddressMode::ClampToEdge,
+        FilterMode::Nearest,
+        FilterMode::Nearest,
+        FilterMode::Nearest,
+    )
+}
+
+pub fn create_sampler(
+    device: &Device,
+    address_mode: AddressMode,
+    min_filter: FilterMode,
+    mag_filter: FilterMode,
+    mipmap_filter: FilterMode,
+) -> Sampler {
+    device.create_sampler(&wgpu::SamplerDescriptor {
+        label: None,
+        address_mode_u: address_mode,
+        address_mode_v: address_mode,
+        address_mode_w: address_mode,
+        mag_filter,
+        min_filter,
+        mipmap_filter,
+        ..Default::default()
+    })
 }
 
 fn create_wgpu_texture_label(texture_id: TextureId) -> String {
