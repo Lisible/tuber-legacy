@@ -349,66 +349,72 @@ impl Graphics {
         let albedo_map_texture_metadata = &self.texture_metadata[&tilemap.material().albedo_map];
         let tilemap_size = tilemap.size();
         let tile_size = tilemap.tile_size();
-        for (tile_index, tile) in tilemap.tiles().iter().enumerate() {
-            let tile_x = tile_index % tilemap_size.width;
-            let tile_y = tile_index / tilemap_size.height;
-            if let Some(tile) = tile {
-                let texture_region = match tile {
-                    Tile::StaticTile(static_tile) => &static_tile.texture_region,
-                    Tile::AnimatedTile(animated_tile) => {
-                        &animated_tile.animation_state.keyframes
-                            [animated_tile.animation_state.current_keyframe]
-                    }
-                };
+        for layer in tilemap.layers() {
+            for (tile_index, tile) in layer.tiles().iter().enumerate() {
+                let tile_x = tile_index % tilemap_size.width;
+                let tile_y = tile_index / tilemap_size.height;
+                if let Some(tile) = tile {
+                    let texture_region = match tile {
+                        Tile::StaticTile(static_tile) => &static_tile.texture_region,
+                        Tile::AnimatedTile(animated_tile) => {
+                            &animated_tile.animation_state.keyframes
+                                [animated_tile.animation_state.current_keyframe]
+                        }
+                    };
 
-                let texture_region = texture_region.normalize(
-                    albedo_map_texture_metadata.width,
-                    albedo_map_texture_metadata.height,
-                );
+                    let texture_region = texture_region.normalize(
+                        albedo_map_texture_metadata.width,
+                        albedo_map_texture_metadata.height,
+                    );
 
-                self.wgpu_state
-                    .as_mut()
-                    .unwrap()
-                    .command_buffer_mut()
-                    .add(Command::DrawQuad(DrawQuadCommand {
-                        quad: Quad {
-                            top_left: Vertex {
-                                position: [0.0, 0.0, 0.0],
-                                texture_coordinates: [texture_region.x, texture_region.y],
-                                ..Default::default()
+                    self.wgpu_state
+                        .as_mut()
+                        .unwrap()
+                        .command_buffer_mut()
+                        .add(Command::DrawQuad(DrawQuadCommand {
+                            quad: Quad {
+                                top_left: Vertex {
+                                    position: [0.0, 0.0, 0.0],
+                                    texture_coordinates: [texture_region.x, texture_region.y],
+                                    ..Default::default()
+                                },
+                                bottom_left: Vertex {
+                                    position: [0.0, tile_size.height as f32, 0.0],
+                                    texture_coordinates: [
+                                        texture_region.x,
+                                        texture_region.y + texture_region.height,
+                                    ],
+                                    ..Default::default()
+                                },
+                                top_right: Vertex {
+                                    position: [tile_size.width as f32, 0.0, 0.0],
+                                    texture_coordinates: [
+                                        texture_region.x + texture_region.width,
+                                        texture_region.y,
+                                    ],
+                                    ..Default::default()
+                                },
+                                bottom_right: Vertex {
+                                    position: [
+                                        tile_size.width as f32,
+                                        tile_size.height as f32,
+                                        0.0,
+                                    ],
+                                    texture_coordinates: [
+                                        texture_region.x + texture_region.width,
+                                        texture_region.y + texture_region.height,
+                                    ],
+                                    ..Default::default()
+                                },
                             },
-                            bottom_left: Vertex {
-                                position: [0.0, tile_size.height as f32, 0.0],
-                                texture_coordinates: [
-                                    texture_region.x,
-                                    texture_region.y + texture_region.height,
-                                ],
-                                ..Default::default()
-                            },
-                            top_right: Vertex {
-                                position: [tile_size.width as f32, 0.0, 0.0],
-                                texture_coordinates: [
-                                    texture_region.x + texture_region.width,
-                                    texture_region.y,
-                                ],
-                                ..Default::default()
-                            },
-                            bottom_right: Vertex {
-                                position: [tile_size.width as f32, tile_size.height as f32, 0.0],
-                                texture_coordinates: [
-                                    texture_region.x + texture_region.width,
-                                    texture_region.y + texture_region.height,
-                                ],
-                                ..Default::default()
-                            },
-                        },
-                        world_transform: transform_matrix.append_translation(&Vector3::new(
-                            (tile_x * tilemap.tile_size().width as usize) as f32,
-                            (tile_y * tilemap.tile_size().height as usize) as f32,
-                            0.0,
-                        )),
-                        material: material.clone(),
-                    }));
+                            world_transform: transform_matrix.append_translation(&Vector3::new(
+                                (tile_x * tilemap.tile_size().width as usize) as f32,
+                                (tile_y * tilemap.tile_size().height as usize) as f32,
+                                0.0,
+                            )),
+                            material: material.clone(),
+                        }));
+                }
             }
         }
     }
