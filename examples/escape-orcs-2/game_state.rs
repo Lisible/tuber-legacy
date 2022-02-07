@@ -84,7 +84,13 @@ impl State for GameState {
         self.tilemap.as_mut().unwrap().update_animation_state();
     }
 
-    fn render(&mut self, _ecs: &mut Ecs, engine_context: &mut EngineContext) {
+    fn render(&mut self, ecs: &mut Ecs, engine_context: &mut EngineContext) {
+        let (_, (camera, transform)) = ecs
+            .query_one::<(R<OrthographicCamera>, R<Transform>)>()
+            .unwrap();
+
+        let world_region = world_region(&camera.projection_matrix(), &transform.into_matrix4());
+
         engine_context.graphics.as_mut().unwrap().draw_tilemap(
             &mut engine_context.asset_store,
             self.tilemap.as_mut().unwrap(),
@@ -93,6 +99,7 @@ impl State for GameState {
                 ..Default::default()
             }
             .into_matrix4(),
+            world_region,
         );
     }
 

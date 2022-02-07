@@ -1,5 +1,4 @@
 use nalgebra::Matrix4;
-use tuber_core::transform::Transform;
 
 pub struct OrthographicCamera {
     pub left: f32,
@@ -43,7 +42,7 @@ pub fn mouse_coordinates_to_world_coordinates(
 
 pub fn world_region(projection_matrix: &Matrix4<f32>, view_matrix: &Matrix4<f32>) -> WorldRegion {
     let min_coordinates = nalgebra::Point3::<f32>::new(-1.0, -1.0, 0.0);
-    let max_coordinates = nalgebra::Point3::<f32>::new(1.0, 1.0, 1.0);
+    let max_coordinates = nalgebra::Point3::<f32>::new(1.0, 1.0, 0.0);
 
     let view_inv_proj = view_matrix * projection_matrix.try_inverse().unwrap();
 
@@ -53,10 +52,8 @@ pub fn world_region(projection_matrix: &Matrix4<f32>, view_matrix: &Matrix4<f32>
     WorldRegion::new(
         min_coordinates.x,
         max_coordinates.x,
-        min_coordinates.y,
         max_coordinates.y,
-        min_coordinates.z,
-        max_coordinates.z,
+        min_coordinates.y,
     )
 }
 
@@ -66,19 +63,15 @@ pub struct WorldRegion {
     max_x: f32,
     min_y: f32,
     max_y: f32,
-    min_z: f32,
-    max_z: f32,
 }
 
 impl WorldRegion {
-    pub fn new(min_x: f32, max_x: f32, min_y: f32, max_y: f32, min_z: f32, max_z: f32) -> Self {
+    pub fn new(min_x: f32, max_x: f32, min_y: f32, max_y: f32) -> Self {
         Self {
             min_x,
             max_x,
             min_y,
             max_y,
-            min_z,
-            max_z,
         }
     }
 
@@ -98,12 +91,11 @@ impl WorldRegion {
         self.max_y
     }
 
-    pub fn min_z(&self) -> f32 {
-        self.min_z
-    }
-
-    pub fn max_z(&self) -> f32 {
-        self.max_z
+    pub fn is_in_region(&self, x: f32, y: f32, tolerance_x: f32, tolerance_y: f32) -> bool {
+        x >= self.min_x - tolerance_x
+            && x <= self.max_x + tolerance_x
+            && y >= self.min_y - tolerance_y
+            && y <= self.max_y + tolerance_y
     }
 }
 

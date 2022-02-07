@@ -1,3 +1,4 @@
+use crate::camera::WorldRegion;
 use crate::draw_command::{Command, DrawLightCommand, DrawMeshCommand, DrawQuadCommand};
 use crate::font::DEFAULT_FONT_IDENTIFIER;
 use crate::geometry::Vertex;
@@ -14,7 +15,7 @@ use crate::{
     TextureAtlas, TextureData, TextureMetadata, TextureRegion, Tile, Tilemap, WGPUState, Window,
     WindowSize, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
-use nalgebra::{Matrix4, Vector3};
+use nalgebra::{Matrix4, Point3, Vector3};
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::default::Default;
@@ -342,6 +343,7 @@ impl Graphics {
         asset_store: &mut AssetStore,
         tilemap: &mut Tilemap,
         transform_matrix: Matrix4<f32>,
+        camera_world_region: WorldRegion,
     ) {
         self.load_material_in_vram_if_required(asset_store, tilemap.material());
         let material = self.create_material(tilemap.material());
@@ -353,6 +355,22 @@ impl Graphics {
             for (tile_index, tile) in layer.tiles().iter().enumerate() {
                 let tile_x = tile_index % tilemap_size.width;
                 let tile_y = tile_index / tilemap_size.height;
+
+                let tile_world_position = transform_matrix.transform_point(&Point3::new(
+                    (tile_x * tilemap.tile_size().width as usize) as f32,
+                    (tile_y * tilemap.tile_size().height as usize) as f32,
+                    0.0,
+                ));
+
+                if !camera_world_region.is_in_region(
+                    tile_world_position.x,
+                    tile_world_position.y,
+                    tile_size.width as f32,
+                    tile_size.height as f32,
+                ) {
+                    continue;
+                }
+
                 if let Some(tile) = tile {
                     let texture_region = match tile {
                         Tile::StaticTile(static_tile) => &static_tile.texture_region,
@@ -408,8 +426,8 @@ impl Graphics {
                                 },
                             },
                             world_transform: transform_matrix.append_translation(&Vector3::new(
-                                (tile_x * tilemap.tile_size().width as usize) as f32,
-                                (tile_y * tilemap.tile_size().height as usize) as f32,
+                                tile_world_position.x,
+                                tile_world_position.y,
                                 0.0,
                             )),
                             material: material.clone(),
