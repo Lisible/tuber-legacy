@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 pub type Vector3<T = f32> = Vector<T, 3>;
@@ -5,6 +6,22 @@ pub type Vector4<T = f32> = Vector<T, 4>;
 
 pub struct Vector<T, const DIM: usize> {
     values: [T; DIM],
+}
+
+impl<T, const DIM: usize> Display for Vector<T, DIM>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(")?;
+        for i in 0..DIM {
+            write!(f, "{}", self.values[i])?;
+            if i != DIM - 1 {
+                write!(f, ", ")?;
+            }
+        }
+        write!(f, ")")
+    }
 }
 
 impl<T, const DIM: usize> Add for Vector<T, DIM>
@@ -163,5 +180,11 @@ mod tests {
         assert_eq!(result.x(), 5);
         assert_eq!(result.y(), 10);
         assert_eq!(result.z(), 15);
+    }
+
+    #[test]
+    fn vector_display() {
+        let result = format!("{}", Vector3::new(1, 2, 3));
+        assert_eq!("(1, 2, 3)", &result);
     }
 }
