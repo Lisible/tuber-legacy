@@ -70,7 +70,6 @@ impl State for GameState {
         system_bundle.add_system(update_character_position);
         system_bundle.add_system(update_camera_position);
         system_bundle.add_system(switch_rendered_g_buffer_component);
-        system_bundle.add_system(switch_polygon_mode);
         system_bundles.push(system_bundle);
 
         engine_context
@@ -130,23 +129,6 @@ fn switch_rendered_g_buffer_component(_ecs: &mut Ecs, engine_context: &mut Engin
             .as_mut()
             .unwrap()
             .set_rendered_g_buffer_component(GBufferComponent::Normal);
-    }
-}
-
-fn switch_polygon_mode(_ecs: &mut Ecs, engine_context: &mut EngineContext) {
-    let input_state = &engine_context.input_state;
-    if input_state.is(Input::KeyDown(Key::F3)) {
-        engine_context
-            .graphics
-            .as_mut()
-            .unwrap()
-            .set_polygon_mode(PolygonMode::Fill);
-    } else if input_state.is(Input::KeyDown(Key::F4)) {
-        engine_context
-            .graphics
-            .as_mut()
-            .unwrap()
-            .set_polygon_mode(PolygonMode::Line);
     }
 }
 
