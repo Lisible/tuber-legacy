@@ -15,6 +15,7 @@ tuber-engine = { path = "crates/tuber-engine", version = "0.1.0" }
 tuber-ecs = { path = "crates/tuber-ecs", version = "0.1.0" }
 tuber-proc-macros = { path = "crates/tuber-proc-macros", version = "0.1.0" }
 tuber-gui = { path = "crates/tuber-gui", version = "0.1.0" }
+tuber-math = { path = "crates/tuber-math", version = "0.1.0" }
 
 [dev-dependencies]
 rand = "0.8.3"
