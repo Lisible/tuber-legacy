@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Index, IndexMut};
 
 use crate::angle::Angle;
@@ -6,6 +7,23 @@ use crate::vector::Vector3;
 
 pub struct Matrix4<T = f32> {
     values: [T; 16],
+}
+
+impl<T> Debug for Matrix4<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "[")?;
+        for i in 0..Self::ROWS {
+            write!(f, "\t")?;
+            for j in 0..Self::COLS {
+                write!(f, "{}, ", self.values[i * Self::COLS + j])?;
+            }
+            writeln!(f)?;
+        }
+        writeln!(f, "]")
+    }
 }
 
 impl<T> Matrix4<T> {
