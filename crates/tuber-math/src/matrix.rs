@@ -1,8 +1,7 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Index, IndexMut};
 
-use crate::angle::Angle;
-use crate::number_traits::{One, Zero};
+use crate::number_traits::{Float, One, Zero};
 use crate::vector::Vector3;
 
 pub struct Matrix4<T = f32> {
@@ -48,20 +47,8 @@ impl<T> Matrix4<T> {
     }
 
     #[rustfmt::skip]
-    pub fn new_rotation<U>(_rotation: Vector3<Angle<U>>) -> Matrix4<U>
-        where U: Copy + Zero + One {
-        unimplemented!()
-    }
-
-    pub fn new_rotation_x<U>(_angle: Angle<U>) -> Matrix4<U> {
-        unimplemented!()
-    }
-
-    pub fn new_rotation_y<U>(_angle: Angle<U>) -> Matrix4<U> {
-        unimplemented!()
-    }
-
-    pub fn new_rotation_z<U>(_angle: Angle<U>) -> Matrix4<U> {
+    pub fn new_rotation<U>(_rotation: Vector3<U>) -> Matrix4<U>
+        where U: Float {
         unimplemented!()
     }
 }
