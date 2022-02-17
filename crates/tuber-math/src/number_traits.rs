@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 pub trait One {
@@ -74,7 +75,7 @@ impl FloatOps for f32 {}
 
 impl FloatOps for f64 {}
 
-pub trait Float: Copy + Zero + One + Pi + FloatOps {
+pub trait Float: Display + Copy + Zero + One + Pi + FloatOps {
     fn sin(self) -> Self;
     fn cos(self) -> Self;
 }

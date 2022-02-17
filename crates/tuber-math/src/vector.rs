@@ -4,6 +4,7 @@ use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 pub type Vector3<T = f32> = Vector<T, 3>;
 pub type Vector4<T = f32> = Vector<T, 4>;
 
+#[derive(Debug)]
 pub struct Vector<T, const DIM: usize> {
     values: [T; DIM],
 }
