@@ -47,9 +47,22 @@ impl<T> Matrix4<T> {
     }
 
     #[rustfmt::skip]
-    pub fn new_rotation<U>(_rotation: Vector3<U>) -> Matrix4<U>
-        where U: Float {
-        unimplemented!()
+    pub fn new_scale_uniform<U>(scale: U) -> Matrix4<U>
+        where U: Copy + Zero + One {
+        Self::new_scale(Vector3::new(scale, scale, scale))
+    }
+
+    #[rustfmt::skip]
+    pub fn new_scale<U>(scale: Vector3<U>) -> Matrix4<U>
+        where U: Copy + Zero + One {
+        Matrix4 {
+            values: [
+                scale.x(), U::zero(), U::zero(), U::zero(),
+                U::zero(), scale.y(), U::zero(), U::zero(),
+                U::zero(), U::zero(), scale.z(), U::zero(),
+                U::zero(), U::zero(), U::zero(), U::one(),
+            ]
+        }
     }
 }
 
