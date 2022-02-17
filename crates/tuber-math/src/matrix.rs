@@ -1,9 +1,10 @@
 use std::fmt::{Debug, Display, Formatter};
-use std::ops::{Index, IndexMut};
+use std::ops::{Add, Index, IndexMut, Mul, MulAssign};
 
-use crate::number_traits::{Float, One, Zero};
+use crate::number_traits::{One, Zero};
 use crate::vector::Vector3;
 
+#[derive(Clone)]
 pub struct Matrix4<T = f32> {
     values: [T; 16],
 }
@@ -63,6 +64,37 @@ impl<T> Matrix4<T> {
                 U::zero(), U::zero(), U::zero(), U::one(),
             ]
         }
+    }
+}
+
+impl<T> Mul<Self> for Matrix4<T>
+where
+    T: Copy + Zero + Add<Output = T> + Mul<Output = T>,
+{
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        let mut values = [T::zero(); 16];
+
+        for j in 0..4 {
+            for i in 0..4 {
+                values[j * Self::COLS + i] = self.values[j * Self::COLS] * rhs.values[i]
+                    + self.values[j * Self::COLS + 1] * rhs.values[i + Self::COLS]
+                    + self.values[j * Self::COLS + 2] * rhs.values[i + Self::COLS * 2]
+                    + self.values[j * Self::COLS + 3] * rhs.values[i + Self::COLS * 3];
+            }
+        }
+
+        Self { values }
+    }
+}
+
+impl<T> MulAssign<Self> for Matrix4<T>
+where
+    T: Copy + Zero + Add<Output = T> + Mul<Output = T>,
+{
+    fn mul_assign(&mut self, rhs: Self) {
+        self.values = (self.clone() * rhs).values;
     }
 }
 
@@ -132,5 +164,77 @@ mod tests {
 
         assert_eq!(m[0][0], 1);
         assert_eq!(m[0][1], 0);
+    }
+
+    #[rustfmt::skip]
+    #[test]
+    fn mul() {
+        let a = Matrix4::<i32>::with_values([
+            1, 2, 3, 4,
+            5, 6, 7, 8,
+            9, 39, 11, 12,
+            13, 14, 15, 16
+        ]);
+        let b = Matrix4::<i32>::with_values([
+            17, 18, 19, 20,
+            21, 22, 23, 24,
+            25, 26, 27, 28,
+            29, 30, 31, 32
+        ]);
+
+        let result = a * b;
+
+        assert_eq!(result[0][0], 250);
+        assert_eq!(result[0][1], 260);
+        assert_eq!(result[0][2], 270);
+        assert_eq!(result[0][3], 280);
+        assert_eq!(result[1][0], 618);
+        assert_eq!(result[1][1], 644);
+        assert_eq!(result[1][2], 670);
+        assert_eq!(result[1][3], 696);
+        assert_eq!(result[2][0], 1595);
+        assert_eq!(result[2][1], 1666);
+        assert_eq!(result[2][2], 1737);
+        assert_eq!(result[2][3], 1808);
+        assert_eq!(result[3][0], 1354);
+        assert_eq!(result[3][1], 1412);
+        assert_eq!(result[3][2], 1470);
+        assert_eq!(result[3][3], 1528);
+    }
+
+    #[rustfmt::skip]
+    #[test]
+    fn mul_assign() {
+        let mut a = Matrix4::<i32>::with_values([
+            1, 2, 3, 4,
+            5, 6, 7, 8,
+            9, 39, 11, 12,
+            13, 14, 15, 16
+        ]);
+        let b = Matrix4::<i32>::with_values([
+            17, 18, 19, 20,
+            21, 22, 23, 24,
+            25, 26, 27, 28,
+            29, 30, 31, 32
+        ]);
+
+        a *= b;
+
+        assert_eq!(a[0][0], 250);
+        assert_eq!(a[0][1], 260);
+        assert_eq!(a[0][2], 270);
+        assert_eq!(a[0][3], 280);
+        assert_eq!(a[1][0], 618);
+        assert_eq!(a[1][1], 644);
+        assert_eq!(a[1][2], 670);
+        assert_eq!(a[1][3], 696);
+        assert_eq!(a[2][0], 1595);
+        assert_eq!(a[2][1], 1666);
+        assert_eq!(a[2][2], 1737);
+        assert_eq!(a[2][3], 1808);
+        assert_eq!(a[3][0], 1354);
+        assert_eq!(a[3][1], 1412);
+        assert_eq!(a[3][2], 1470);
+        assert_eq!(a[3][3], 1528);
     }
 }
