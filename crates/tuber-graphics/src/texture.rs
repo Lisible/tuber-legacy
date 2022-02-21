@@ -1,15 +1,17 @@
-use crate::primitives::TextureId;
-use crate::texture::TextureUsage::{Albedo, Normal};
-use crate::GraphicsError;
-use crate::GraphicsError::{ImageDecodeError, TextureFileOpenError};
-use nalgebra::Vector4;
-use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
+
 use tuber_core::asset::AssetMetadata;
+
+use crate::primitives::TextureId;
+use crate::texture::TextureUsage::{Albedo, Normal};
+use crate::GraphicsError;
+use crate::GraphicsError::{ImageDecodeError, TextureFileOpenError};
 
 pub type TextureSize = (u32, u32);
 
@@ -77,12 +79,6 @@ impl TextureRegion {
     }
 }
 
-impl From<TextureRegion> for Vector4<f32> {
-    fn from(region: TextureRegion) -> Self {
-        Vector4::new(region.x, region.y, region.width, region.height)
-    }
-}
-
 #[derive(Debug)]
 pub struct TextureMetadata {
     pub texture_id: TextureId,
@@ -129,6 +125,7 @@ pub(crate) fn texture_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
         srgb,
     })
 }
+
 pub(crate) fn texture_atlas_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
     let mut texture_atlas_path = asset_metadata.asset_path.clone();
     texture_atlas_path.push(
@@ -167,6 +164,7 @@ impl FromStr for TextureUsage {
 
 pub const WHITE_TEXTURE_IDENTIFIER: &'static str = "_white";
 pub const WHITE_TEXTURE_SIZE: (f32, f32) = (1.0, 1.0);
+
 pub(crate) fn create_white_texture() -> TextureData {
     TextureData {
         identifier: WHITE_TEXTURE_IDENTIFIER.into(),
@@ -178,6 +176,7 @@ pub(crate) fn create_white_texture() -> TextureData {
 
 pub const BLACK_TEXTURE_IDENTIFIER: &'static str = "_black";
 pub const BLACK_TEXTURE_SIZE: (f32, f32) = (1.0, 1.0);
+
 pub(crate) fn create_black_texture() -> TextureData {
     TextureData {
         identifier: BLACK_TEXTURE_IDENTIFIER.into(),
@@ -194,6 +193,7 @@ pub const MISSING_TEXTURE_REGION: TextureRegion = TextureRegion {
     width: 1.0,
     height: 1.0,
 };
+
 pub(crate) fn create_placeholder_texture() -> TextureData {
     let bytes = include_bytes!("../textures/default_texture.png");
     let image = image::load_from_memory(bytes).unwrap();
@@ -208,6 +208,7 @@ pub(crate) fn create_placeholder_texture() -> TextureData {
 }
 
 pub const DEFAULT_NORMAL_MAP_IDENTIFIER: &'static str = "_normal_map";
+
 pub(crate) fn create_normal_map_texture() -> TextureData {
     TextureData {
         identifier: DEFAULT_NORMAL_MAP_IDENTIFIER.into(),
