@@ -25,6 +25,39 @@ where
         }
     }
 
+    pub fn from_axis_angle(axis: Vector3<T>, angle: T) -> Self {
+        let half_angle = angle.half();
+        let half_angle_sin = half_angle.sin();
+        let x = axis.x() * half_angle_sin;
+        let y = axis.y() * half_angle_sin;
+        let z = axis.z() * half_angle_sin;
+        let w = half_angle.cos();
+
+        Self::new(w, Vector3::new(x, y, z))
+    }
+
+    pub fn from_euler(angles: Vector3<T>) -> Self {
+        let roll = angles.x();
+        let pitch = angles.y();
+        let yaw = angles.z();
+        let half_roll = roll.half();
+        let half_pitch = pitch.half();
+        let half_yaw = yaw.half();
+        let cy = half_yaw.cos();
+        let sy = half_yaw.sin();
+        let cp = half_pitch.cos();
+        let sp = half_pitch.sin();
+        let cr = half_roll.cos();
+        let sr = half_roll.sin();
+
+        let w = cr * cp * cy + sr * sp * sy;
+        let x = sr * cp * cy - cr * sp * sy;
+        let y = cr * sp * cy + sr * cp * sy;
+        let z = cr * cp * sy - sr * sp * cy;
+
+        Quaternion::new(w, Vector3::new(x, y, z))
+    }
+
     #[rustfmt::skip]
     pub fn rotation_matrix(&self) -> Matrix4<T> {
         let (w, x, y, z) = (
@@ -199,5 +232,27 @@ mod tests {
         assert_float_absolute_eq!(normalized.vector_part.x(), 0.17, 0.01);
         assert_float_absolute_eq!(normalized.vector_part.y(), 0.48, 0.01);
         assert_float_absolute_eq!(normalized.vector_part.z(), 0.79, 0.01);
+    }
+
+    #[test]
+    fn from_axis_angle() {
+        let axis = Vector3::new(1.0, 2.0, 3.0).normalized();
+        let angle = 0.74;
+
+        let quaternion = Quaternion::from_axis_angle(axis, angle);
+
+        assert_float_absolute_eq!(quaternion.scalar_part, 0.93, 0.01);
+        assert_float_absolute_eq!(quaternion.vector_part.x(), 0.09, 0.01);
+        assert_float_absolute_eq!(quaternion.vector_part.y(), 0.19, 0.01);
+        assert_float_absolute_eq!(quaternion.vector_part.z(), 0.28, 0.01);
+    }
+
+    #[test]
+    fn from_euler() {
+        let angles = Vector3::new(0.4, 1.3, 5.0);
+
+        let quaternion = Quaternion::from_euler(angles);
+
+        dbg!(quaternion);
     }
 }
