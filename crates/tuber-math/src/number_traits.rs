@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 pub trait One {
     fn one() -> Self;
@@ -64,9 +64,13 @@ impl Pi for f64 {
 pub trait FloatOps:
     Sized
     + Add<Output = Self>
+    + AddAssign
     + Sub<Output = Self>
+    + SubAssign
     + Mul<Output = Self>
+    + MulAssign
     + Div<Output = Self>
+    + DivAssign
     + Neg<Output = Self>
 {
 }
@@ -78,6 +82,9 @@ impl FloatOps for f64 {}
 pub trait Float: Display + Copy + Zero + One + Pi + FloatOps {
     fn sin(self) -> Self;
     fn cos(self) -> Self;
+    fn half(self) -> Self;
+    fn squared(self) -> Self;
+    fn sqrt(self) -> Self;
 }
 
 impl Float for f32 {
@@ -88,6 +95,17 @@ impl Float for f32 {
     fn cos(self) -> Self {
         self.cos()
     }
+    fn half(self) -> Self {
+        self * 0.5
+    }
+
+    fn squared(self) -> Self {
+        self * self
+    }
+
+    fn sqrt(self) -> Self {
+        self.sqrt()
+    }
 }
 
 impl Float for f64 {
@@ -97,5 +115,16 @@ impl Float for f64 {
 
     fn cos(self) -> Self {
         self.cos()
+    }
+    fn half(self) -> Self {
+        self * 0.5
+    }
+
+    fn squared(self) -> Self {
+        self * self
+    }
+
+    fn sqrt(self) -> Self {
+        self.sqrt()
     }
 }
