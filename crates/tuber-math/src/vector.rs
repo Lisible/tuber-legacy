@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
-use crate::number_traits::Float;
+use crate::number_traits::{Float, Zero};
 
 pub type Vector3<T = f32> = Vector<T, 3>;
 pub type Vector4<T = f32> = Vector<T, 4>;
@@ -80,6 +80,17 @@ where
             }
         }
         write!(f, ")")
+    }
+}
+
+impl<T, const DIM: usize> Default for Vector<T, DIM>
+where
+    T: Copy + Zero,
+{
+    fn default() -> Self {
+        Self {
+            values: [T::zero(); DIM],
+        }
     }
 }
 
@@ -288,5 +299,14 @@ mod tests {
         assert_float_absolute_eq!(normalized.x(), 0.26, 0.01);
         assert_float_absolute_eq!(normalized.y(), 0.53, 0.01);
         assert_float_absolute_eq!(normalized.z(), 0.80, 0.01);
+    }
+
+    #[test]
+    fn default() {
+        let vector = Vector::<f32, 4>::default();
+
+        for value in vector.values {
+            assert_float_absolute_eq!(value, 0.0, 0.0);
+        }
     }
 }
