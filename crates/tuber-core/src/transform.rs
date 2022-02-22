@@ -1,48 +1,38 @@
-use nalgebra::{Matrix4, Vector3};
+use tuber_math::matrix::Matrix4f;
+use tuber_math::quaternion::Quaternion;
+use tuber_math::vector::Vector3;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Transform {
-    pub translation: (f32, f32, f32),
-    pub angle: (f32, f32, f32),
-    pub rotation_center: (f32, f32, f32),
-    pub scale: (f32, f32, f32),
+    pub translation: Vector3<f32>,
+    pub angle: Vector3<f32>,
+    pub rotation_center: Vector3<f32>,
+    pub scale: Vector3<f32>,
 }
 
 impl Default for Transform {
     fn default() -> Self {
         Self {
-            translation: (0.0, 0.0, 0.0),
-            angle: (0.0, 0.0, 0.0),
-            rotation_center: (0.0, 0.0, 0.0),
-            scale: (1.0, 1.0, 1.0),
+            translation: (0.0, 0.0, 0.0).into(),
+            angle: (0.0, 0.0, 0.0).into(),
+            rotation_center: (0.0, 0.0, 0.0).into(),
+            scale: (1.0, 1.0, 1.0).into(),
         }
     }
 }
 
 pub trait IntoMatrix4 {
-    fn into_matrix4(self) -> Matrix4<f32>;
+    fn into_matrix4(&self) -> Matrix4f;
 }
 
 impl IntoMatrix4 for Transform {
-    fn into_matrix4(self) -> Matrix4<f32> {
-        let translate_to_rotation_center = Vector3::new(
-            self.rotation_center.0,
-            self.rotation_center.1,
-            self.rotation_center.2,
-        );
+    fn into_matrix4(&self) -> Matrix4f {
+        let translate_to_rotation_center = self.rotation_center.clone();
 
-        Matrix4::new_nonuniform_scaling(&Vector3::new(self.scale.0, self.scale.1, self.scale.2))
-            * Matrix4::new_translation(&Vector3::new(
-                self.translation.0,
-                self.translation.1,
-                self.translation.2,
-            ))
-            * Matrix4::new_translation(&translate_to_rotation_center.clone())
-            * Matrix4::new_rotation(Vector3::new(
-                self.angle.0.to_radians(),
-                self.angle.1.to_radians(),
-                self.angle.2.to_radians(),
-            ))
-            * Matrix4::new_translation(&-&translate_to_rotation_center)
+        Matrix4f::new_scale(&self.scale)
+            * Matrix4f::new_translation(&self.translation)
+            * Matrix4f::new_translation(&translate_to_rotation_center.clone())
+            * Quaternion::from_euler(&self.angle).rotation_matrix()
+            * Matrix4f::new_translation(&-translate_to_rotation_center)
     }
 }

@@ -28,7 +28,8 @@ pub fn create_lights(ecs: &mut Ecs) {
                 (WORLD_SIZE.width as f32 / 2.0) * TILE_SIZE as f32,
                 0.0,
                 100.0,
-            ),
+            )
+                .into(),
             ..Default::default()
         },
     ));
@@ -44,7 +45,8 @@ pub fn create_lights(ecs: &mut Ecs) {
                 (WORLD_SIZE.width as f32 / 2.0) * TILE_SIZE as f32,
                 WORLD_SIZE.height as f32 * TILE_SIZE as f32,
                 100.0,
-            ),
+            )
+                .into(),
             ..Default::default()
         },
     ));
@@ -60,7 +62,8 @@ pub fn create_lights(ecs: &mut Ecs) {
                 (WORLD_SIZE.width as f32 / 2.0) * TILE_SIZE as f32,
                 (WORLD_SIZE.height as f32 / 2.0) * TILE_SIZE as f32,
                 100.0,
-            ),
+            )
+                .into(),
             ..Default::default()
         },
     ));

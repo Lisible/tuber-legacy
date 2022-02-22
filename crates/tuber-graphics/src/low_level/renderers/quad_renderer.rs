@@ -1,3 +1,9 @@
+use std::collections::HashMap;
+
+use wgpu::{BindGroupDescriptor, CommandEncoder, Device, TextureViewDescriptor};
+
+use tuber_math::matrix::Matrix4f;
+
 use crate::draw_command::DrawQuadCommand;
 use crate::geometry::Vertex;
 use crate::low_level::buffers::uniform_buffer::UniformBuffer;
@@ -7,9 +13,6 @@ use crate::low_level::primitives::TextureId;
 use crate::low_level::texture::create_default_sampler;
 use crate::low_level::wgpu_state::IntoPolygonMode;
 use crate::Material;
-use nalgebra::Matrix4;
-use std::collections::HashMap;
-use wgpu::{BindGroupDescriptor, CommandEncoder, Device, TextureViewDescriptor};
 
 const VERTEX_PER_QUAD: u64 = 6;
 const MIN_QUAD_COUNT: usize = 1000;
@@ -108,8 +111,8 @@ impl QuadRenderer {
         device: &wgpu::Device,
         command_encoder: &mut wgpu::CommandEncoder,
         textures: &HashMap<TextureId, wgpu::Texture>,
-        projection_matrix: &Matrix4<f32>,
-        view_transform: &Matrix4<f32>,
+        projection_matrix: &Matrix4f,
+        view_transform: &Matrix4f,
         draw_quad_commands: &[DrawQuadCommand],
         ui: bool,
     ) -> QuadGroup {
@@ -132,7 +135,8 @@ impl QuadRenderer {
         );
 
         self.pending_quad_group_uniforms.push(QuadGroupUniform {
-            view_projection: (projection_matrix * view_transform.try_inverse().unwrap()).into(),
+            view_projection: (projection_matrix.clone() * view_transform.try_inverse().unwrap())
+                .into(),
             _padding: [0.0; 48],
         });
 
@@ -144,7 +148,7 @@ impl QuadRenderer {
 
         for draw_quad_command in draw_quad_commands {
             let mut effective_transform = draw_quad_command.world_transform.clone();
-            effective_transform.column_mut(3).z = 0.0;
+            effective_transform[3][2] = 0.0;
 
             let material = draw_quad_command.material.clone();
 

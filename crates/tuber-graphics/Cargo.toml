@@ -9,11 +9,12 @@ edition = "2018"
 [dependencies]
 tuber-core = { path = "../tuber-core" }
 tuber-ecs = { path = "../tuber-ecs" }
+tuber-math = { path = "../tuber-math" }
 futures = "0.3.19"
 wgpu = "0.11"
 raw-window-handle = "0.3.3"
 image = "0.23.14"
 nalgebra = "0.27"
-bytemuck = { version =  "1.5", features = [ "derive" ] }
-serde = {version = "1.0", features = ["derive"]}
+bytemuck = { version = "1.5", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

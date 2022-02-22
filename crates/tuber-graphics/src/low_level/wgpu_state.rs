@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use futures::executor::block_on;
-use nalgebra::Matrix4;
 use wgpu::CommandEncoderDescriptor;
 
 use tuber_ecs::EntityIndex;
+use tuber_math::matrix::{Identity, Matrix4f};
 
 use crate::camera::OrthographicCamera;
 use crate::draw_command::CommandBuffer;
@@ -37,8 +37,8 @@ pub struct WGPUState {
     next_texture_id: usize,
     textures: HashMap<TextureId, wgpu::Texture>,
 
-    projection_matrix: Matrix4<f32>,
-    view_transform: Matrix4<f32>,
+    projection_matrix: Matrix4f,
+    view_transform: Matrix4f,
 
     command_buffer: CommandBuffer,
 
@@ -96,8 +96,8 @@ impl WGPUState {
             textures: HashMap::new(),
             next_texture_id: 0,
 
-            projection_matrix: Matrix4::identity(),
-            view_transform: Matrix4::identity(),
+            projection_matrix: Matrix4f::identity(),
+            view_transform: Matrix4f::identity(),
             command_buffer: CommandBuffer::new(),
 
             ambient_light: Color::WHITE,
@@ -194,7 +194,7 @@ impl WGPUState {
         &mut self,
         _camera_id: EntityIndex,
         camera: &OrthographicCamera,
-        transform_matrix: Matrix4<f32>,
+        transform_matrix: Matrix4f,
     ) {
         self.projection_matrix = camera.projection_matrix();
         self.view_transform = transform_matrix;
@@ -222,8 +222,8 @@ pub(crate) struct RenderContext<'a> {
     pub viewport_size: Size2<u32>,
     pub textures: &'a HashMap<TextureId, wgpu::Texture>,
     pub clear_color: Color,
-    pub projection_matrix: &'a Matrix4<f32>,
-    pub view_transform: &'a Matrix4<f32>,
+    pub projection_matrix: &'a Matrix4f,
+    pub view_transform: &'a Matrix4f,
     pub quad_renderer: &'a mut QuadRenderer,
     pub mesh_renderer: &'a mut MeshRenderer,
     pub light_renderer: &'a mut LightRenderer,

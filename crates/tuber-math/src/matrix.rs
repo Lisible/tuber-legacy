@@ -1,10 +1,12 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Index, IndexMut, Mul, MulAssign};
 
-use crate::number_traits::{One, Zero};
-use crate::vector::Vector3;
+use crate::number_traits::{Float, IsZero, NumericOps, One, Zero};
+use crate::vector::{Vector3, Vector4};
 
-#[derive(Clone)]
+pub type Matrix4f = Matrix4<f32>;
+
+#[derive(Clone, Copy)]
 pub struct Matrix4<T = f32> {
     values: [T; 16],
 }
@@ -35,7 +37,27 @@ impl<T> Matrix4<T> {
     }
 
     #[rustfmt::skip]
-    pub fn new_translation<U>(translation: Vector3<U>) -> Matrix4<U>
+    pub fn new_orthographic<U>(
+        left: U,
+        right: U,
+        bottom: U,
+        top: U,
+        near: U,
+        far: U,
+    ) -> Matrix4<U>
+        where U: Copy + Float {
+        Matrix4 {
+            values: [
+                U::two() / (right - left), U::zero(), U::zero(), -((right + left) / (right - left)),
+                U::zero(), U::two() / (top - bottom), U::zero(), -((top + bottom) / (top - bottom)),
+                U::zero(), U::zero(), -U::two() / (far - near), -((far + near) / (far - near)),
+                U::zero(), U::zero(), U::zero(), U::one()
+            ]
+        }
+    }
+
+    #[rustfmt::skip]
+    pub fn new_translation<U>(translation: &Vector3<U>) -> Matrix4<U>
         where U: Copy + Zero + One {
         Matrix4 {
             values: [
@@ -50,11 +72,11 @@ impl<T> Matrix4<T> {
     #[rustfmt::skip]
     pub fn new_scale_uniform<U>(scale: U) -> Matrix4<U>
         where U: Copy + Zero + One {
-        Self::new_scale(Vector3::new(scale, scale, scale))
+        Self::new_scale(&Vector3::new(scale, scale, scale))
     }
 
     #[rustfmt::skip]
-    pub fn new_scale<U>(scale: Vector3<U>) -> Matrix4<U>
+    pub fn new_scale<U>(scale: &Vector3<U>) -> Matrix4<U>
         where U: Copy + Zero + One {
         Matrix4 {
             values: [
@@ -64,6 +86,99 @@ impl<T> Matrix4<T> {
                 U::zero(), U::zero(), U::zero(), U::one(),
             ]
         }
+    }
+}
+
+impl<T> Matrix4<T>
+where
+    T: Copy + NumericOps + Zero + One + IsZero,
+{
+    #[rustfmt::skip]
+    pub fn try_inverse(&self) -> Option<Matrix4<T>> {
+        let a2323 = self[2][2] * self[3][3] - self[2][3] * self[3][2];
+        let a1323 = self[2][1] * self[3][3] - self[2][3] * self[3][1];
+        let a1223 = self[2][1] * self[3][2] - self[2][2] * self[3][1];
+        let a0323 = self[2][0] * self[3][3] - self[2][3] * self[3][0];
+        let a0223 = self[2][0] * self[3][2] - self[2][2] * self[3][0];
+        let a0123 = self[2][0] * self[3][1] - self[2][1] * self[3][0];
+        let a2313 = self[1][2] * self[3][3] - self[1][3] * self[3][2];
+        let a1313 = self[1][1] * self[3][3] - self[1][3] * self[3][1];
+        let a1213 = self[1][1] * self[3][2] - self[1][2] * self[3][1];
+        let a2312 = self[1][2] * self[2][3] - self[1][3] * self[2][2];
+        let a1312 = self[1][1] * self[2][3] - self[1][3] * self[2][1];
+        let a1212 = self[1][1] * self[2][2] - self[1][2] * self[2][1];
+        let a0313 = self[1][0] * self[3][3] - self[1][3] * self[3][0];
+        let a0213 = self[1][0] * self[3][2] - self[1][2] * self[3][0];
+        let a0312 = self[1][0] * self[2][3] - self[1][3] * self[2][0];
+        let a0212 = self[1][0] * self[2][2] - self[1][2] * self[2][0];
+        let a0113 = self[1][0] * self[3][1] - self[1][1] * self[3][0];
+        let a0112 = self[1][0] * self[2][1] - self[1][1] * self[2][0];
+
+        let det = self[0][0] * (self[1][1] * a2323 - self[1][2] * a1323 + self[1][3] * a1223)
+            - self[0][1] * (self[1][0] * a2323 - self[1][2] * a0323 + self[1][3] * a0223)
+            + self[0][2] * (self[1][0] * a1323 - self[1][1] * a0323 + self[1][3] * a0123)
+            - self[0][3] * (self[1][0] * a1223 - self[1][1] * a0223 + self[1][2] * a0123);
+
+        if det.is_zero() {
+            return None;
+        }
+
+        let inv_det = T::one() / det;
+
+        Some(Matrix4 {
+            values: [
+                inv_det * (self[1][1] * a2323 - self[1][2] * a1323 + self[1][3] * a1223),
+                inv_det * -(self[0][1] * a2323 - self[0][2] * a1323 + self[0][3] * a1223),
+                inv_det * (self[0][1] * a2313 - self[0][2] * a1313 + self[0][3] * a1213),
+                inv_det * -(self[0][1] * a2312 - self[0][2] * a1312 + self[0][3] * a1212),
+                inv_det * -(self[1][0] * a2323 - self[1][2] * a0323 + self[1][3] * a0223),
+                inv_det * (self[0][0] * a2323 - self[0][2] * a0323 + self[0][3] * a0223),
+                inv_det * -(self[0][0] * a2313 - self[0][2] * a0313 + self[0][3] * a0213),
+                inv_det * (self[0][0] * a2312 - self[0][2] * a0312 + self[0][3] * a0212),
+                inv_det * (self[1][0] * a1323 - self[1][1] * a0323 + self[1][3] * a0123),
+                inv_det * -(self[0][0] * a1323 - self[0][1] * a0323 + self[0][3] * a0123),
+                inv_det * (self[0][0] * a1313 - self[0][1] * a0313 + self[0][3] * a0113),
+                inv_det * -(self[0][0] * a1312 - self[0][1] * a0312 + self[0][3] * a0112),
+                inv_det * -(self[1][0] * a1223 - self[1][1] * a0223 + self[1][2] * a0123),
+                inv_det * (self[0][0] * a1223 - self[0][1] * a0223 + self[0][2] * a0123),
+                inv_det * -(self[0][0] * a1213 - self[0][1] * a0213 + self[0][2] * a0113),
+                inv_det * (self[0][0] * a1212 - self[0][1] * a0212 + self[0][2] * a0112),
+            ]
+        })
+    }
+
+    pub fn add_translation(&self, translation: &Vector3<T>) -> Self {
+        self.clone() * Matrix4f::new_translation(translation)
+    }
+
+    pub fn append_translation(&mut self, translation: &Vector3<T>) {
+        *self = self.clone() * Matrix4f::new_translation(translation);
+    }
+
+    pub fn transform_vec(&self, vec: &Vector4<T>) -> Vector4<T> {
+        let x = self[0][0] * vec.x()
+            + self[0][1] * vec.y()
+            + self[0][2] * vec.z()
+            + self[0][3] * vec.w();
+        let y = self[1][0] * vec.x()
+            + self[1][1] * vec.y()
+            + self[1][2] * vec.z()
+            + self[1][3] * vec.w();
+        let z = self[2][0] * vec.x()
+            + self[2][1] * vec.y()
+            + self[2][2] * vec.z()
+            + self[2][3] * vec.w();
+        let w = self[3][0] * vec.x()
+            + self[3][1] * vec.y()
+            + self[3][2] * vec.z()
+            + self[3][3] * vec.w();
+        Vector4::new(x, y, z, w)
+    }
+
+    pub fn transform_vec3(&self, vec: &Vector3<T>) -> Vector3<T> {
+        let transformed =
+            self.transform_vec(&Vector4::<T>::new(vec.x(), vec.y(), vec.z(), T::one()));
+        Vector3::new(transformed.x(), transformed.y(), transformed.z())
     }
 }
 
@@ -109,6 +224,40 @@ impl<T> Index<usize> for Matrix4<T> {
 impl<T> IndexMut<usize> for Matrix4<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.values[index * Self::ROWS..index * Self::ROWS + Self::COLS]
+    }
+}
+
+impl<T> From<Matrix4<T>> for [[T; 4]; 4]
+where
+    T: Copy,
+{
+    fn from(matrix: Matrix4<T>) -> Self {
+        [
+            [
+                matrix.values[0],
+                matrix.values[4],
+                matrix.values[8],
+                matrix.values[12],
+            ],
+            [
+                matrix.values[1],
+                matrix.values[5],
+                matrix.values[9],
+                matrix.values[13],
+            ],
+            [
+                matrix.values[2],
+                matrix.values[6],
+                matrix.values[10],
+                matrix.values[14],
+            ],
+            [
+                matrix.values[3],
+                matrix.values[7],
+                matrix.values[11],
+                matrix.values[15],
+            ],
+        ]
     }
 }
 
@@ -236,5 +385,35 @@ mod tests {
         assert_eq!(a[3][1], 1412);
         assert_eq!(a[3][2], 1470);
         assert_eq!(a[3][3], 1528);
+    }
+
+    #[rustfmt::skip]
+    #[test]
+    fn try_inverse() {
+        let a = Matrix4f::with_values([
+            1.0, 0.0, 0.0, 1.0,
+            0.0, 2.0, 1.0, 2.0,
+            2.0, 1.0, 0.0, 1.0,
+            2.0, 0.0, 1.0, 4.0,
+        ]);
+
+        let inverse = a.try_inverse().unwrap();
+
+        assert_float_absolute_eq!(inverse[0][0], -2.0, 0.1);
+        assert_float_absolute_eq!(inverse[0][1], -0.5, 0.1);
+        assert_float_absolute_eq!(inverse[0][2], 1.0, 0.1);
+        assert_float_absolute_eq!(inverse[0][3], 0.5, 0.1);
+        assert_float_absolute_eq!(inverse[1][0], 1.0, 0.1);
+        assert_float_absolute_eq!(inverse[1][1], 0.5, 0.1);
+        assert_float_absolute_eq!(inverse[1][2], 0.0, 0.1);
+        assert_float_absolute_eq!(inverse[1][3], -0.5, 0.1);
+        assert_float_absolute_eq!(inverse[2][0], -8.0, 0.1);
+        assert_float_absolute_eq!(inverse[2][1], -1.0, 0.1);
+        assert_float_absolute_eq!(inverse[2][2], 2.0, 0.1);
+        assert_float_absolute_eq!(inverse[2][3], 2.0, 0.1);
+        assert_float_absolute_eq!(inverse[3][0], 3.0, 0.1);
+        assert_float_absolute_eq!(inverse[3][1], 0.5, 0.1);
+        assert_float_absolute_eq!(inverse[3][2], -1.0, 0.1);
+        assert_float_absolute_eq!(inverse[3][3], -0.5, 0.1);
     }
 }

@@ -11,4 +11,5 @@ nalgebra = "0.27"
 serde = "1.0.130"
 serde_derive = "1.0.130"
 serde_json = "1.0.68"
+tuber-math = { path = "../tuber-math" }
 log = "0.4.14"

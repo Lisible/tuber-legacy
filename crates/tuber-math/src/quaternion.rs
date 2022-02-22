@@ -25,7 +25,7 @@ where
         }
     }
 
-    pub fn from_axis_angle(axis: Vector3<T>, angle: T) -> Self {
+    pub fn from_axis_angle(axis: &Vector3<T>, angle: T) -> Self {
         let half_angle = angle.half();
         let half_angle_sin = half_angle.sin();
         let x = axis.x() * half_angle_sin;
@@ -36,7 +36,7 @@ where
         Self::new(w, Vector3::new(x, y, z))
     }
 
-    pub fn from_euler(angles: Vector3<T>) -> Self {
+    pub fn from_euler(angles: &Vector3<T>) -> Self {
         let roll = angles.x();
         let pitch = angles.y();
         let yaw = angles.z();
@@ -239,7 +239,7 @@ mod tests {
         let axis = Vector3::new(1.0, 2.0, 3.0).normalized();
         let angle = 0.74;
 
-        let quaternion = Quaternion::from_axis_angle(axis, angle);
+        let quaternion = Quaternion::from_axis_angle(&axis, angle);
 
         assert_float_absolute_eq!(quaternion.scalar_part, 0.93, 0.01);
         assert_float_absolute_eq!(quaternion.vector_part.x(), 0.09, 0.01);
@@ -251,7 +251,7 @@ mod tests {
     fn from_euler() {
         let angles = Vector3::new(0.4, 1.3, 5.0);
 
-        let quaternion = Quaternion::from_euler(angles);
+        let quaternion = Quaternion::from_euler(&angles);
 
         dbg!(quaternion);
     }

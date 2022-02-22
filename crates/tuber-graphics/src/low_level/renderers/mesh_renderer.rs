@@ -1,3 +1,12 @@
+use std::collections::HashMap;
+
+use wgpu::{
+    BindGroupDescriptor, BindGroupLayout, CommandEncoder, Device, IndexFormat, PolygonMode, Queue,
+    RenderPass, RenderPipeline, Texture, TextureFormat, TextureViewDescriptor,
+};
+
+use tuber_math::matrix::Matrix4f;
+
 use crate::geometry::Vertex;
 use crate::low_level::buffers::index_buffer::IndexBuffer;
 use crate::low_level::buffers::uniform_buffer::UniformBuffer;
@@ -5,12 +14,6 @@ use crate::low_level::buffers::vertex_buffer::VertexBuffer;
 use crate::low_level::texture::create_default_sampler;
 use crate::primitives::{Mesh, TextureId};
 use crate::Material;
-use nalgebra::Matrix4;
-use std::collections::HashMap;
-use wgpu::{
-    BindGroupDescriptor, BindGroupLayout, CommandEncoder, Device, IndexFormat, PolygonMode, Queue,
-    RenderPass, RenderPipeline, Texture, TextureFormat, TextureViewDescriptor,
-};
 
 const INITIAL_VERTEX_BUFFER_CAPACITY: usize = 1000;
 const INITIAL_INDEX_BUFFER_CAPACITY: usize = 3000;
@@ -348,11 +351,11 @@ pub struct DrawMeshParameters {
     /// The material to draw the mesh with
     pub material: Material,
     /// The transform of the mesh
-    pub transform: Matrix4<f32>,
+    pub transform: Matrix4f,
     /// The view matrix to use to render the mesh
-    pub view: Matrix4<f32>,
+    pub view: Matrix4f,
     /// The projection matrix to use to render the mesh
-    pub projection: Matrix4<f32>,
+    pub projection: Matrix4f,
 }
 
 struct DrawMetadata {

@@ -1,8 +1,9 @@
+use wgpu::util::DeviceExt;
+
 use crate::draw_command::DrawLightCommand;
 use crate::geometry::Vertex;
 use crate::low_level::g_buffer::GBuffer;
 use crate::Color;
-use wgpu::util::DeviceExt;
 
 const VERTEX_COUNT: usize = 6;
 const MIN_POINT_LIGHT_CAPACITY: usize = 20;
@@ -103,7 +104,11 @@ impl LightRenderer {
         let uniforms = draw_light_commands
             .iter()
             .map(|command| PointLightUniform {
-                position: command.world_transform.column(3).xyz().into(),
+                position: [
+                    command.world_transform[3][0],
+                    command.world_transform[3][1],
+                    command.world_transform[3][2],
+                ],
                 radius: command.light.radius,
                 ambient_color: command.light.ambient.into(),
                 _padding: 0,

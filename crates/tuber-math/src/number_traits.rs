@@ -1,6 +1,28 @@
 use std::fmt::Display;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
+pub trait Two {
+    fn two() -> Self;
+}
+
+impl Two for i32 {
+    fn two() -> Self {
+        2
+    }
+}
+
+impl Two for f32 {
+    fn two() -> Self {
+        2.0
+    }
+}
+
+impl Two for f64 {
+    fn two() -> Self {
+        2.0
+    }
+}
+
 pub trait One {
     fn one() -> Self;
 }
@@ -45,6 +67,28 @@ impl Zero for f64 {
     }
 }
 
+pub trait IsZero {
+    fn is_zero(&self) -> bool;
+}
+
+impl IsZero for i32 {
+    fn is_zero(&self) -> bool {
+        *self == 0
+    }
+}
+
+impl IsZero for f32 {
+    fn is_zero(&self) -> bool {
+        self.abs() < 0.00000001
+    }
+}
+
+impl IsZero for f64 {
+    fn is_zero(&self) -> bool {
+        self.abs() < 0.00000001
+    }
+}
+
 pub trait Pi {
     fn pi() -> Self;
 }
@@ -61,7 +105,7 @@ impl Pi for f64 {
     }
 }
 
-pub trait FloatOps:
+pub trait NumericOps:
     Sized
     + Add<Output = Self>
     + AddAssign
@@ -75,11 +119,13 @@ pub trait FloatOps:
 {
 }
 
-impl FloatOps for f32 {}
+impl NumericOps for i32 {}
 
-impl FloatOps for f64 {}
+impl NumericOps for f32 {}
 
-pub trait Float: Display + Copy + Zero + One + Pi + FloatOps {
+impl NumericOps for f64 {}
+
+pub trait Float: Display + Copy + Zero + One + Two + Pi + NumericOps {
     fn sin(self) -> Self;
     fn cos(self) -> Self;
     fn half(self) -> Self;

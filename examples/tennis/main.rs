@@ -22,7 +22,9 @@ const RIGHT_PADDLE_INITIAL_POSITION: (f32, f32, f32) = (730.0, 250.0, 0.0);
 const BALL_INITIAL_POSITION: (f32, f32, f32) = (395.0, 295.0, 0.0);
 
 struct Ball;
+
 struct Paddle;
+
 struct Player;
 
 struct Velocity {
@@ -40,6 +42,7 @@ fn main() -> Result<()> {
 }
 
 struct MainState;
+
 impl State for MainState {
     fn initialize(
         &mut self,
@@ -57,7 +60,7 @@ impl State for MainState {
                 far: 100.0,
             },
             Transform {
-                translation: (0.0, 0.0, 0.0),
+                translation: (0.0, 0.0, 0.0).into(),
                 ..Default::default()
             },
             Active,
@@ -70,7 +73,7 @@ impl State for MainState {
                 color: Color::WHITE,
             },
             Transform {
-                translation: LEFT_PADDLE_INITIAL_POSITION,
+                translation: LEFT_PADDLE_INITIAL_POSITION.into(),
                 ..Default::default()
             },
             Paddle,
@@ -84,7 +87,7 @@ impl State for MainState {
                 color: Color::WHITE,
             },
             Transform {
-                translation: RIGHT_PADDLE_INITIAL_POSITION,
+                translation: RIGHT_PADDLE_INITIAL_POSITION.into(),
                 ..Default::default()
             },
             Paddle,
@@ -109,8 +112,8 @@ impl State for MainState {
                     y: rng.gen_range(-10.0..=5.0),
                 },
                 Transform {
-                    translation: BALL_INITIAL_POSITION,
-                    rotation_center: (BALL_SIZE / 2.0, BALL_SIZE / 2.0, 0.0),
+                    translation: BALL_INITIAL_POSITION.into(),
+                    rotation_center: (BALL_SIZE / 2.0, BALL_SIZE / 2.0, 0.0).into(),
                     ..Default::default()
                 },
                 Ball,
@@ -129,10 +132,11 @@ impl State for MainState {
 fn move_paddle_system(ecs: &mut Ecs, engine_context: &mut EngineContext) -> SystemResult {
     let input_state = &engine_context.input_state;
     for (_id, (mut transform, _)) in ecs.query::<(W<Transform>, R<Player>)>() {
+        let y = transform.translation.y();
         if input_state.is(Input::KeyDown(Key::Z)) {
-            transform.translation.1 -= 5.0;
+            transform.translation.set_y(y - 5.0);
         } else if input_state.is(Input::KeyDown(Key::S)) {
-            transform.translation.1 += 5.0;
+            transform.translation.set_y(y + 5.0);
         }
     }
 
@@ -143,21 +147,26 @@ fn move_ball_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     for (_id, (rectangle_shape, mut transform, mut velocity)) in
         ecs.query::<(R<RectangleShape>, W<Transform>, W<Velocity>)>()
     {
-        if (transform.translation.0 + rectangle_shape.width >= 800.0)
-            || (transform.translation.0 <= 0.0)
+        if (transform.translation.x() + rectangle_shape.width >= 800.0)
+            || (transform.translation.x() <= 0.0)
         {
             velocity.x = -velocity.x;
         }
 
-        if (transform.translation.1 + rectangle_shape.height >= 600.0)
-            || (transform.translation.1 <= 0.0)
+        if (transform.translation.y() + rectangle_shape.height >= 600.0)
+            || (transform.translation.y() <= 0.0)
         {
             velocity.y = -velocity.y;
         }
 
-        transform.translation.0 += velocity.x;
-        transform.translation.1 += velocity.y;
-        transform.angle.2 += 1.0;
+        let x = transform.translation.x();
+        transform.translation.set_x(x + velocity.x);
+
+        let y = transform.translation.y();
+        transform.translation.set_y(y + velocity.y);
+
+        let angle_z = transform.angle.z();
+        transform.angle.set_z(angle_z + 1.0);
     }
 
     Ok(())
@@ -175,38 +184,44 @@ fn collision_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
                 let ball_position = ball_transform.translation;
 
                 if !ball_is_close_to_paddle(
-                    ball_position,
+                    ball_position.into(),
                     BALL_SIZE,
-                    paddle_transform.translation,
+                    paddle_transform.translation.into(),
                     PADDLE_WIDTH,
                     PADDLE_HEIGHT,
                 ) {
                     continue;
                 }
 
-                if ball_position.0 < paddle_position.0 + paddle_shape.width
-                    && ball_position.0 + BALL_SIZE > paddle_position.0
-                    && ball_position.1 > paddle_position.1
-                    && ball_position.1 + BALL_SIZE < paddle_position.1 + paddle_shape.height
+                if ball_position.x() < paddle_position.x() + paddle_shape.width
+                    && ball_position.x() + BALL_SIZE > paddle_position.x()
+                    && ball_position.y() > paddle_position.y()
+                    && ball_position.y() + BALL_SIZE < paddle_position.y() + paddle_shape.height
                 {
-                    ball_transform.translation.0 += if velocity.x >= 0.0 {
-                        -(ball_position.0 + BALL_SIZE - paddle_position.0)
-                    } else {
-                        paddle_position.0 + paddle_shape.width - ball_position.0
-                    };
+                    let x = ball_transform.translation.x();
+                    ball_transform.translation.set_x(
+                        x + if velocity.x >= 0.0 {
+                            -(ball_position.x() + BALL_SIZE - paddle_position.x())
+                        } else {
+                            paddle_position.x() + paddle_shape.width - ball_position.x()
+                        },
+                    );
                     velocity.x = -velocity.x;
                 }
 
-                if ball_position.1 < paddle_position.1 + paddle_shape.height
-                    && ball_position.1 + BALL_SIZE > paddle_position.1
-                    && ball_position.0 > paddle_position.0
-                    && ball_position.0 + BALL_SIZE < paddle_position.0 + paddle_shape.width
+                if ball_position.y() < paddle_position.y() + paddle_shape.height
+                    && ball_position.y() + BALL_SIZE > paddle_position.y()
+                    && ball_position.x() > paddle_position.x()
+                    && ball_position.x() + BALL_SIZE < paddle_position.x() + paddle_shape.width
                 {
-                    ball_transform.translation.1 += if velocity.y >= 0.0 {
-                        -(ball_position.1 + BALL_SIZE - paddle_position.1)
-                    } else {
-                        paddle_position.1 + paddle_shape.height - ball_position.1
-                    };
+                    let y = ball_transform.translation.y();
+                    ball_transform.translation.set_y(
+                        y + if velocity.y >= 0.0 {
+                            -(ball_position.y() + BALL_SIZE - paddle_position.y())
+                        } else {
+                            paddle_position.y() + paddle_shape.height - ball_position.y()
+                        },
+                    );
                     velocity.y = -velocity.y;
                 }
             }

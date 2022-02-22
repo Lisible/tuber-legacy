@@ -1,12 +1,14 @@
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use crate::number_traits::{Float, Zero};
 
+pub type Vector3f = Vector3<f32>;
+pub type Vector4f = Vector4<f32>;
 pub type Vector3<T = f32> = Vector<T, 3>;
 pub type Vector4<T = f32> = Vector<T, 4>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vector<T, const DIM: usize> {
     values: [T; DIM],
 }
@@ -53,6 +55,38 @@ where
     }
 
     pub fn y(&self) -> T {
+        self.values[1].clone()
+    }
+    pub fn set_y(&mut self, value: T) {
+        self.values[1] = value;
+    }
+
+    pub fn z(&self) -> T {
+        self.values[2]
+    }
+    pub fn set_z(&mut self, value: T) {
+        self.values[2] = value;
+    }
+}
+
+impl<T> Vector<T, 4>
+where
+    T: Copy,
+{
+    pub fn new(x: T, y: T, z: T, w: T) -> Self {
+        Self {
+            values: [x, y, z, w],
+        }
+    }
+
+    pub fn x(&self) -> T {
+        self.values[0]
+    }
+    pub fn set_x(&mut self, value: T) {
+        self.values[0] = value;
+    }
+
+    pub fn y(&self) -> T {
         self.values[1]
     }
     pub fn set_y(&mut self, value: T) {
@@ -64,6 +98,13 @@ where
     }
     pub fn set_z(&mut self, value: T) {
         self.values[2] = value;
+    }
+
+    pub fn w(&self) -> T {
+        self.values[3]
+    }
+    pub fn set_w(&mut self, value: T) {
+        self.values[3] = value;
     }
 }
 
@@ -191,6 +232,38 @@ where
         for i in 0..DIM {
             self.values[i] /= rhs;
         }
+    }
+}
+
+impl<T, const DIM: usize> Neg for Vector<T, DIM>
+where
+    T: Copy + Neg<Output = T>,
+{
+    type Output = Self;
+
+    fn neg(mut self) -> Self::Output {
+        for value in &mut self.values {
+            *value = -*value;
+        }
+        self
+    }
+}
+
+impl<T> From<(T, T, T)> for Vector3<T>
+where
+    T: Copy,
+{
+    fn from(tuple: (T, T, T)) -> Self {
+        Vector3::new(tuple.0, tuple.1, tuple.2)
+    }
+}
+
+impl<T> From<Vector3<T>> for (T, T, T)
+where
+    T: Copy,
+{
+    fn from(vector: Vector3<T>) -> Self {
+        (vector.x(), vector.y(), vector.z())
     }
 }
 

@@ -1,4 +1,5 @@
 use std::time::Instant;
+
 use tuber::core::transform::Transform;
 use tuber::engine::state::State;
 use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
@@ -25,6 +26,7 @@ fn main() -> Result<()> {
 }
 
 struct MainState;
+
 impl State for MainState {
     fn initialize(
         &mut self,
@@ -42,7 +44,7 @@ impl State for MainState {
                 far: 100.0,
             },
             Transform {
-                translation: (0.0, 0.0, 0.0),
+                translation: (0.0, 0.0, 0.0).into(),
                 ..Default::default()
             },
             Active,
@@ -50,7 +52,7 @@ impl State for MainState {
 
         ecs.insert((
             Transform {
-                translation: (375.0, 275.0, 0.0),
+                translation: (375.0, 275.0, 0.0).into(),
                 ..Default::default()
             },
             Sprite {
@@ -68,7 +70,7 @@ impl State for MainState {
 
         ecs.insert((
             Transform {
-                translation: (500.0, 275.0, 0.0),
+                translation: (500.0, 275.0, 0.0).into(),
                 ..Default::default()
             },
             Sprite {
@@ -85,7 +87,7 @@ impl State for MainState {
 
         ecs.insert((
             Transform {
-                translation: (250.0, 275.0, 0.0),
+                translation: (250.0, 275.0, 0.0).into(),
                 ..Default::default()
             },
             Sprite {
@@ -102,7 +104,7 @@ impl State for MainState {
 
         ecs.insert((
             Transform {
-                translation: (250.0, 350.0, 0.0),
+                translation: (250.0, 350.0, 0.0).into(),
                 ..Default::default()
             },
             Sprite {
@@ -123,7 +125,7 @@ impl State for MainState {
             .unwrap();
         ecs.insert((
             Transform {
-                translation: (375.0, 350.0, 0.0),
+                translation: (375.0, 350.0, 0.0).into(),
                 ..Default::default()
             },
             Sprite {
@@ -140,7 +142,7 @@ impl State for MainState {
 
         ecs.insert((
             Transform {
-                translation: (475.0, 400.0, 0.0),
+                translation: (475.0, 400.0, 0.0).into(),
                 ..Default::default()
             },
             Sprite {
@@ -157,7 +159,7 @@ impl State for MainState {
 
         ecs.insert((
             Transform {
-                translation: (0.0, 0.0, 0.0),
+                translation: (0.0, 0.0, 0.0).into(),
                 ..Default::default()
             },
             AnimatedSprite {

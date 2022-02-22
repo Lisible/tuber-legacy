@@ -1,7 +1,8 @@
+use tuber_math::matrix::Matrix4f;
+
 use crate::primitives::{Mesh, Quad};
 use crate::renderable::light::PointLight;
 use crate::Material;
-use nalgebra::Matrix4;
 
 pub struct CommandBuffer {
     draw_mesh_command_buffer: Vec<DrawMeshCommand>,
@@ -72,19 +73,19 @@ pub enum Command {
 #[derive(Debug)]
 pub struct DrawLightCommand {
     pub light: PointLight,
-    pub world_transform: Matrix4<f32>,
+    pub world_transform: Matrix4f,
 }
 
 #[derive(Debug, Clone)]
 pub struct DrawQuadCommand {
     pub quad: Quad,
-    pub world_transform: Matrix4<f32>,
+    pub world_transform: Matrix4f,
     pub material: Material,
 }
 
 #[derive(Debug, Clone)]
 pub struct DrawMeshCommand {
     pub mesh: Mesh,
-    pub world_transform: Matrix4<f32>,
+    pub world_transform: Matrix4f,
     pub material: Material,
 }

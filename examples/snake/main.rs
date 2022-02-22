@@ -1,5 +1,7 @@
-use rand::{thread_rng, Rng};
 use std::collections::VecDeque;
+
+use rand::{thread_rng, Rng};
+
 use tuber::core::input::Input::ActionDown;
 use tuber::core::transform::Transform;
 use tuber::ecs::ecs::Ecs;
@@ -22,7 +24,9 @@ const BODY_PART_SIZE: f32 = 64.0;
 const SNAKE_SPEED: f32 = 4.0;
 
 struct SnakeHead;
+
 struct SnakeTail;
+
 struct SnakeBodyPart {
     next_body_part: Option<EntityIndex>,
 }
@@ -56,6 +60,7 @@ fn main() -> Result<()> {
 }
 
 struct MainState;
+
 impl State for MainState {
     fn initialize(
         &mut self,
@@ -73,7 +78,7 @@ impl State for MainState {
                 far: 100.0,
             },
             Transform {
-                translation: (0.0, 0.0, 0.0),
+                translation: (0.0, 0.0, 0.0).into(),
                 ..Default::default()
             },
             Active,
@@ -111,14 +116,14 @@ fn check_collision_with_body_system(ecs: &mut Ecs, _: &mut EngineContext) -> Sys
 
             if rectangle_intersects(
                 (
-                    head_transform.translation.0,
-                    head_transform.translation.1,
+                    head_transform.translation.x(),
+                    head_transform.translation.y(),
                     BODY_PART_SIZE,
                     BODY_PART_SIZE,
                 ),
                 (
-                    body_part_transform.translation.0,
-                    body_part_transform.translation.1,
+                    body_part_transform.translation.x(),
+                    body_part_transform.translation.y(),
                     BODY_PART_SIZE,
                     BODY_PART_SIZE,
                 ),
@@ -144,26 +149,28 @@ fn move_head_system(ecs: &mut Ecs, engine_context: &mut EngineContext) -> System
 
         let mut pivot_list = ecs.shared_resource_mut::<PivotList>().unwrap();
         if input_state.is(ActionDown("rotate_head_left".into())) {
-            transform.angle.2 -= 2.0;
+            let angle_z = transform.angle.z();
+            transform.angle.set_z(angle_z - 2f32.to_radians());
             pivot_list.0.push_back(Pivot {
-                position: transform.translation,
-                angle: transform.angle.2,
+                position: transform.translation.into(),
+                angle: transform.angle.z(),
             });
         } else if input_state.is(ActionDown("rotate_head_right".into())) {
-            transform.angle.2 += 2.0;
+            let angle_z = transform.angle.z();
+            transform.angle.set_z(angle_z + 2f32.to_radians());
             pivot_list.0.push_back(Pivot {
-                position: transform.translation,
-                angle: transform.angle.2,
+                position: transform.translation.into(),
+                angle: transform.angle.z(),
             });
         }
 
-        *velocity = compute_new_segment_velocity(transform.angle.2);
+        *velocity = compute_new_segment_velocity(transform.angle.z());
         *transform = compute_new_segment_position(*transform, &velocity);
 
-        transform.translation.0 < -BODY_PART_SIZE
-            || transform.translation.0 > WINDOW_WIDTH as f32
-            || transform.translation.1 < -BODY_PART_SIZE
-            || transform.translation.1 > WINDOW_HEIGHT as f32
+        transform.translation.x() < -BODY_PART_SIZE
+            || transform.translation.x() > WINDOW_WIDTH as f32
+            || transform.translation.y() < -BODY_PART_SIZE
+            || transform.translation.y() > WINDOW_HEIGHT as f32
     };
 
     if is_game_over {
@@ -198,7 +205,8 @@ fn spawn_apple(ecs: &mut Ecs) {
                 rng.gen_range(0.0..800.0 - 64.0),
                 rng.gen_range(0.0..600.0 - 64.0),
                 0.0,
-            ),
+            )
+                .into(),
             ..Default::default()
         },
         Sprite {
@@ -223,8 +231,8 @@ fn spawn_apple(ecs: &mut Ecs) {
 fn spawn_snake(ecs: &mut Ecs) {
     let snake_tail = ecs.insert((
         Transform {
-            translation: (300.0, 300.0 + BODY_PART_SIZE, 0.0),
-            rotation_center: (32.0, BODY_PART_SIZE, 0.0),
+            translation: (300.0, 300.0 + BODY_PART_SIZE, 0.0).into(),
+            rotation_center: (32.0, BODY_PART_SIZE, 0.0).into(),
             ..Default::default()
         },
         Sprite {
@@ -253,8 +261,8 @@ fn spawn_snake(ecs: &mut Ecs) {
     ));
     let _snake_head = ecs.insert((
         Transform {
-            translation: (300.0, 300.0, 0.0),
-            rotation_center: (BODY_PART_SIZE / 2.0, BODY_PART_SIZE, 0.0),
+            translation: (300.0, 300.0, 0.0).into(),
+            rotation_center: (BODY_PART_SIZE / 2.0, BODY_PART_SIZE, 0.0).into(),
             ..Default::default()
         },
         Sprite {
@@ -295,16 +303,16 @@ fn move_body_parts_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult 
         }
 
         for (pivot_index, pivot) in pivots.0.iter().enumerate() {
-            if (transform.translation.0 - pivot.position.0).abs() < 0.2
-                && (transform.translation.1 - pivot.position.1).abs() < 0.2
+            if (transform.translation.x() - pivot.position.0).abs() < 0.2
+                && (transform.translation.y() - pivot.position.1).abs() < 0.2
             {
                 if body_part_id == tail_id {
                     pivots_to_delete.push(pivot_index);
                 }
-                transform.angle.2 = pivot.angle;
+                transform.angle.set_z(pivot.angle);
             }
         }
-        *velocity = compute_new_segment_velocity(transform.angle.2);
+        *velocity = compute_new_segment_velocity(transform.angle.z());
         *transform = compute_new_segment_position(*transform, &velocity);
     }
 
@@ -323,8 +331,8 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
             .unwrap();
         let mut score = ecs.shared_resource_mut::<Score>().unwrap();
         let head_rectangle = (
-            head_transform.translation.0,
-            head_transform.translation.1,
+            head_transform.translation.x(),
+            head_transform.translation.z(),
             head_sprite.width,
             head_sprite.height,
         );
@@ -334,15 +342,19 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
             ecs.query::<(R<Apple>, W<Transform>, R<Sprite>)>()
         {
             let apple_rectangle = (
-                apple_transform.translation.0,
-                apple_transform.translation.1,
+                apple_transform.translation.x(),
+                apple_transform.translation.z(),
                 apple_sprite.width,
                 apple_sprite.height,
             );
 
             if rectangle_intersects(head_rectangle, apple_rectangle) {
-                apple_transform.translation.0 = rng.gen_range(0.0..800.0 - 64.0);
-                apple_transform.translation.1 = rng.gen_range(0.0..600.0 - 64.0);
+                apple_transform
+                    .translation
+                    .set_x(rng.gen_range(0.0..800.0 - 64.0));
+                apple_transform
+                    .translation
+                    .set_y(rng.gen_range(0.0..600.0 - 64.0));
                 score.0 += 1;
                 grow_snake = true;
                 println!("Score: {}", score.0)
@@ -362,10 +374,11 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
             ecs.insert((
                 Transform {
                     translation: (
-                        tail_transform.translation.0 - BODY_PART_SIZE / 4.0 * tail_velocity.x,
-                        tail_transform.translation.1 - BODY_PART_SIZE / 4.0 * tail_velocity.y,
+                        tail_transform.translation.x() - BODY_PART_SIZE / 4.0 * tail_velocity.x,
+                        tail_transform.translation.y() - BODY_PART_SIZE / 4.0 * tail_velocity.y,
                         0.0,
-                    ),
+                    )
+                        .into(),
                     ..tail_transform
                 },
                 Sprite {
@@ -409,21 +422,21 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     Ok(())
 }
 
-fn compute_new_segment_velocity(angle_degrees: f32) -> Velocity {
-    let angle_radians = angle_degrees.to_radians();
+fn compute_new_segment_velocity(angle: f32) -> Velocity {
     Velocity {
-        x: SNAKE_SPEED * angle_radians.sin(),
-        y: -SNAKE_SPEED * angle_radians.cos(),
+        x: SNAKE_SPEED * angle.sin(),
+        y: -SNAKE_SPEED * angle.cos(),
     }
 }
 
 fn compute_new_segment_position(transform: Transform, velocity: &Velocity) -> Transform {
     Transform {
         translation: (
-            transform.translation.0 + velocity.x,
-            transform.translation.1 + velocity.y,
+            transform.translation.x() + velocity.x,
+            transform.translation.y() + velocity.y,
             0.0,
-        ),
+        )
+            .into(),
         ..transform
     }
 }

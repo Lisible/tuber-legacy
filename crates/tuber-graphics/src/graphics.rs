@@ -1,3 +1,16 @@
+use std::any::TypeId;
+use std::collections::HashMap;
+use std::default::Default;
+
+use tuber_core::asset::{AssetStore, GenericLoader};
+use tuber_core::transform::{IntoMatrix4, Transform};
+use tuber_ecs::ecs::Ecs;
+use tuber_ecs::query::accessors::Opt;
+use tuber_ecs::query::accessors::R;
+use tuber_ecs::{EntityIndex, Parent};
+use tuber_math::matrix::{Identity, Matrix4f};
+use tuber_math::vector::Vector3;
+
 use crate::camera::WorldRegion;
 use crate::draw_command::{Command, DrawLightCommand, DrawMeshCommand, DrawQuadCommand};
 use crate::font::DEFAULT_FONT_IDENTIFIER;
@@ -15,16 +28,6 @@ use crate::{
     TextureAtlas, TextureData, TextureMetadata, TextureRegion, Tile, Tilemap, WGPUState, Window,
     WindowSize, DEFAULT_NORMAL_MAP_IDENTIFIER,
 };
-use nalgebra::{Matrix4, Point3, Vector3};
-use std::any::TypeId;
-use std::collections::HashMap;
-use std::default::Default;
-use tuber_core::asset::{AssetStore, GenericLoader};
-use tuber_core::transform::{IntoMatrix4, Transform};
-use tuber_ecs::ecs::Ecs;
-use tuber_ecs::query::accessors::Opt;
-use tuber_ecs::query::accessors::R;
-use tuber_ecs::{EntityIndex, Parent};
 
 pub struct Graphics {
     wgpu_state: Option<WGPUState>,
@@ -53,11 +56,7 @@ impl Graphics {
         self.wgpu_state.as_mut().unwrap().render();
     }
 
-    pub fn draw_ui_rectangle(
-        &mut self,
-        rectangle: &RectangleShape,
-        transform_matrix: Matrix4<f32>,
-    ) {
+    pub fn draw_ui_rectangle(&mut self, rectangle: &RectangleShape, transform_matrix: Matrix4f) {
         self.wgpu_state
             .as_mut()
             .unwrap()
@@ -94,7 +93,7 @@ impl Graphics {
             }));
     }
 
-    pub fn draw_rectangle(&mut self, rectangle: &RectangleShape, transform_matrix: Matrix4<f32>) {
+    pub fn draw_rectangle(&mut self, rectangle: &RectangleShape, transform_matrix: Matrix4f) {
         self.wgpu_state
             .as_mut()
             .unwrap()
@@ -131,7 +130,7 @@ impl Graphics {
             }));
     }
 
-    pub fn draw_point_light(&mut self, point_light: &PointLight, transform_matrix: Matrix4<f32>) {
+    pub fn draw_point_light(&mut self, point_light: &PointLight, transform_matrix: Matrix4f) {
         self.wgpu_state
             .as_mut()
             .unwrap()
@@ -145,7 +144,7 @@ impl Graphics {
     pub fn draw_mesh(
         &mut self,
         mesh: &MeshDescriptor,
-        transform_matrix: Matrix4<f32>,
+        transform_matrix: Matrix4f,
         asset_manager: &mut AssetStore,
     ) {
         self.load_material_in_vram_if_required(asset_manager, mesh.material());
@@ -206,7 +205,7 @@ impl Graphics {
     pub fn draw_sprite(
         &mut self,
         sprite: &Sprite,
-        transform_matrix: Matrix4<f32>,
+        transform_matrix: Matrix4f,
         asset_manager: &mut AssetStore,
     ) -> Result<(), GraphicsError> {
         self.load_material_in_vram_if_required(asset_manager, &sprite.material);
@@ -264,7 +263,7 @@ impl Graphics {
     pub fn draw_animated_sprite(
         &mut self,
         animated_sprite: &AnimatedSprite,
-        transform_matrix: Matrix4<f32>,
+        transform_matrix: Matrix4f,
         asset_store: &mut AssetStore,
     ) -> Result<(), GraphicsError> {
         self.load_material_in_vram_if_required(asset_store, &animated_sprite.material);
@@ -342,7 +341,7 @@ impl Graphics {
         &mut self,
         asset_store: &mut AssetStore,
         tilemap: &mut Tilemap,
-        transform_matrix: Matrix4<f32>,
+        transform_matrix: Matrix4f,
         camera_world_region: WorldRegion,
     ) {
         self.load_material_in_vram_if_required(asset_store, tilemap.material());
@@ -356,15 +355,15 @@ impl Graphics {
                 let tile_x = tile_index % tilemap_size.width;
                 let tile_y = tile_index / tilemap_size.height;
 
-                let tile_world_position = transform_matrix.transform_point(&Point3::new(
+                let tile_world_position = transform_matrix.transform_vec3(&Vector3::new(
                     (tile_x * tilemap.tile_size().width as usize) as f32,
                     (tile_y * tilemap.tile_size().height as usize) as f32,
                     0.0,
                 ));
 
                 if !camera_world_region.is_in_region(
-                    tile_world_position.x,
-                    tile_world_position.y,
+                    tile_world_position.x(),
+                    tile_world_position.y(),
                     tile_size.width as f32,
                     tile_size.height as f32,
                 ) {
@@ -425,9 +424,9 @@ impl Graphics {
                                     ..Default::default()
                                 },
                             },
-                            world_transform: transform_matrix.append_translation(&Vector3::new(
-                                tile_world_position.x,
-                                tile_world_position.y,
+                            world_transform: transform_matrix.add_translation(&Vector3::new(
+                                tile_world_position.x(),
+                                tile_world_position.y(),
                                 0.0,
                             )),
                             material: material.clone(),
@@ -441,7 +440,7 @@ impl Graphics {
         &mut self,
         text: &str,
         font_identifier: &Option<String>,
-        transform_matrix: Matrix4<f32>,
+        transform_matrix: Matrix4f,
         asset_store: &mut AssetStore,
     ) {
         {
@@ -483,12 +482,12 @@ impl Graphics {
         let texture = &self.texture_metadata[font_texture];
 
         let transform_matrix = transform_matrix;
-        let mut offset_x = transform_matrix.column(3).x;
-        let mut offset_y = transform_matrix.column(3).y;
+        let mut offset_x = transform_matrix[0][3];
+        let mut offset_y = transform_matrix[1][3];
         for character in text.chars() {
             if character == '\n' {
                 offset_y += (font.line_height() + font.line_spacing()) as f32;
-                offset_x = transform_matrix.column(3).x;
+                offset_x = transform_matrix[0][3];
                 continue;
             }
 
@@ -505,8 +504,8 @@ impl Graphics {
 
             let glyph_region = glyph_data.region();
 
-            let mut glyph_transform_matrix = Matrix4::identity();
-            glyph_transform_matrix.append_translation_mut(&Vector3::new(offset_x, offset_y, 0.0));
+            let mut glyph_transform_matrix = Matrix4f::identity();
+            glyph_transform_matrix.append_translation(&Vector3::new(offset_x, offset_y, 0.0));
 
             let glyph_texture_coordinates = TextureRegion {
                 x: font_region.x + glyph_region.x,
@@ -629,7 +628,7 @@ impl Graphics {
         for (_, (rectangle_shape, transform, parent)) in
             ecs.query::<(R<RectangleShape>, R<Transform>, Opt<R<Parent>>)>()
         {
-            let mut parent_transform = Matrix4::<f32>::identity();
+            let mut parent_transform = Matrix4f::identity();
             let mut parent = parent;
             while let Some(parent_ref) = &parent {
                 let parent_id = parent_ref.0;
@@ -648,7 +647,7 @@ impl Graphics {
         for (_, (sprite, transform, parent)) in
             ecs.query::<(R<Sprite>, R<Transform>, Opt<R<Parent>>)>()
         {
-            let mut parent_transform = Matrix4::<f32>::identity();
+            let mut parent_transform = Matrix4f::identity();
             let mut parent = parent;
             while let Some(parent_ref) = &parent {
                 let parent_id = parent_ref.0;
@@ -670,7 +669,7 @@ impl Graphics {
         for (_, (mesh, transform, parent)) in
             ecs.query::<(R<MeshDescriptor>, R<Transform>, Opt<R<Parent>>)>()
         {
-            let mut parent_transform = Matrix4::<f32>::identity();
+            let mut parent_transform = Matrix4f::identity();
             let mut parent = parent;
             while let Some(parent_ref) = &parent {
                 let parent_id = parent_ref.0;
@@ -691,7 +690,7 @@ impl Graphics {
         for (_, (animated_sprite, transform, parent)) in
             ecs.query::<(R<AnimatedSprite>, R<Transform>, Opt<R<Parent>>)>()
         {
-            let mut parent_transform = Matrix4::<f32>::identity();
+            let mut parent_transform = Matrix4f::identity();
             let mut parent = parent;
             while let Some(parent_ref) = &parent {
                 let parent_id = parent_ref.0;
@@ -713,7 +712,7 @@ impl Graphics {
         for (_, (point_light, transform, parent)) in
             ecs.query::<(R<PointLight>, R<Transform>, Opt<R<Parent>>)>()
         {
-            let mut parent_transform = Matrix4::<f32>::identity();
+            let mut parent_transform = Matrix4f::identity();
             let mut parent = parent;
             while let Some(parent_ref) = &parent {
                 let parent_id = parent_ref.0;
@@ -734,7 +733,7 @@ impl Graphics {
         &mut self,
         camera_id: EntityIndex,
         camera: &OrthographicCamera,
-        transform_matrix: Matrix4<f32>,
+        transform_matrix: Matrix4f,
     ) {
         self.wgpu_state
             .as_mut()

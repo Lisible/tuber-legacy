@@ -55,8 +55,8 @@ pub(crate) fn geometry_pass(
         .collect::<Vec<_>>();
 
     draw_commands.sort_by(|first_draw_command, second_draw_command| {
-        (first_draw_command.world_transform.column(3).z as f32)
-            .partial_cmp(&(second_draw_command.world_transform.column(3).z as f32))
+        (first_draw_command.world_transform[2][3] as f32)
+            .partial_cmp(&(second_draw_command.world_transform[2][3] as f32))
             .unwrap()
     });
 

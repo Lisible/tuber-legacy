@@ -1,6 +1,5 @@
-use crate::character::Character;
-use crate::game_state::Movement;
 use std::time::Instant;
+
 use tuber::core::asset::AssetStore;
 use tuber::core::transform::Transform;
 use tuber::ecs::ecs::EntityDefinition;
@@ -10,6 +9,9 @@ use tuber_ecs::ecs::Ecs;
 use tuber_ecs::{EntityIndex, Parent};
 use tuber_graphics::animation::AnimationState;
 use tuber_graphics::material::MaterialDescriptor;
+
+use crate::character::Character;
+use crate::game_state::Movement;
 
 pub(crate) struct Orc;
 
@@ -28,7 +30,7 @@ fn create_orc_entity_definition(asset_store: &mut AssetStore) -> impl EntityDefi
             movement: Movement::Idle,
         },
         Transform {
-            translation: (144.0, 144.0, 10.0),
+            translation: (144.0, 144.0, 10.0).into(),
             ..Default::default()
         },
         AnimatedSprite {
@@ -71,7 +73,7 @@ fn create_orc_shadow_entity_definition(
             },
         },
         Transform {
-            translation: (6.0, 55.0, -1.0),
+            translation: (6.0, 55.0, -1.0).into(),
             ..Default::default()
         },
     )
