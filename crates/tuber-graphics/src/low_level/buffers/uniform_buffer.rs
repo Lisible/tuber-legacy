@@ -1,11 +1,13 @@
-use crate::low_level::utils::create_uniform_buffer;
-use nalgebra::max;
+use std::cmp::max;
 use std::marker::PhantomData;
+
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry,
     BindingResource, BindingType, Buffer, BufferAddress, BufferBinding, BufferBindingType,
     BufferSize, CommandEncoder, Device, Queue, ShaderStages,
 };
+
+use crate::low_level::utils::create_uniform_buffer;
 
 const BUFFER_SUFFIX: &'static str = "_buffer";
 const BIND_GROUP_SUFFIX: &'static str = "_bind_group";
