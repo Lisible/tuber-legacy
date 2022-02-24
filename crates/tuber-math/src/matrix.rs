@@ -61,9 +61,9 @@ impl<T> Matrix4<T> {
         where U: Copy + Zero + One {
         Matrix4 {
             values: [
-                U::one(), U::zero(), U::zero(), translation.x(),
-                U::zero(), U::one(), U::zero(), translation.y(),
-                U::zero(), U::zero(), U::one(), translation.z(),
+                U::one(), U::zero(), U::zero(), translation.x,
+                U::zero(), U::one(), U::zero(), translation.y,
+                U::zero(), U::zero(), U::one(), translation.z,
                 U::zero(), U::zero(), U::zero(), U::one()
             ]
         }
@@ -80,9 +80,9 @@ impl<T> Matrix4<T> {
         where U: Copy + Zero + One {
         Matrix4 {
             values: [
-                scale.x(), U::zero(), U::zero(), U::zero(),
-                U::zero(), scale.y(), U::zero(), U::zero(),
-                U::zero(), U::zero(), scale.z(), U::zero(),
+                scale.x, U::zero(), U::zero(), U::zero(),
+                U::zero(), scale.y, U::zero(), U::zero(),
+                U::zero(), U::zero(), scale.z, U::zero(),
                 U::zero(), U::zero(), U::zero(), U::one(),
             ]
         }
@@ -156,29 +156,16 @@ where
     }
 
     pub fn transform_vec(&self, vec: &Vector4<T>) -> Vector4<T> {
-        let x = self[0][0] * vec.x()
-            + self[0][1] * vec.y()
-            + self[0][2] * vec.z()
-            + self[0][3] * vec.w();
-        let y = self[1][0] * vec.x()
-            + self[1][1] * vec.y()
-            + self[1][2] * vec.z()
-            + self[1][3] * vec.w();
-        let z = self[2][0] * vec.x()
-            + self[2][1] * vec.y()
-            + self[2][2] * vec.z()
-            + self[2][3] * vec.w();
-        let w = self[3][0] * vec.x()
-            + self[3][1] * vec.y()
-            + self[3][2] * vec.z()
-            + self[3][3] * vec.w();
+        let x = self[0][0] * vec.x + self[0][1] * vec.y + self[0][2] * vec.z + self[0][3] * vec.w;
+        let y = self[1][0] * vec.x + self[1][1] * vec.y + self[1][2] * vec.z + self[1][3] * vec.w;
+        let z = self[2][0] * vec.x + self[2][1] * vec.y + self[2][2] * vec.z + self[2][3] * vec.w;
+        let w = self[3][0] * vec.x + self[3][1] * vec.y + self[3][2] * vec.z + self[3][3] * vec.w;
         Vector4::new(x, y, z, w)
     }
 
     pub fn transform_vec3(&self, vec: &Vector3<T>) -> Vector3<T> {
-        let transformed =
-            self.transform_vec(&Vector4::<T>::new(vec.x(), vec.y(), vec.z(), T::one()));
-        Vector3::new(transformed.x(), transformed.y(), transformed.z())
+        let transformed = self.transform_vec(&Vector4::<T>::new(vec.x, vec.y, vec.z, T::one()));
+        Vector3::new(transformed.x, transformed.y, transformed.z)
     }
 }
 

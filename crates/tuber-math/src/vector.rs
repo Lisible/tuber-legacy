@@ -5,267 +5,185 @@ use crate::number_traits::{Float, Zero};
 
 pub type Vector3f = Vector3<f32>;
 pub type Vector4f = Vector4<f32>;
-pub type Vector3<T = f32> = Vector<T, 3>;
-pub type Vector4<T = f32> = Vector<T, 4>;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Vector<T, const DIM: usize> {
-    values: [T; DIM],
-}
-
-impl<T, const DIM: usize> Vector<T, DIM>
-where
-    T: Float,
-{
-    pub fn norm(&self) -> T {
-        let mut norm = T::zero();
-        for value in self.values {
-            norm += value.squared();
+macro_rules! struct_vec {
+    ($name:ident : $display_fmt:literal, ($($dim:ident : $TY:ty => $idx:tt,)*)) => {
+        #[derive(Clone, Copy, PartialEq, Debug)]
+        pub struct $name<T = f32> {
+            $(pub $dim: T,)*
         }
-        norm.sqrt()
-    }
 
-    pub fn normalize(&mut self) {
-        let norm = self.norm();
-        for value in &mut self.values {
-            *value /= norm;
-        }
-    }
-
-    pub fn normalized(&self) -> Self {
-        let mut normalized = self.clone();
-        normalized.normalize();
-        normalized
-    }
-}
-
-impl<T> Vector<T, 3>
-where
-    T: Copy,
-{
-    pub fn new(x: T, y: T, z: T) -> Self {
-        Self { values: [x, y, z] }
-    }
-
-    pub fn x(&self) -> T {
-        self.values[0]
-    }
-    pub fn set_x(&mut self, value: T) {
-        self.values[0] = value;
-    }
-
-    pub fn y(&self) -> T {
-        self.values[1].clone()
-    }
-    pub fn set_y(&mut self, value: T) {
-        self.values[1] = value;
-    }
-
-    pub fn z(&self) -> T {
-        self.values[2]
-    }
-    pub fn set_z(&mut self, value: T) {
-        self.values[2] = value;
-    }
-}
-
-impl<T> Vector<T, 4>
-where
-    T: Copy,
-{
-    pub fn new(x: T, y: T, z: T, w: T) -> Self {
-        Self {
-            values: [x, y, z, w],
-        }
-    }
-
-    pub fn x(&self) -> T {
-        self.values[0]
-    }
-    pub fn set_x(&mut self, value: T) {
-        self.values[0] = value;
-    }
-
-    pub fn y(&self) -> T {
-        self.values[1]
-    }
-    pub fn set_y(&mut self, value: T) {
-        self.values[1] = value;
-    }
-
-    pub fn z(&self) -> T {
-        self.values[2]
-    }
-    pub fn set_z(&mut self, value: T) {
-        self.values[2] = value;
-    }
-
-    pub fn w(&self) -> T {
-        self.values[3]
-    }
-    pub fn set_w(&mut self, value: T) {
-        self.values[3] = value;
-    }
-}
-
-impl<T, const DIM: usize> Display for Vector<T, DIM>
-where
-    T: Display,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "(")?;
-        for i in 0..DIM {
-            write!(f, "{}", self.values[i])?;
-            if i != DIM - 1 {
-                write!(f, ", ")?;
+        impl<T> $name<T> {
+            pub fn new($($dim: T),*) -> Self {
+                Self {
+                    $($dim),*
+                }
             }
         }
-        write!(f, ")")
-    }
-}
 
-impl<T, const DIM: usize> Default for Vector<T, DIM>
-where
-    T: Copy + Zero,
-{
-    fn default() -> Self {
-        Self {
-            values: [T::zero(); DIM],
+        impl<T> $name<T>
+        where T: Zero + Float {
+            pub fn norm(&self) -> T {
+                let mut norm = T::zero();
+                $(norm += self.$dim * self.$dim;)*
+                norm.sqrt()
+            }
+
+            pub fn normalize(&mut self) {
+                let norm = self.norm();
+                $(self.$dim /= norm;)*
+            }
+
+            pub fn normalized(&self) -> Self {
+                let mut normalized = self.clone();
+                normalized.normalize();
+                normalized
+            }
         }
-    }
-}
 
-impl<T, const DIM: usize> Add for Vector<T, DIM>
-where
-    T: Copy + Add<Output = T>,
-{
-    type Output = Self;
-
-    fn add(mut self, rhs: Self) -> Self::Output {
-        for i in 0..DIM {
-            self.values[i] = self.values[i] + rhs.values[i];
+        impl<T> Default for $name<T>
+        where T: Zero {
+            fn default() -> Self {
+                Self {
+                    $($dim: T::zero(),)*
+                }
+            }
         }
-        self
-    }
-}
 
-impl<T, const DIM: usize> AddAssign for Vector<T, DIM>
-where
-    T: Copy + AddAssign,
-{
-    fn add_assign(&mut self, rhs: Self) {
-        for i in 0..DIM {
-            self.values[i] += rhs.values[i];
+        impl<T> Add for $name<T>
+        where
+            T: Copy + Add<Output = T>, {
+            type Output = Self;
+
+            fn add(self, rhs: Self) -> Self::Output {
+                Self {
+                    $($dim: self.$dim + rhs.$dim),*
+                }
+            }
         }
-    }
-}
 
-impl<T, const DIM: usize> Sub for Vector<T, DIM>
-where
-    T: Copy + Sub<Output = T>,
-{
-    type Output = Self;
-
-    fn sub(mut self, rhs: Self) -> Self::Output {
-        for i in 0..DIM {
-            self.values[i] = self.values[i] - rhs.values[i];
+        impl<T> AddAssign for $name<T>
+        where
+            T: Copy + Add<Output = T>, {
+            fn add_assign(&mut self, rhs: Self) {
+                *self = Self {
+                    $($dim: self.$dim + rhs.$dim),*
+                }
+            }
         }
-        self
-    }
-}
 
-impl<T, const DIM: usize> SubAssign for Vector<T, DIM>
-where
-    T: Copy + SubAssign,
-{
-    fn sub_assign(&mut self, rhs: Self) {
-        for i in 0..DIM {
-            self.values[i] -= rhs.values[i];
+        impl<T> Sub for $name<T>
+        where
+            T: Copy + Sub<Output = T>, {
+            type Output = Self;
+
+            fn sub(self, rhs: Self) -> Self::Output {
+                Self {
+                    $($dim: self.$dim - rhs.$dim),*
+                }
+            }
         }
-    }
-}
 
-impl<T, const DIM: usize> Mul<T> for Vector<T, DIM>
-where
-    T: Copy + Mul<Output = T>,
-{
-    type Output = Self;
-
-    fn mul(mut self, rhs: T) -> Self::Output {
-        for i in 0..DIM {
-            self.values[i] = self.values[i] * rhs;
+        impl<T> SubAssign for $name<T>
+        where
+            T: Copy + Sub<Output = T>, {
+            fn sub_assign(&mut self, rhs: Self) {
+                *self = Self {
+                    $($dim: self.$dim - rhs.$dim),*
+                }
+            }
         }
-        self
-    }
-}
 
-impl<T, const DIM: usize> MulAssign<T> for Vector<T, DIM>
-where
-    T: Copy + MulAssign,
-{
-    fn mul_assign(&mut self, rhs: T) {
-        for i in 0..DIM {
-            self.values[i] *= rhs;
+        impl<T> Mul<T> for $name<T>
+        where
+            T: Copy + Mul<Output = T>, {
+            type Output = Self;
+
+            fn mul(self, rhs: T) -> Self::Output {
+                Self {
+                    $($dim: self.$dim * rhs),*
+                }
+            }
         }
-    }
-}
 
-impl<T, const DIM: usize> Div<T> for Vector<T, DIM>
-where
-    T: Copy + Div<Output = T>,
-{
-    type Output = Self;
-
-    fn div(mut self, rhs: T) -> Self::Output {
-        for i in 0..DIM {
-            self.values[i] = self.values[i] / rhs;
+        impl<T> MulAssign<T> for $name<T>
+        where
+            T: Copy + Mul<Output = T>, {
+            fn mul_assign(&mut self, rhs: T) {
+                *self = Self {
+                    $($dim: self.$dim * rhs),*
+                }
+            }
         }
-        self
-    }
-}
 
-impl<T, const DIM: usize> DivAssign<T> for Vector<T, DIM>
-where
-    T: Copy + DivAssign,
-{
-    fn div_assign(&mut self, rhs: T) {
-        for i in 0..DIM {
-            self.values[i] /= rhs;
+        impl<T> Div<T> for $name<T>
+        where
+            T: Copy + Div<Output = T>, {
+            type Output = Self;
+
+            fn div(self, rhs: T) -> Self::Output {
+                Self {
+                    $($dim: self.$dim / rhs),*
+                }
+            }
         }
-    }
-}
 
-impl<T, const DIM: usize> Neg for Vector<T, DIM>
-where
-    T: Copy + Neg<Output = T>,
-{
-    type Output = Self;
-
-    fn neg(mut self) -> Self::Output {
-        for value in &mut self.values {
-            *value = -*value;
+        impl<T> DivAssign<T> for $name<T>
+        where
+            T: Copy + Div<Output = T>, {
+            fn div_assign(&mut self, rhs: T) {
+                *self = Self {
+                    $($dim: self.$dim / rhs),*
+                }
+            }
         }
-        self
-    }
+
+        impl<T> Neg for $name<T>
+        where
+            T: Copy + Neg<Output = T>,
+        {
+            type Output = Self;
+
+            fn neg(self) -> Self::Output {
+                Self {
+                    $($dim: -self.$dim),*
+                }
+            }
+        }
+
+        impl<T> Display for $name<T>
+        where
+            T: Display,
+        {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                write!(f, $display_fmt, $(self.$dim),*)
+            }
+        }
+
+        impl<T> From<($($TY),*)> for $name<T>
+        where
+            T: Copy {
+            fn from(tuple: ($($TY),*)) -> Self {
+                Self {
+                    $($dim: tuple.$idx),*
+                }
+            }
+        }
+
+        impl<T> From<$name<T>> for ($($TY),*)
+        where
+            T: Copy,
+        {
+            fn from(vector: $name<T>) -> Self {
+                ($(vector.$dim),*)
+            }
+        }
+    };
 }
 
-impl<T> From<(T, T, T)> for Vector3<T>
-where
-    T: Copy,
-{
-    fn from(tuple: (T, T, T)) -> Self {
-        Vector3::new(tuple.0, tuple.1, tuple.2)
-    }
-}
-
-impl<T> From<Vector3<T>> for (T, T, T)
-where
-    T: Copy,
-{
-    fn from(vector: Vector3<T>) -> Self {
-        (vector.x(), vector.y(), vector.z())
-    }
-}
+struct_vec!(Vector2: "({}, {})", (x: T => 0, y: T => 1,));
+struct_vec!(Vector3: "({}, {}, {})", (x: T => 0, y: T => 1, z: T => 2,));
+struct_vec!(Vector4: "({}, {}, {}, {})", (x: T => 0, y: T => 1, z: T => 2, w: T => 3,));
 
 #[cfg(test)]
 mod tests {
@@ -275,9 +193,9 @@ mod tests {
     fn vector3_new() {
         let v = Vector3::new(1, 2, 3);
 
-        assert_eq!(v.x(), 1);
-        assert_eq!(v.y(), 2);
-        assert_eq!(v.z(), 3);
+        assert_eq!(v.x, 1);
+        assert_eq!(v.y, 2);
+        assert_eq!(v.z, 3);
     }
 
     #[test]
@@ -287,9 +205,9 @@ mod tests {
 
         let result = a + b;
 
-        assert_eq!(result.x(), 5);
-        assert_eq!(result.y(), 7);
-        assert_eq!(result.z(), 9);
+        assert_eq!(result.x, 5);
+        assert_eq!(result.y, 7);
+        assert_eq!(result.z, 9);
     }
 
     #[test]
@@ -299,9 +217,9 @@ mod tests {
 
         a += b;
 
-        assert_eq!(a.x(), 5);
-        assert_eq!(a.y(), 7);
-        assert_eq!(a.z(), 9);
+        assert_eq!(a.x, 5);
+        assert_eq!(a.y, 7);
+        assert_eq!(a.z, 9);
     }
 
     #[test]
@@ -311,9 +229,9 @@ mod tests {
 
         let result = a - b;
 
-        assert_eq!(result.x(), -3);
-        assert_eq!(result.y(), -1);
-        assert_eq!(result.z(), 1);
+        assert_eq!(result.x, -3);
+        assert_eq!(result.y, -1);
+        assert_eq!(result.z, 1);
     }
 
     #[test]
@@ -323,9 +241,9 @@ mod tests {
 
         a -= b;
 
-        assert_eq!(a.x(), -3);
-        assert_eq!(a.y(), -1);
-        assert_eq!(a.z(), 1);
+        assert_eq!(a.x, -3);
+        assert_eq!(a.y, -1);
+        assert_eq!(a.z, 1);
     }
 
     #[test]
@@ -335,9 +253,56 @@ mod tests {
 
         let result = a * b;
 
-        assert_eq!(result.x(), 5);
-        assert_eq!(result.y(), 10);
-        assert_eq!(result.z(), 15);
+        assert_eq!(result.x, 5);
+        assert_eq!(result.y, 10);
+        assert_eq!(result.z, 15);
+    }
+
+    #[test]
+    fn mul_assign_scalar() {
+        let mut vec = Vector3::new(1, 2, 3);
+        let scalar = 5;
+
+        vec *= scalar;
+
+        assert_eq!(vec.x, 5);
+        assert_eq!(vec.y, 10);
+        assert_eq!(vec.z, 15);
+    }
+
+    #[test]
+    fn div_scalar() {
+        let a = Vector3::new(5, 10, 15);
+        let b = 5;
+
+        let result = a / b;
+
+        assert_eq!(result.x, 1);
+        assert_eq!(result.y, 2);
+        assert_eq!(result.z, 3);
+    }
+
+    #[test]
+    fn div_assign_scalar() {
+        let mut vec = Vector3::new(5, 10, 15);
+        let scalar = 5;
+
+        vec /= scalar;
+
+        assert_eq!(vec.x, 1);
+        assert_eq!(vec.y, 2);
+        assert_eq!(vec.z, 3);
+    }
+
+    #[test]
+    fn neg() {
+        let a = Vector3::new(1, 2, 3);
+
+        let result = -a;
+
+        assert_eq!(result.x, -1);
+        assert_eq!(result.y, -2);
+        assert_eq!(result.z, -3);
     }
 
     #[test]
@@ -358,9 +323,9 @@ mod tests {
 
         vector.normalize();
 
-        assert_float_absolute_eq!(vector.x(), 0.26, 0.01);
-        assert_float_absolute_eq!(vector.y(), 0.53, 0.01);
-        assert_float_absolute_eq!(vector.z(), 0.80, 0.01);
+        assert_float_absolute_eq!(vector.x, 0.26, 0.01);
+        assert_float_absolute_eq!(vector.y, 0.53, 0.01);
+        assert_float_absolute_eq!(vector.z, 0.80, 0.01);
     }
 
     #[test]
@@ -369,17 +334,40 @@ mod tests {
 
         let normalized = vector.normalized();
 
-        assert_float_absolute_eq!(normalized.x(), 0.26, 0.01);
-        assert_float_absolute_eq!(normalized.y(), 0.53, 0.01);
-        assert_float_absolute_eq!(normalized.z(), 0.80, 0.01);
+        assert_float_absolute_eq!(normalized.x, 0.26, 0.01);
+        assert_float_absolute_eq!(normalized.y, 0.53, 0.01);
+        assert_float_absolute_eq!(normalized.z, 0.80, 0.01);
     }
 
     #[test]
     fn default() {
-        let vector = Vector::<f32, 4>::default();
+        let vector = Vector4::<f32>::default();
 
-        for value in vector.values {
-            assert_float_absolute_eq!(value, 0.0, 0.0);
-        }
+        assert_float_absolute_eq!(vector.x, 0.0, 0.0);
+        assert_float_absolute_eq!(vector.y, 0.0, 0.0);
+        assert_float_absolute_eq!(vector.z, 0.0, 0.0);
+        assert_float_absolute_eq!(vector.w, 0.0, 0.0);
+    }
+
+    #[test]
+    fn from_tuple() {
+        let tuple = (0, 1, 2, 3);
+        let v = Vector4::from(tuple);
+
+        assert_eq!(v.x, 0);
+        assert_eq!(v.y, 1);
+        assert_eq!(v.z, 2);
+        assert_eq!(v.w, 3);
+    }
+
+    #[test]
+    fn into_tuple() {
+        let v = Vector4::new(0, 1, 2, 3);
+        let tuple: (i32, i32, i32, i32) = v.into();
+
+        assert_eq!(tuple.0, 0);
+        assert_eq!(tuple.1, 1);
+        assert_eq!(tuple.2, 2);
+        assert_eq!(tuple.3, 3);
     }
 }

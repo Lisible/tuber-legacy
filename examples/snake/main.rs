@@ -116,14 +116,14 @@ fn check_collision_with_body_system(ecs: &mut Ecs, _: &mut EngineContext) -> Sys
 
             if rectangle_intersects(
                 (
-                    head_transform.translation.x(),
-                    head_transform.translation.y(),
+                    head_transform.translation.x,
+                    head_transform.translation.y,
                     BODY_PART_SIZE,
                     BODY_PART_SIZE,
                 ),
                 (
-                    body_part_transform.translation.x(),
-                    body_part_transform.translation.y(),
+                    body_part_transform.translation.x,
+                    body_part_transform.translation.y,
                     BODY_PART_SIZE,
                     BODY_PART_SIZE,
                 ),
@@ -149,28 +149,26 @@ fn move_head_system(ecs: &mut Ecs, engine_context: &mut EngineContext) -> System
 
         let mut pivot_list = ecs.shared_resource_mut::<PivotList>().unwrap();
         if input_state.is(ActionDown("rotate_head_left".into())) {
-            let angle_z = transform.angle.z();
-            transform.angle.set_z(angle_z - 2f32.to_radians());
+            transform.angle.z -= 2f32.to_radians();
             pivot_list.0.push_back(Pivot {
                 position: transform.translation.into(),
-                angle: transform.angle.z(),
+                angle: transform.angle.z,
             });
         } else if input_state.is(ActionDown("rotate_head_right".into())) {
-            let angle_z = transform.angle.z();
-            transform.angle.set_z(angle_z + 2f32.to_radians());
+            transform.angle.z += 2f32.to_radians();
             pivot_list.0.push_back(Pivot {
                 position: transform.translation.into(),
-                angle: transform.angle.z(),
+                angle: transform.angle.z,
             });
         }
 
-        *velocity = compute_new_segment_velocity(transform.angle.z());
+        *velocity = compute_new_segment_velocity(transform.angle.z);
         *transform = compute_new_segment_position(*transform, &velocity);
 
-        transform.translation.x() < -BODY_PART_SIZE
-            || transform.translation.x() > WINDOW_WIDTH as f32
-            || transform.translation.y() < -BODY_PART_SIZE
-            || transform.translation.y() > WINDOW_HEIGHT as f32
+        transform.translation.x < -BODY_PART_SIZE
+            || transform.translation.x > WINDOW_WIDTH as f32
+            || transform.translation.y < -BODY_PART_SIZE
+            || transform.translation.y > WINDOW_HEIGHT as f32
     };
 
     if is_game_over {
@@ -303,16 +301,16 @@ fn move_body_parts_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult 
         }
 
         for (pivot_index, pivot) in pivots.0.iter().enumerate() {
-            if (transform.translation.x() - pivot.position.0).abs() < 0.2
-                && (transform.translation.y() - pivot.position.1).abs() < 0.2
+            if (transform.translation.x - pivot.position.0).abs() < 0.2
+                && (transform.translation.y - pivot.position.1).abs() < 0.2
             {
                 if body_part_id == tail_id {
                     pivots_to_delete.push(pivot_index);
                 }
-                transform.angle.set_z(pivot.angle);
+                transform.angle.z = pivot.angle;
             }
         }
-        *velocity = compute_new_segment_velocity(transform.angle.z());
+        *velocity = compute_new_segment_velocity(transform.angle.z);
         *transform = compute_new_segment_position(*transform, &velocity);
     }
 
@@ -331,8 +329,8 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
             .unwrap();
         let mut score = ecs.shared_resource_mut::<Score>().unwrap();
         let head_rectangle = (
-            head_transform.translation.x(),
-            head_transform.translation.z(),
+            head_transform.translation.x,
+            head_transform.translation.z,
             head_sprite.width,
             head_sprite.height,
         );
@@ -342,19 +340,15 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
             ecs.query::<(R<Apple>, W<Transform>, R<Sprite>)>()
         {
             let apple_rectangle = (
-                apple_transform.translation.x(),
-                apple_transform.translation.z(),
+                apple_transform.translation.x,
+                apple_transform.translation.z,
                 apple_sprite.width,
                 apple_sprite.height,
             );
 
             if rectangle_intersects(head_rectangle, apple_rectangle) {
-                apple_transform
-                    .translation
-                    .set_x(rng.gen_range(0.0..800.0 - 64.0));
-                apple_transform
-                    .translation
-                    .set_y(rng.gen_range(0.0..600.0 - 64.0));
+                apple_transform.translation.x = rng.gen_range(0.0..800.0 - 64.0);
+                apple_transform.translation.y = rng.gen_range(0.0..600.0 - 64.0);
                 score.0 += 1;
                 grow_snake = true;
                 println!("Score: {}", score.0)
@@ -374,8 +368,8 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
             ecs.insert((
                 Transform {
                     translation: (
-                        tail_transform.translation.x() - BODY_PART_SIZE / 4.0 * tail_velocity.x,
-                        tail_transform.translation.y() - BODY_PART_SIZE / 4.0 * tail_velocity.y,
+                        tail_transform.translation.x - BODY_PART_SIZE / 4.0 * tail_velocity.x,
+                        tail_transform.translation.y - BODY_PART_SIZE / 4.0 * tail_velocity.y,
                         0.0,
                     )
                         .into(),
@@ -432,8 +426,8 @@ fn compute_new_segment_velocity(angle: f32) -> Velocity {
 fn compute_new_segment_position(transform: Transform, velocity: &Velocity) -> Transform {
     Transform {
         translation: (
-            transform.translation.x() + velocity.x,
-            transform.translation.y() + velocity.y,
+            transform.translation.x + velocity.x,
+            transform.translation.y + velocity.y,
             0.0,
         )
             .into(),

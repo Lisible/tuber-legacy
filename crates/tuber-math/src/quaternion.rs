@@ -28,18 +28,18 @@ where
     pub fn from_axis_angle(axis: &Vector3<T>, angle: T) -> Self {
         let half_angle = angle.half();
         let half_angle_sin = half_angle.sin();
-        let x = axis.x() * half_angle_sin;
-        let y = axis.y() * half_angle_sin;
-        let z = axis.z() * half_angle_sin;
+        let x = axis.x * half_angle_sin;
+        let y = axis.y * half_angle_sin;
+        let z = axis.z * half_angle_sin;
         let w = half_angle.cos();
 
         Self::new(w, Vector3::new(x, y, z))
     }
 
     pub fn from_euler(angles: &Vector3<T>) -> Self {
-        let roll = angles.x();
-        let pitch = angles.y();
-        let yaw = angles.z();
+        let roll = angles.x;
+        let pitch = angles.y;
+        let yaw = angles.z;
         let half_roll = roll.half();
         let half_pitch = pitch.half();
         let half_yaw = yaw.half();
@@ -62,9 +62,9 @@ where
     pub fn rotation_matrix(&self) -> Matrix4<T> {
         let (w, x, y, z) = (
             self.scalar_part,
-            self.vector_part.x(),
-            self.vector_part.y(),
-            self.vector_part.z(),
+            self.vector_part.x,
+            self.vector_part.y,
+            self.vector_part.z,
         );
         let x2 = x + x;
         let y2 = y + y;
@@ -101,9 +101,9 @@ where
     }
 
     pub fn norm(&self) -> T {
-        let x = self.vector_part.x();
-        let y = self.vector_part.y();
-        let z = self.vector_part.z();
+        let x = self.vector_part.x;
+        let y = self.vector_part.y;
+        let z = self.vector_part.z;
         let w = self.scalar_part;
         let xx = x * x;
         let yy = y * y;
@@ -122,10 +122,7 @@ where
         writeln!(
             f,
             "({} + {} i + {} j + {} k)",
-            self.scalar_part,
-            self.vector_part.x(),
-            self.vector_part.y(),
-            self.vector_part.z()
+            self.scalar_part, self.vector_part.x, self.vector_part.y, self.vector_part.z
         )
     }
 }
@@ -137,14 +134,14 @@ where
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        let x1 = self.vector_part.x();
-        let y1 = self.vector_part.y();
-        let z1 = self.vector_part.z();
+        let x1 = self.vector_part.x;
+        let y1 = self.vector_part.y;
+        let z1 = self.vector_part.z;
         let w1 = self.scalar_part;
 
-        let x2 = rhs.vector_part.x();
-        let y2 = rhs.vector_part.y();
-        let z2 = rhs.vector_part.z();
+        let x2 = rhs.vector_part.x;
+        let y2 = rhs.vector_part.y;
+        let z2 = rhs.vector_part.z;
         let w2 = rhs.scalar_part;
 
         let scalar_part = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
@@ -172,9 +169,9 @@ mod tests {
         let result = q1 * q2;
 
         assert_float_absolute_eq!(result.scalar_part, -62.73, 0.01);
-        assert_float_absolute_eq!(result.vector_part.x(), -179.88, 0.01);
-        assert_float_absolute_eq!(result.vector_part.y(), 561.82, 0.01);
-        assert_float_absolute_eq!(result.vector_part.z(), 128.5, 0.01);
+        assert_float_absolute_eq!(result.vector_part.x, -179.88, 0.01);
+        assert_float_absolute_eq!(result.vector_part.y, 561.82, 0.01);
+        assert_float_absolute_eq!(result.vector_part.z, 128.5, 0.01);
     }
 
     #[test]
@@ -217,9 +214,9 @@ mod tests {
         quaternion.normalize();
 
         assert_float_absolute_eq!(quaternion.scalar_part, 0.32, 0.01);
-        assert_float_absolute_eq!(quaternion.vector_part.x(), 0.17, 0.01);
-        assert_float_absolute_eq!(quaternion.vector_part.y(), 0.48, 0.01);
-        assert_float_absolute_eq!(quaternion.vector_part.z(), 0.79, 0.01);
+        assert_float_absolute_eq!(quaternion.vector_part.x, 0.17, 0.01);
+        assert_float_absolute_eq!(quaternion.vector_part.y, 0.48, 0.01);
+        assert_float_absolute_eq!(quaternion.vector_part.z, 0.79, 0.01);
     }
 
     #[test]
@@ -229,9 +226,9 @@ mod tests {
         let normalized = quaternion.normalized();
 
         assert_float_absolute_eq!(normalized.scalar_part, 0.32, 0.01);
-        assert_float_absolute_eq!(normalized.vector_part.x(), 0.17, 0.01);
-        assert_float_absolute_eq!(normalized.vector_part.y(), 0.48, 0.01);
-        assert_float_absolute_eq!(normalized.vector_part.z(), 0.79, 0.01);
+        assert_float_absolute_eq!(normalized.vector_part.x, 0.17, 0.01);
+        assert_float_absolute_eq!(normalized.vector_part.y, 0.48, 0.01);
+        assert_float_absolute_eq!(normalized.vector_part.z, 0.79, 0.01);
     }
 
     #[test]
@@ -242,9 +239,9 @@ mod tests {
         let quaternion = Quaternion::from_axis_angle(&axis, angle);
 
         assert_float_absolute_eq!(quaternion.scalar_part, 0.93, 0.01);
-        assert_float_absolute_eq!(quaternion.vector_part.x(), 0.09, 0.01);
-        assert_float_absolute_eq!(quaternion.vector_part.y(), 0.19, 0.01);
-        assert_float_absolute_eq!(quaternion.vector_part.z(), 0.28, 0.01);
+        assert_float_absolute_eq!(quaternion.vector_part.x, 0.09, 0.01);
+        assert_float_absolute_eq!(quaternion.vector_part.y, 0.19, 0.01);
+        assert_float_absolute_eq!(quaternion.vector_part.z, 0.28, 0.01);
     }
 
     #[test]

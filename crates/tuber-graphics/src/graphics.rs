@@ -362,8 +362,8 @@ impl Graphics {
                 ));
 
                 if !camera_world_region.is_in_region(
-                    tile_world_position.x(),
-                    tile_world_position.y(),
+                    tile_world_position.x,
+                    tile_world_position.y,
                     tile_size.width as f32,
                     tile_size.height as f32,
                 ) {
@@ -425,8 +425,8 @@ impl Graphics {
                                 },
                             },
                             world_transform: transform_matrix.add_translation(&Vector3::new(
-                                tile_world_position.x(),
-                                tile_world_position.y(),
+                                tile_world_position.x,
+                                tile_world_position.y,
                                 0.0,
                             )),
                             material: material.clone(),

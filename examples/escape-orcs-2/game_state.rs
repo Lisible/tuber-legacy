@@ -184,12 +184,8 @@ pub(crate) fn update_camera_position(ecs: &mut Ecs, _: &mut EngineContext) {
         .query_one::<(R<OrthographicCamera>, W<Transform>)>()
         .unwrap();
 
-    camera_transform
-        .translation
-        .set_x(player_transform.translation.x() - 368f32);
-    camera_transform
-        .translation
-        .set_y(player_transform.translation.y() - 268f32);
+    camera_transform.translation.x = player_transform.translation.x - 368f32;
+    camera_transform.translation.y = player_transform.translation.y - 268f32;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -227,8 +223,8 @@ fn move_player(ecs: &mut Ecs, engine_context: &mut EngineContext) {
             player.score += 1;
             character.movement = player_movement;
             character.animation_time = 0.0;
-            character.initial_position.0 = transform.translation.x() as i32 / TILE_SIZE as i32;
-            character.initial_position.1 = transform.translation.y() as i32 / TILE_SIZE as i32;
+            character.initial_position.0 = transform.translation.x as i32 / TILE_SIZE as i32;
+            character.initial_position.1 = transform.translation.y as i32 / TILE_SIZE as i32;
         }
     }
 }
@@ -250,8 +246,8 @@ fn move_orcs(ecs: &mut Ecs) {
         if character.movement == Movement::Idle {
             character.movement = MOVEMENTS[rng.gen_range(0..4)];
             character.animation_time = 0.0;
-            character.initial_position.0 = transform.translation.x() as i32 / TILE_SIZE as i32;
-            character.initial_position.1 = transform.translation.y() as i32 / TILE_SIZE as i32;
+            character.initial_position.0 = transform.translation.x as i32 / TILE_SIZE as i32;
+            character.initial_position.1 = transform.translation.y as i32 / TILE_SIZE as i32;
         }
     }
 }
@@ -268,39 +264,35 @@ fn update_character_position(ecs: &mut Ecs, _: &mut EngineContext) {
 
         transform.translation = match character.movement {
             Movement::Up => (
-                transform.translation.x(),
+                transform.translation.x,
                 character.initial_position.1 as f32 * TILE_SIZE as f32 - delta_translation,
-                transform.translation.z(),
+                transform.translation.z,
             )
                 .into(),
             Movement::Down => (
-                transform.translation.x(),
+                transform.translation.x,
                 character.initial_position.1 as f32 * TILE_SIZE as f32 + delta_translation,
-                transform.translation.z(),
+                transform.translation.z,
             )
                 .into(),
             Movement::Left => (
                 character.initial_position.0 as f32 * TILE_SIZE as f32 - delta_translation,
-                transform.translation.y(),
-                transform.translation.z(),
+                transform.translation.y,
+                transform.translation.z,
             )
                 .into(),
             Movement::Right => (
                 character.initial_position.0 as f32 * TILE_SIZE as f32 + delta_translation,
-                transform.translation.y(),
-                transform.translation.z(),
+                transform.translation.y,
+                transform.translation.z,
             )
                 .into(),
             _ => transform.translation,
         };
 
         if character.animation_time >= 1f32 && character.movement != Movement::Idle {
-            transform
-                .translation
-                .set_x(target_position.0 as f32 * TILE_SIZE as f32);
-            transform
-                .translation
-                .set_y(target_position.1 as f32 * TILE_SIZE as f32);
+            transform.translation.x = target_position.0 as f32 * TILE_SIZE as f32;
+            transform.translation.y = target_position.1 as f32 * TILE_SIZE as f32;
             character.movement = Movement::Idle;
         }
     }
