@@ -9,7 +9,7 @@
 You can run the examples by going into the ``examples/<example>`` directory and running the following example
   
 ```bash
-cargo run --example <example>
+cargo run -p <example>
 ```
 
 # How to build the book

@@ -1,0 +1,13 @@
+[package]
+name = "snake"
+version = "0.1.0"
+authors = ["Tuber contributors"]
+edition = "2021"
+
+[[bin]]
+path = "main.rs"
+name = "snake"
+
+[dependencies]
+tuber = { path = "../../" }
+rand = "0.8"

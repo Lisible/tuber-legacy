@@ -1,12 +1,12 @@
-use tuber_core::asset::AssetStore;
-use tuber_core::transform::Transform;
-use tuber_ecs::ecs::Ecs;
-use tuber_graphics::animation::AnimationState;
-use tuber_graphics::material::MaterialDescriptor;
-use tuber_graphics::renderable::light::PointLight;
-use tuber_graphics::renderable::tilemap::{AnimatedTile, StaticTile, Tile, Tilemap};
-use tuber_graphics::texture::TextureAtlas;
-use tuber_graphics::types::Size2;
+use tuber::core::asset::AssetStore;
+use tuber::core::transform::Transform;
+use tuber::ecs::ecs::Ecs;
+use tuber::graphics::animation::AnimationState;
+use tuber::graphics::material::MaterialDescriptor;
+use tuber::graphics::renderable::light::PointLight;
+use tuber::graphics::renderable::tilemap::{AnimatedTile, StaticTile, Tile, Tilemap};
+use tuber::graphics::texture::TextureAtlas;
+use tuber::graphics::types::Size2;
 
 pub const WORLD_SIZE: Size2<usize> = Size2 {
     width: 10,

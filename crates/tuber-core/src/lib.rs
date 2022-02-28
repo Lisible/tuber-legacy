@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 pub mod asset;
 pub mod input;
 pub mod transform;
@@ -18,4 +20,16 @@ pub enum CoreError {
     AssetDescriptionFileOpenError(std::io::Error),
     AssetDescriptionFileParseError(serde_json::Error),
     AssetMetadataNotFound,
+    CurrentDirInaccessible,
+}
+
+pub fn application_directory() -> CoreResult<PathBuf> {
+    let manifest_path = std::env::var("CARGO_MANIFEST_DIR");
+    if let Ok(manifest_path) = manifest_path {
+        return Ok(PathBuf::from(manifest_path));
+    }
+
+    let mut path = std::env::current_exe().map_err(|_| CoreError::CurrentDirInaccessible)?;
+    path.pop();
+    Ok(path)
 }

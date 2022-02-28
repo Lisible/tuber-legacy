@@ -4,6 +4,7 @@ use serde_derive::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
+use std::path::PathBuf;
 
 pub mod keyboard {
     use serde_derive::Deserialize;
@@ -68,7 +69,7 @@ pub mod keyboard {
         F9,
         F10,
         F11,
-        F12
+        F12,
     }
 }
 
@@ -183,7 +184,7 @@ pub struct Keymap {
 }
 
 impl Keymap {
-    pub fn from_file(file_path: &str) -> CoreResult<Self> {
+    pub fn from_file(file_path: &PathBuf) -> CoreResult<Self> {
         let file = File::open(file_path).map_err(|e| CoreError::KeymapFileOpenError(e))?;
         let reader = BufReader::new(file);
         let keymap: HashMap<Key, Action> =

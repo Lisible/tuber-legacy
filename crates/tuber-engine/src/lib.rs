@@ -1,5 +1,6 @@
 use engine_context::EngineContext;
 use state::*;
+use std::path::PathBuf;
 use tuber_core::asset::AssetStore;
 use tuber_core::input::{InputState, Keymap};
 use tuber_core::{input, CoreError};
@@ -45,9 +46,9 @@ impl Engine {
         asset_manager.load_assets_metadata().unwrap();
         asset_manager.register_loaders(Graphics::loaders());
 
-        const KEYMAP_FILE: &'static str = "keymap.json";
-        let input_state =
-            InputState::new(Keymap::from_file(KEYMAP_FILE).unwrap_or(Keymap::default()));
+        let input_state = InputState::new(
+            Keymap::from_file(&Self::keymap_file_path().unwrap()).unwrap_or(Keymap::default()),
+        );
 
         let context = EngineContext {
             graphics: Some(Graphics::new()),
@@ -122,6 +123,12 @@ impl Engine {
         if let Some(graphics) = self.context.graphics.as_mut() {
             graphics.render_scene(&self.ecs, &mut self.context.asset_store);
         }
+    }
+
+    fn keymap_file_path() -> Result<PathBuf> {
+        let mut path = tuber_core::application_directory()?;
+        path.push("keymap.json");
+        Ok(path)
     }
 }
 

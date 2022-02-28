@@ -4,14 +4,14 @@ use tuber::core::transform::Transform;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::{SystemBundle, SystemResult};
+use tuber::engine::engine_context::EngineContext;
 use tuber::engine::state::State;
+use tuber::engine::system_bundle;
 use tuber::engine::{Engine, EngineSettings, Result, TuberRunner};
 use tuber::graphics::camera::{Active, OrthographicCamera};
 use tuber::graphics::renderable::shape::RectangleShape;
+use tuber::graphics::types::Color;
 use tuber::WinitTuberRunner;
-use tuber_engine::engine_context::EngineContext;
-use tuber_engine::system_bundle;
-use tuber_graphics::types::Color;
 
 const BALL_COUNT: usize = 10;
 const PADDLE_WIDTH: f32 = 20.0;

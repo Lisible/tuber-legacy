@@ -28,7 +28,7 @@ impl AssetStore {
 
     pub fn load_assets_metadata(&mut self) -> CoreResult<()> {
         info!("Loading assets metadata");
-        let paths = match std::fs::read_dir(ASSETS_DIRECTORY) {
+        let paths = match std::fs::read_dir(AssetStore::asset_directory()?) {
             Ok(paths) => paths,
             Err(_) => return Ok(()),
         };
@@ -164,6 +164,12 @@ impl AssetStore {
         }
 
         self.stored_asset::<AssetType>(identifier)
+    }
+
+    fn asset_directory() -> CoreResult<PathBuf> {
+        let mut path = crate::application_directory()?;
+        path.push(ASSETS_DIRECTORY);
+        Ok(path)
     }
 }
 

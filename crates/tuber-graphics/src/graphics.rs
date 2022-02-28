@@ -209,8 +209,11 @@ impl Graphics {
         asset_manager: &mut AssetStore,
     ) -> Result<(), GraphicsError> {
         self.load_material_in_vram_if_required(asset_manager, &sprite.material);
-
-        let albedo_map_metadata = &self.texture_metadata[&sprite.material.albedo_map];
+        let albedo_map_metadata = self
+            .texture_metadata
+            .get(&sprite.material.albedo_map)
+            .or_else(|| Some(&self.texture_metadata[MISSING_TEXTURE_IDENTIFIER]))
+            .unwrap();
         let material = self.create_material(&sprite.material);
 
         let texture_region = sprite
