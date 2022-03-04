@@ -1,7 +1,6 @@
 use crate::widget::common::WidgetCommon;
 use crate::widget::Widget;
 use tuber_core::asset::AssetStore;
-use tuber_core::transform::{AsMatrix4, Transform};
 use tuber_graphics::graphics::Graphics;
 
 pub struct TextWidget {
@@ -39,15 +38,7 @@ impl TextWidget {
 }
 
 impl Widget for TextWidget {
-    fn draw(&mut self, graphics: &mut Graphics, asset_store: &mut AssetStore) {
-        let transform = Transform::default();
-        graphics.draw_text(
-            &self.text,
-            &self.font_identifier,
-            transform.as_matrix4(),
-            asset_store,
-        );
-    }
+    fn draw(&mut self, _graphics: &mut Graphics, _asset_store: &mut AssetStore) {}
 
     fn common(&self) -> &WidgetCommon {
         &self.common

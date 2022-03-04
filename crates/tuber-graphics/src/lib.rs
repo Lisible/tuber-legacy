@@ -1,6 +1,8 @@
 use image::ImageError;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
+pub mod graphics;
+
 #[derive(Debug)]
 pub enum GraphicsError {
     WGPUSurfaceError(wgpu::SurfaceError),

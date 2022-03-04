@@ -7,7 +7,6 @@ use tuber_core::input::{InputState, Keymap};
 use tuber_core::{input, CoreError};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
-use tuber_graphics::types::Size2;
 use tuber_graphics::{graphics::Graphics, Window};
 use tuber_gui::gui::GUI;
 
@@ -37,14 +36,13 @@ impl Engine {
     pub fn new(settings: EngineSettings) -> Engine {
         let mut asset_manager = AssetStore::default();
         asset_manager.load_assets_metadata().unwrap();
-        asset_manager.register_loaders(Graphics::loaders());
 
         let input_state = InputState::new(
             Keymap::from_file(&Self::keymap_file_path().unwrap()).unwrap_or_default(),
         );
 
         let context = EngineContext {
-            graphics: Some(Graphics::default()),
+            graphics: Some(Graphics),
             asset_store: asset_manager,
             input_state,
             gui: GUI::default(),
@@ -65,11 +63,7 @@ impl Engine {
         self.state_stack.current_state().is_none()
     }
 
-    pub fn initialize_graphics(&mut self, window: Window, window_size: (u32, u32)) {
-        if let Some(graphics) = &mut self.context.graphics {
-            graphics.initialize(Window(Box::new(&window)), Size2::from(window_size));
-        }
-    }
+    pub fn initialize_graphics(&mut self, _window: Window, _window_size: (u32, u32)) {}
 
     pub fn application_title(&self) -> &str {
         &self.application_title
@@ -96,13 +90,7 @@ impl Engine {
         self.state_stack.handle_input(input, &mut self.context);
     }
 
-    pub fn on_window_resized(&mut self, width: u32, height: u32) {
-        self.context
-            .graphics
-            .as_mut()
-            .expect("No graphics")
-            .on_window_resized(width, height);
-    }
+    pub fn on_window_resized(&mut self, _width: u32, _height: u32) {}
 
     pub fn render(&mut self) {
         self.state_stack
@@ -112,10 +100,6 @@ impl Engine {
             self.context.graphics.as_mut().unwrap(),
             &mut self.context.asset_store,
         );
-
-        if let Some(graphics) = self.context.graphics.as_mut() {
-            graphics.render_scene(&self.ecs, &mut self.context.asset_store);
-        }
     }
 
     fn keymap_file_path() -> Result<PathBuf> {
