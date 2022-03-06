@@ -1,4 +1,4 @@
-use crate::renderer::renderer::Renderer;
+use crate::low_level::renderer::Renderer;
 use crate::Window;
 
 pub struct Graphics {
@@ -17,5 +17,11 @@ impl Graphics {
     pub fn render_scene(&mut self) {
         // FIXME handle errors appropriately
         self.renderer.as_mut().unwrap().render();
+    }
+}
+
+impl Default for Graphics {
+    fn default() -> Self {
+        Self::new()
     }
 }
