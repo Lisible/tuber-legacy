@@ -3,6 +3,7 @@ use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
 pub mod graphics;
 pub mod renderable;
+pub mod renderer;
 
 #[derive(Debug)]
 pub enum GraphicsError {

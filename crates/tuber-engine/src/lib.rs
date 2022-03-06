@@ -14,9 +14,12 @@ pub mod engine_context;
 pub mod state;
 pub mod system_bundle;
 
+/// The settings for the engine
 #[derive(Default)]
 pub struct EngineSettings {
+    /// The title of the application
     pub application_title: Option<String>,
+    /// The initial state of the application
     pub initial_state: Option<Box<dyn State>>,
 }
 
@@ -33,6 +36,7 @@ fn create_ecs() -> Ecs {
 }
 
 impl Engine {
+    /// Creates an engine instance with the given settings
     pub fn new(settings: EngineSettings) -> Engine {
         let mut asset_manager = AssetStore::default();
         asset_manager.load_assets_metadata().unwrap();
@@ -42,7 +46,7 @@ impl Engine {
         );
 
         let context = EngineContext {
-            graphics: Some(Graphics),
+            graphics: Graphics::new(),
             asset_store: asset_manager,
             input_state,
             gui: GUI::default(),
@@ -59,16 +63,11 @@ impl Engine {
         }
     }
 
-    pub fn should_exit(&self) -> bool {
-        self.state_stack.current_state().is_none()
+    pub fn initialize_graphics(&mut self, window: Window, window_size: (u32, u32)) {
+        self.context.graphics.initialize(window, window_size);
     }
 
-    pub fn initialize_graphics(&mut self, _window: Window, _window_size: (u32, u32)) {}
-
-    pub fn application_title(&self) -> &str {
-        &self.application_title
-    }
-
+    /// Pushes the initial state on the state stack
     pub fn push_initial_state(&mut self) {
         self.state_stack.push_initial_state(
             &mut self.ecs,
@@ -77,6 +76,7 @@ impl Engine {
         );
     }
 
+    /// Updates the current game state
     pub fn step(&mut self, delta_time: f64) {
         self.state_stack.update_current_state(
             delta_time,
@@ -86,20 +86,32 @@ impl Engine {
         );
     }
 
+    /// Handles the game's input
     pub fn handle_input(&mut self, input: input::Input) {
         self.state_stack.handle_input(input, &mut self.context);
     }
 
+    /// Called when the window is resized
     pub fn on_window_resized(&mut self, _width: u32, _height: u32) {}
 
+    /// Renders the game
     pub fn render(&mut self) {
         self.state_stack
             .render_current_state(&mut self.ecs, &mut self.context);
+        self.context
+            .gui
+            .render(&mut self.context.graphics, &mut self.context.asset_store);
 
-        self.context.gui.render(
-            self.context.graphics.as_mut().unwrap(),
-            &mut self.context.asset_store,
-        );
+        self.context.graphics.render_scene();
+    }
+
+    /// Returns true if the engine should exit
+    pub fn should_exit(&self) -> bool {
+        self.state_stack.current_state().is_none()
+    }
+
+    pub fn application_title(&self) -> &str {
+        &self.application_title
     }
 
     fn keymap_file_path() -> Result<PathBuf> {
