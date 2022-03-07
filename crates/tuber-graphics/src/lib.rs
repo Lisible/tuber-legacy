@@ -14,7 +14,9 @@ pub enum GraphicsError {
     ImageDecodeError(ImageError),
     SerdeError(serde_json::error::Error),
     BitmapFontFileReadError(std::io::Error),
+    RendererUninitialized,
 }
+pub type GraphicsResult<T> = Result<T, GraphicsError>;
 
 pub struct Window<'a>(pub Box<&'a dyn HasRawWindowHandle>);
 

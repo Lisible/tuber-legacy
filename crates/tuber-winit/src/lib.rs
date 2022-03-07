@@ -101,7 +101,7 @@ impl TuberRunner for WinitTuberRunner {
                 }
                 Event::RedrawRequested(_) => {
                     let current_render_time = Instant::now();
-                    engine.render();
+                    engine.render().unwrap();
                     last_render_time = current_render_time;
                 }
                 _ => (),

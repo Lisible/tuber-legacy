@@ -1,3 +1,5 @@
+use crate::GraphicsError;
+use crate::GraphicsResult;
 use crate::Window;
 use futures::executor::block_on;
 use wgpu::*;
@@ -49,9 +51,11 @@ impl Renderer {
         }
     }
 
-    pub fn render(&mut self) {
-        // FIXME handle errors appropriately
-        let output = self.surface.get_current_texture().unwrap();
+    pub fn render(&mut self) -> GraphicsResult<()> {
+        let output = self
+            .surface
+            .get_current_texture()
+            .map_err(|e| GraphicsError::WGPUSurfaceError(e))?;
         let output_texture_view = output
             .texture
             .create_view(&TextureViewDescriptor::default());
@@ -82,5 +86,6 @@ impl Renderer {
 
         self.queue.submit(std::iter::once(command_encoder.finish()));
         output.present();
+        Ok(())
     }
 }

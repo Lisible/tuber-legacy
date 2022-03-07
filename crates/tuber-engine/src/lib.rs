@@ -7,6 +7,7 @@ use tuber_core::input::{InputState, Keymap};
 use tuber_core::{input, CoreError};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
+use tuber_graphics::GraphicsResult;
 use tuber_graphics::{graphics::Graphics, Window};
 use tuber_gui::gui::GUI;
 
@@ -95,14 +96,14 @@ impl Engine {
     pub fn on_window_resized(&mut self, _width: u32, _height: u32) {}
 
     /// Renders the game
-    pub fn render(&mut self) {
+    pub fn render(&mut self) -> GraphicsResult<()> {
         self.state_stack
             .render_current_state(&mut self.ecs, &mut self.context);
         self.context
             .gui
             .render(&mut self.context.graphics, &mut self.context.asset_store);
 
-        self.context.graphics.render_scene();
+        self.context.graphics.render_scene()
     }
 
     /// Returns true if the engine should exit

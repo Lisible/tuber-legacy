@@ -1,4 +1,6 @@
 use crate::low_level::renderer::Renderer;
+use crate::GraphicsError;
+use crate::GraphicsResult;
 use crate::Window;
 
 pub struct Graphics {
@@ -14,9 +16,11 @@ impl Graphics {
         self.renderer = Some(Renderer::new(window, window_size));
     }
 
-    pub fn render_scene(&mut self) {
-        // FIXME handle errors appropriately
-        self.renderer.as_mut().unwrap().render();
+    pub fn render_scene(&mut self) -> GraphicsResult<()> {
+        self.renderer
+            .as_mut()
+            .ok_or(GraphicsError::RendererUninitialized)?
+            .render()
     }
 }
 
