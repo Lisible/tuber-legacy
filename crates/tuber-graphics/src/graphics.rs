@@ -8,10 +8,6 @@ pub struct Graphics {
 }
 
 impl Graphics {
-    pub fn new() -> Self {
-        Self { renderer: None }
-    }
-
     pub fn initialize(&mut self, window: Window, window_size: (u32, u32)) {
         self.renderer = Some(Renderer::new(window, window_size));
     }
@@ -26,6 +22,6 @@ impl Graphics {
 
 impl Default for Graphics {
     fn default() -> Self {
-        Self::new()
+        Self { renderer: None }
     }
 }

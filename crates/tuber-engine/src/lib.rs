@@ -47,7 +47,7 @@ impl Engine {
         );
 
         let context = EngineContext {
-            graphics: Graphics::new(),
+            graphics: Graphics::default(),
             asset_store: asset_manager,
             input_state,
             gui: GUI::default(),

@@ -5,15 +5,16 @@ use futures::executor::block_on;
 use wgpu::*;
 
 pub struct Renderer {
-    surface: wgpu::Surface,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    _surface_configuration: wgpu::SurfaceConfiguration,
+    surface: Surface,
+    device: Device,
+    queue: Queue,
+    _surface_configuration: SurfaceConfiguration,
     _size: (u32, u32),
 }
 impl Renderer {
+    /// Creates the renderer
     pub fn new(window: Window, window_size: (u32, u32)) -> Self {
-        let instance = Instance::new(wgpu::Backends::all());
+        let instance = Instance::new(Backends::all());
         let surface = unsafe { instance.create_surface(&window) };
         let adapter = block_on(instance.request_adapter(&RequestAdapterOptions {
             power_preference: PowerPreference::default(),
