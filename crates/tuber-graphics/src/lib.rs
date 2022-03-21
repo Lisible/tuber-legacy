@@ -13,6 +13,7 @@ pub enum GraphicsError {
     AtlasDescriptionFileOpenError(std::io::Error),
     ImageDecodeError(ImageError),
     SerdeError(serde_json::error::Error),
+
     BitmapFontFileReadError(std::io::Error),
     RendererUninitialized,
 }
