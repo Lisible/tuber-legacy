@@ -1,9 +1,30 @@
 use crate::low_level::mesh::Mesh;
+use crate::low_level::primitives::Vertex;
 use crate::GraphicsError;
 use crate::GraphicsResult;
 use crate::Window;
 use futures::executor::block_on;
+use wgpu::util::BufferInitDescriptor;
+use wgpu::util::DeviceExt;
 use wgpu::*;
+
+const VERTICES: &[Vertex] = &[
+    Vertex {
+        position: [0.0, 0.5, 0.0],
+        color: [1.0, 0.0, 0.0],
+        texture_coordinates: [0.0, 0.0],
+    },
+    Vertex {
+        position: [-0.5, -0.5, 0.0],
+        color: [0.0, 1.0, 0.0],
+        texture_coordinates: [0.0, 0.0],
+    },
+    Vertex {
+        position: [0.5, -0.5, 0.0],
+        color: [0.0, 0.0, 1.0],
+        texture_coordinates: [0.0, 0.0],
+    },
+];
 
 pub struct Renderer {
     surface: Surface,
@@ -13,6 +34,9 @@ pub struct Renderer {
     _size: (u32, u32),
 
     render_pipeline: RenderPipeline,
+
+    vertex_buffer: Buffer,
+    num_vertices: u32,
 
     pending_meshes: Vec<Mesh>,
 }
@@ -65,7 +89,7 @@ impl Renderer {
             vertex: VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[],
+                buffers: &[Vertex::desc()],
             },
             fragment: Some(FragmentState {
                 module: &shader,
@@ -93,6 +117,14 @@ impl Renderer {
             },
         });
 
+        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Vertex buffer"),
+            contents: bytemuck::cast_slice(VERTICES),
+            usage: BufferUsages::VERTEX,
+        });
+
+        let num_vertices = VERTICES.len() as u32;
+
         Self {
             surface,
             device,
@@ -101,6 +133,9 @@ impl Renderer {
             _size: window_size,
 
             render_pipeline,
+
+            vertex_buffer,
+            num_vertices,
 
             pending_meshes: vec![],
         }
@@ -139,7 +174,8 @@ impl Renderer {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.draw(0..3, 0..1);
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.draw(0..self.num_vertices, 0..1);
         }
 
         self.queue.submit(std::iter::once(command_encoder.finish()));

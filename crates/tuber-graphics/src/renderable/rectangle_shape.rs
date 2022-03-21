@@ -26,24 +26,24 @@ impl From<RectangleShape> for Mesh {
         Mesh {
             vertices: vec![
                 Vertex {
-                    position: Vector3f::new(0.0, 0.0, 0.0),
-                    color: Vector3f::new(1.0, 1.0, 1.0),
-                    texture_coordinates: Vector2f::new(0.0, 0.0),
+                    position: [0.0, 0.0, 0.0],
+                    color: [1.0, 1.0, 1.0],
+                    texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
-                    position: Vector3f::new(rectangle_shape.width, 0.0, 0.0),
-                    color: Vector3f::new(1.0, 1.0, 1.0),
-                    texture_coordinates: Vector2f::new(1.0, 0.0),
+                    position: [rectangle_shape.width, 0.0, 0.0],
+                    color: [1.0, 1.0, 1.0],
+                    texture_coordinates: [1.0, 0.0],
                 },
                 Vertex {
-                    position: Vector3f::new(0.0, rectangle_shape.height, 0.0),
-                    color: Vector3f::new(1.0, 1.0, 1.0),
-                    texture_coordinates: Vector2f::new(0.0, 1.0),
+                    position: [0.0, rectangle_shape.height, 0.0],
+                    color: [1.0, 1.0, 1.0],
+                    texture_coordinates: [0.0, 1.0],
                 },
                 Vertex {
-                    position: Vector3f::new(rectangle_shape.width, rectangle_shape.height, 0.0),
-                    color: Vector3f::new(1.0, 1.0, 1.0),
-                    texture_coordinates: Vector2f::new(1.0, 1.0),
+                    position: [rectangle_shape.width, rectangle_shape.height, 0.0],
+                    color: [1.0, 1.0, 1.0],
+                    texture_coordinates: [1.0, 1.0],
                 },
             ],
             indices: vec![0, 2, 1, 1, 2, 3],
