@@ -26,6 +26,8 @@ const VERTICES: &[Vertex] = &[
     },
 ];
 
+const INDICES: &[u16] = &[0, 1, 2];
+
 pub struct Renderer {
     surface: Surface,
     device: Device,
@@ -36,7 +38,10 @@ pub struct Renderer {
     render_pipeline: RenderPipeline,
 
     vertex_buffer: Buffer,
+    index_buffer: Buffer,
+
     num_vertices: u32,
+    num_indices: u32,
 
     pending_meshes: Vec<Mesh>,
 }
@@ -124,7 +129,14 @@ impl Renderer {
             usage: BufferUsages::VERTEX,
         });
 
+        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Index buffer"),
+            contents: bytemuck::cast_slice(INDICES),
+            usage: BufferUsages::INDEX,
+        });
+
         let num_vertices = VERTICES.len() as u32;
+        let num_indices = INDICES.len() as u32;
 
         Self {
             surface,
@@ -136,7 +148,10 @@ impl Renderer {
             render_pipeline,
 
             vertex_buffer,
+            index_buffer,
+
             num_vertices,
+            num_indices,
 
             pending_meshes: vec![],
         }
@@ -176,7 +191,8 @@ impl Renderer {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.draw(0..self.num_vertices, 0..1);
+            render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+            render_pass.draw_indexed(0..self.num_vertices, 0, 0..1);
         }
 
         self.queue.submit(std::iter::once(command_encoder.finish()));
