@@ -11,8 +11,8 @@ tuber-core = { path = "../tuber-core" }
 tuber-ecs = { path = "../tuber-ecs" }
 tuber-math = { path = "../tuber-math" }
 futures = "0.3.19"
-wgpu = "0.11"
-raw-window-handle = "0.3.3"
+wgpu = "0.12"
+raw-window-handle = "0.4"
 image = "0.23.14"
 bytemuck = { version = "1.5", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
