@@ -10,23 +10,28 @@ use wgpu::*;
 
 const VERTICES: &[Vertex] = &[
     Vertex {
-        position: [0.0, 0.5, 0.0],
+        position: [0.0, 0.0, 0.0],
         color: [1.0, 0.0, 0.0],
         texture_coordinates: [0.0, 0.0],
     },
     Vertex {
-        position: [-0.5, -0.5, 0.0],
+        position: [0.0, 1.0, 0.0],
         color: [0.0, 1.0, 0.0],
-        texture_coordinates: [0.0, 0.0],
+        texture_coordinates: [0.0, 1.0],
     },
     Vertex {
-        position: [0.5, -0.5, 0.0],
+        position: [1.0, 1.0, 0.0],
         color: [0.0, 0.0, 1.0],
-        texture_coordinates: [0.0, 0.0],
+        texture_coordinates: [1.0, 1.0],
+    },
+    Vertex {
+        position: [1.0, 0.0, 0.0],
+        color: [0.0, 0.0, 1.0],
+        texture_coordinates: [1.0, 0.0],
     },
 ];
 
-const INDICES: &[u16] = &[0, 1, 2];
+const INDICES: &[u16] = &[0, 3, 1, 3, 2, 1];
 
 pub struct Renderer {
     surface: Surface,
@@ -40,8 +45,9 @@ pub struct Renderer {
     vertex_buffer: Buffer,
     index_buffer: Buffer,
 
-    num_vertices: u32,
     num_indices: u32,
+
+    diffuse_bind_group: BindGroup,
 
     pending_meshes: Vec<Mesh>,
 }
@@ -77,6 +83,93 @@ impl Renderer {
 
         surface.configure(&device, &surface_configuration);
 
+        let diffuse_bytes = include_bytes!("../../textures/default_texture.png");
+        let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
+        let diffuse_rgba = diffuse_image.as_rgba8().unwrap();
+        use image::GenericImageView;
+        let dimensions = diffuse_image.dimensions();
+
+        let texture_size = Extent3d {
+            width: dimensions.0,
+            height: dimensions.1,
+            depth_or_array_layers: 1,
+        };
+
+        let diffuse_texture = device.create_texture(&TextureDescriptor {
+            label: Some("diffuse_texture"),
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba8UnormSrgb,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+        });
+
+        queue.write_texture(
+            ImageCopyTexture {
+                texture: &diffuse_texture,
+                mip_level: 0,
+                origin: Origin3d::ZERO,
+                aspect: TextureAspect::All,
+            },
+            diffuse_rgba,
+            ImageDataLayout {
+                offset: 0,
+                bytes_per_row: std::num::NonZeroU32::new(4 * dimensions.0),
+                rows_per_image: std::num::NonZeroU32::new(dimensions.1),
+            },
+            texture_size,
+        );
+
+        let diffuse_texture_view = diffuse_texture.create_view(&TextureViewDescriptor::default());
+        let diffuse_texture_sampler = device.create_sampler(&SamplerDescriptor {
+            address_mode_u: AddressMode::ClampToEdge,
+            address_mode_v: AddressMode::ClampToEdge,
+            address_mode_w: AddressMode::ClampToEdge,
+            mag_filter: FilterMode::Nearest,
+            min_filter: FilterMode::Nearest,
+            mipmap_filter: FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("texture_bind_group_layout"),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: TextureViewDimension::D2,
+                            sample_type: TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+
+        let diffuse_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("diffuse_bind_group"),
+            layout: &texture_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&diffuse_texture_view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&diffuse_texture_sampler),
+                },
+            ],
+        });
+
         let shader = device.create_shader_module(&ShaderModuleDescriptor {
             label: Some("mesh_shader"),
             source: ShaderSource::Wgsl(include_str!("../shaders/mesh.wgsl").into()),
@@ -84,7 +177,7 @@ impl Renderer {
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("mesh_render_pipeline_layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&texture_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -135,7 +228,6 @@ impl Renderer {
             usage: BufferUsages::INDEX,
         });
 
-        let num_vertices = VERTICES.len() as u32;
         let num_indices = INDICES.len() as u32;
 
         Self {
@@ -150,8 +242,9 @@ impl Renderer {
             vertex_buffer,
             index_buffer,
 
-            num_vertices,
             num_indices,
+
+            diffuse_bind_group,
 
             pending_meshes: vec![],
         }
@@ -190,9 +283,10 @@ impl Renderer {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-            render_pass.draw_indexed(0..self.num_vertices, 0, 0..1);
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         }
 
         self.queue.submit(std::iter::once(command_encoder.finish()));
