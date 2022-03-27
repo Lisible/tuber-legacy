@@ -1,6 +1,7 @@
 use image::ImageError;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
+pub mod camera;
 pub mod graphics;
 pub mod low_level;
 pub mod renderable;

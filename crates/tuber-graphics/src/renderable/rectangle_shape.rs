@@ -1,5 +1,4 @@
 use crate::low_level::{mesh::Mesh, primitives::*};
-use tuber_math::vector::{Vector2f, Vector3f};
 
 /// A rectangular shape
 pub struct RectangleShape {

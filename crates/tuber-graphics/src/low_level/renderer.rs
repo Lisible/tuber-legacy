@@ -4,6 +4,8 @@ use crate::GraphicsError;
 use crate::GraphicsResult;
 use crate::Window;
 use futures::executor::block_on;
+use tuber_math::matrix::Identity;
+use tuber_math::matrix::Matrix4f;
 use wgpu::util::BufferInitDescriptor;
 use wgpu::util::DeviceExt;
 use wgpu::*;
@@ -31,7 +33,7 @@ const VERTICES: &[Vertex] = &[
     },
 ];
 
-const INDICES: &[u16] = &[0, 3, 1, 3, 2, 1];
+const INDICES: &[u16] = &[0, 1, 3, 3, 1, 2];
 
 pub struct Renderer {
     surface: Surface,
@@ -48,6 +50,9 @@ pub struct Renderer {
     num_indices: u32,
 
     diffuse_bind_group: BindGroup,
+
+    camera_buffer: Buffer,
+    camera_bind_group: BindGroup,
 
     pending_meshes: Vec<Mesh>,
 }
@@ -175,9 +180,39 @@ impl Renderer {
             source: ShaderSource::Wgsl(include_str!("../shaders/mesh.wgsl").into()),
         });
 
+        let camera_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("camera_buffer"),
+            contents: bytemuck::cast_slice(&[CameraUniform::default()]),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        });
+
+        let camera_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("camera_bind_group_layout"),
+                entries: &[BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+
+        let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("camera_bind_group"),
+            layout: &camera_bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            }],
+        });
+
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("mesh_render_pipeline_layout"),
-            bind_group_layouts: &[&texture_bind_group_layout],
+            bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -246,6 +281,9 @@ impl Renderer {
 
             diffuse_bind_group,
 
+            camera_buffer,
+            camera_bind_group,
+
             pending_meshes: vec![],
         }
     }
@@ -284,6 +322,7 @@ impl Renderer {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
@@ -296,11 +335,37 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn set_view_projection_matrix(&mut self, view_projection_matrix: Matrix4f) {
+        let camera_uniform = CameraUniform {
+            view_projection_matrix: view_projection_matrix.into(),
+        };
+
+        self.queue.write_buffer(
+            &self.camera_buffer,
+            0,
+            bytemuck::cast_slice(&[camera_uniform]),
+        );
+    }
+
     pub fn queue_mesh(&mut self, mesh: Mesh) {
         self.pending_meshes.push(mesh);
     }
 
     fn clear_pending_meshes(&mut self) {
         self.pending_meshes.clear();
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct CameraUniform {
+    view_projection_matrix: [[f32; 4]; 4],
+}
+
+impl Default for CameraUniform {
+    fn default() -> Self {
+        Self {
+            view_projection_matrix: Matrix4f::identity().into(),
+        }
     }
 }

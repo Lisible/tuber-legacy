@@ -32,7 +32,7 @@ impl<T> Matrix4<T> {
     const COLS: usize = 4;
     const ROWS: usize = 4;
 
-    pub fn with_values(values: [T; 16]) -> Self {
+    pub const fn with_values(values: [T; 16]) -> Self {
         Self { values }
     }
 

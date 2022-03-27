@@ -1,3 +1,4 @@
+use crate::camera::OrthographicCamera;
 use crate::low_level::renderer::Renderer;
 use crate::renderable::rectangle_shape::RectangleShape;
 use crate::GraphicsError;
@@ -17,6 +18,13 @@ impl Graphics {
     /// Draws a rectangle shape
     pub fn draw_rectangle_shape(&mut self, rectangle_shape: RectangleShape) -> GraphicsResult<()> {
         self.renderer()?.queue_mesh(rectangle_shape.into());
+        Ok(())
+    }
+
+    /// Set the camera used for rendering
+    pub fn set_camera(&mut self, camera: &OrthographicCamera) -> GraphicsResult<()> {
+        self.renderer()?
+            .set_view_projection_matrix(camera.projection_matrix());
         Ok(())
     }
 
