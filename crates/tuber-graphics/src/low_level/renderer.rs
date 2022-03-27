@@ -292,7 +292,7 @@ impl Renderer {
         let output = self
             .surface
             .get_current_texture()
-            .map_err(|e| GraphicsError::WGPUSurfaceError(e))?;
+            .map_err(GraphicsError::WGPUSurfaceError)?;
         let output_texture_view = output
             .texture
             .create_view(&TextureViewDescriptor::default());

@@ -61,8 +61,8 @@ impl StateStack {
     }
 
     #[allow(clippy::borrowed_box)]
-    pub fn current_state(&self) -> Option<&Box<dyn State>> {
-        self.states.last()
+    pub fn current_state(&self) -> Option<&dyn State> {
+        self.states.last().map(|boxed| boxed.as_ref())
     }
 
     pub fn current_state_mut(&mut self) -> Option<&mut Box<dyn State>> {

@@ -24,6 +24,7 @@ pub struct EngineSettings {
     pub initial_state: Option<Box<dyn State>>,
 }
 
+/// The engine itself
 pub struct Engine {
     state_stack: StateStack,
     ecs: Ecs,

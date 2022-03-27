@@ -5,6 +5,7 @@ use crate::GraphicsError;
 use crate::GraphicsResult;
 use crate::Window;
 
+#[derive(Default)]
 pub struct Graphics {
     renderer: Option<Renderer>,
 }
@@ -37,11 +38,5 @@ impl Graphics {
         self.renderer
             .as_mut()
             .ok_or(GraphicsError::RendererUninitialized)
-    }
-}
-
-impl Default for Graphics {
-    fn default() -> Self {
-        Self { renderer: None }
     }
 }
