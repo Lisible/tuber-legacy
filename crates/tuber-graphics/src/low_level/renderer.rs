@@ -1,5 +1,5 @@
 use crate::low_level::mesh::Mesh;
-use crate::low_level::primitives::Vertex;
+use crate::low_level::primitives::{Index, Vertex};
 use crate::GraphicsError;
 use crate::GraphicsResult;
 use crate::Window;
@@ -10,30 +10,8 @@ use wgpu::util::BufferInitDescriptor;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
-const VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [0.0, 0.0, 0.0],
-        color: [1.0, 0.0, 0.0],
-        texture_coordinates: [0.0, 0.0],
-    },
-    Vertex {
-        position: [0.0, 1.0, 0.0],
-        color: [0.0, 1.0, 0.0],
-        texture_coordinates: [0.0, 1.0],
-    },
-    Vertex {
-        position: [1.0, 1.0, 0.0],
-        color: [0.0, 0.0, 1.0],
-        texture_coordinates: [1.0, 1.0],
-    },
-    Vertex {
-        position: [1.0, 0.0, 0.0],
-        color: [0.0, 0.0, 1.0],
-        texture_coordinates: [1.0, 0.0],
-    },
-];
-
-const INDICES: &[u16] = &[0, 1, 3, 3, 1, 2];
+const INITIAL_VERTEX_BUFFER_SIZE: BufferAddress = 10_000;
+const INITIAL_INDEX_BUFFER_SIZE: BufferAddress = 100;
 
 pub struct Renderer {
     surface: Surface,
@@ -44,17 +22,18 @@ pub struct Renderer {
 
     render_pipeline: RenderPipeline,
 
+    vertex_buffer_size: BufferAddress,
     vertex_buffer: Buffer,
+    index_buffer_size: BufferAddress,
     index_buffer: Buffer,
-
-    num_indices: u32,
 
     diffuse_bind_group: BindGroup,
 
     camera_buffer: Buffer,
     camera_bind_group: BindGroup,
 
-    pending_meshes: Vec<Mesh>,
+    pending_vertices: Vec<Vertex>,
+    pending_indices: Vec<Index>,
 }
 impl Renderer {
     /// Creates the renderer
@@ -251,19 +230,21 @@ impl Renderer {
             multiview: None,
         });
 
-        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        let vertex_buffer_size = INITIAL_VERTEX_BUFFER_SIZE;
+        let vertex_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Vertex buffer"),
-            contents: bytemuck::cast_slice(VERTICES),
-            usage: BufferUsages::VERTEX,
+            size: vertex_buffer_size,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
 
-        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        let index_buffer_size = INITIAL_INDEX_BUFFER_SIZE;
+        let index_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Index buffer"),
-            contents: bytemuck::cast_slice(INDICES),
-            usage: BufferUsages::INDEX,
+            size: index_buffer_size,
+            usage: BufferUsages::INDEX | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
-
-        let num_indices = INDICES.len() as u32;
 
         Self {
             surface,
@@ -274,17 +255,18 @@ impl Renderer {
 
             render_pipeline,
 
+            vertex_buffer_size,
             vertex_buffer,
+            index_buffer_size,
             index_buffer,
-
-            num_indices,
 
             diffuse_bind_group,
 
             camera_buffer,
             camera_bind_group,
 
-            pending_meshes: vec![],
+            pending_vertices: vec![],
+            pending_indices: vec![],
         }
     }
 
@@ -300,6 +282,8 @@ impl Renderer {
         let mut command_encoder = self
             .device
             .create_command_encoder(&CommandEncoderDescriptor::default());
+
+        self.prepare_vertex_and_index_buffer();
 
         {
             let mut render_pass = command_encoder.begin_render_pass(&RenderPassDescriptor {
@@ -325,7 +309,7 @@ impl Renderer {
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+            render_pass.draw_indexed(0..self.pending_indices.len() as u32, 0, 0..1);
         }
 
         self.queue.submit(std::iter::once(command_encoder.finish()));
@@ -333,6 +317,20 @@ impl Renderer {
 
         self.clear_pending_meshes();
         Ok(())
+    }
+
+    fn prepare_vertex_and_index_buffer(&mut self) {
+        self.queue.write_buffer(
+            &self.vertex_buffer,
+            0,
+            bytemuck::cast_slice(&self.pending_vertices),
+        );
+
+        self.queue.write_buffer(
+            &self.index_buffer,
+            0,
+            bytemuck::cast_slice(&self.pending_indices),
+        );
     }
 
     pub fn set_view_projection_matrix(&mut self, view_projection_matrix: Matrix4f) {
@@ -348,11 +346,24 @@ impl Renderer {
     }
 
     pub fn queue_mesh(&mut self, mesh: Mesh) {
-        self.pending_meshes.push(mesh);
+        self.pending_vertices.extend_from_slice(&mesh.vertices);
+        let mut start_index = *self.pending_indices.last().unwrap_or(&0);
+        if start_index != 0 {
+            start_index += 1;
+        }
+
+        self.pending_indices.extend_from_slice(
+            &mesh
+                .indices
+                .iter()
+                .map(|index| start_index + index)
+                .collect::<Vec<_>>(),
+        );
     }
 
     fn clear_pending_meshes(&mut self) {
-        self.pending_meshes.clear();
+        self.pending_vertices.clear();
+        self.pending_indices.clear();
     }
 }
 

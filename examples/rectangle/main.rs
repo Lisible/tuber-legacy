@@ -30,9 +30,9 @@ impl State for MainState {
             .graphics
             .set_camera(&OrthographicCamera {
                 left: 0.0,
-                right: 1.0,
+                right: 800.0,
                 top: 0.0,
-                bottom: 1.0,
+                bottom: 600.0,
                 far: 100.0,
                 near: -100.0,
             })
@@ -42,7 +42,15 @@ impl State for MainState {
     fn render(&mut self, _ecs: &mut Ecs, engine_context: &mut EngineContext) {
         engine_context
             .graphics
-            .draw_rectangle_shape(RectangleShape::new(1.0, 1.0))
+            .draw_rectangle_shape(RectangleShape::new(100.0, 100.0))
+            .unwrap();
+        engine_context
+            .graphics
+            .draw_rectangle_shape(RectangleShape::new(50.0, 50.0))
+            .unwrap();
+        engine_context
+            .graphics
+            .draw_rectangle_shape(RectangleShape::new(25.0, 25.0))
             .unwrap();
     }
 }

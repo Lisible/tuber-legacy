@@ -23,7 +23,7 @@ impl RectangleShape {
 impl From<RectangleShape> for Mesh {
     fn from(rectangle_shape: RectangleShape) -> Self {
         Mesh {
-            _vertices: vec![
+            vertices: vec![
                 Vertex {
                     position: [0.0, 0.0, 0.0],
                     color: [1.0, 1.0, 1.0],
@@ -45,7 +45,7 @@ impl From<RectangleShape> for Mesh {
                     texture_coordinates: [1.0, 1.0],
                 },
             ],
-            _indices: vec![0, 2, 1, 1, 2, 3],
+            indices: vec![0, 2, 1, 1, 2, 3],
         }
     }
 }
