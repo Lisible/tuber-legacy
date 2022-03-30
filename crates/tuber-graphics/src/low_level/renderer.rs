@@ -1,3 +1,5 @@
+use crate::low_level::buffers::index_buffer::IndexBuffer;
+use crate::low_level::buffers::vertex_buffer::VertexBuffer;
 use crate::low_level::mesh::Mesh;
 use crate::low_level::primitives::{Index, Vertex};
 use crate::GraphicsError;
@@ -10,9 +12,6 @@ use wgpu::util::BufferInitDescriptor;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
-const INITIAL_VERTEX_BUFFER_SIZE: BufferAddress = 10_000;
-const INITIAL_INDEX_BUFFER_SIZE: BufferAddress = 100;
-
 pub struct Renderer {
     surface: Surface,
     device: Device,
@@ -22,10 +21,8 @@ pub struct Renderer {
 
     render_pipeline: RenderPipeline,
 
-    vertex_buffer_size: BufferAddress,
-    vertex_buffer: Buffer,
-    index_buffer_size: BufferAddress,
-    index_buffer: Buffer,
+    vertex_buffer: VertexBuffer,
+    index_buffer: IndexBuffer,
 
     diffuse_bind_group: BindGroup,
 
@@ -230,21 +227,8 @@ impl Renderer {
             multiview: None,
         });
 
-        let vertex_buffer_size = INITIAL_VERTEX_BUFFER_SIZE;
-        let vertex_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Vertex buffer"),
-            size: vertex_buffer_size,
-            usage: BufferUsages::VERTEX | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let index_buffer_size = INITIAL_INDEX_BUFFER_SIZE;
-        let index_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Index buffer"),
-            size: index_buffer_size,
-            usage: BufferUsages::INDEX | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let vertex_buffer = VertexBuffer::with_capacity(&device, "vertex_buffer", 1000);
+        let index_buffer = IndexBuffer::with_capacity(&device, "index_buffer", 100_000);
 
         Self {
             surface,
@@ -255,9 +239,7 @@ impl Renderer {
 
             render_pipeline,
 
-            vertex_buffer_size,
             vertex_buffer,
-            index_buffer_size,
             index_buffer,
 
             diffuse_bind_group,
@@ -283,7 +265,7 @@ impl Renderer {
             .device
             .create_command_encoder(&CommandEncoderDescriptor::default());
 
-        self.prepare_vertex_and_index_buffer();
+        self.prepare_vertex_and_index_buffer(&mut command_encoder);
 
         {
             let mut render_pass = command_encoder.begin_render_pass(&RenderPassDescriptor {
@@ -316,20 +298,24 @@ impl Renderer {
         output.present();
 
         self.clear_pending_meshes();
+        self.vertex_buffer.clear();
+        self.index_buffer.clear();
         Ok(())
     }
 
-    fn prepare_vertex_and_index_buffer(&mut self) {
-        self.queue.write_buffer(
-            &self.vertex_buffer,
-            0,
-            bytemuck::cast_slice(&self.pending_vertices),
+    fn prepare_vertex_and_index_buffer(&mut self, command_encoder: &mut CommandEncoder) {
+        self.vertex_buffer.append_vertices(
+            command_encoder,
+            &self.device,
+            &self.queue,
+            &self.pending_vertices,
         );
 
-        self.queue.write_buffer(
-            &self.index_buffer,
-            0,
-            bytemuck::cast_slice(&self.pending_indices),
+        self.index_buffer.append_indices(
+            command_encoder,
+            &self.device,
+            &self.queue,
+            &self.pending_indices,
         );
     }
 
