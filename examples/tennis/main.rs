@@ -120,7 +120,7 @@ impl State for MainState {
             ));
         }
 
-        let mut bundle = SystemBundle::new();
+        let mut bundle = SystemBundle::default();
         bundle.add_system(move_ball_system);
         bundle.add_system(move_paddle_system);
         bundle.add_system(collision_system);

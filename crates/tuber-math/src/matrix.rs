@@ -36,6 +36,7 @@ impl<T> Matrix4<T> {
         Self { values }
     }
 
+    //noinspection RsBorrowChecker
     #[rustfmt::skip]
     pub fn new_orthographic<U>(
         left: U,
@@ -148,11 +149,11 @@ where
     }
 
     pub fn add_translation(&self, translation: &Vector3<T>) -> Self {
-        self.clone() * Matrix4f::new_translation(translation)
+        *self * Matrix4f::new_translation(translation)
     }
 
     pub fn append_translation(&mut self, translation: &Vector3<T>) {
-        *self = self.clone() * Matrix4f::new_translation(translation);
+        *self *= Matrix4f::new_translation(translation);
     }
 
     pub fn transform_vec(&self, vec: &Vector4<T>) -> Vector4<T> {
@@ -196,7 +197,7 @@ where
     T: Copy + Zero + Add<Output = T> + Mul<Output = T>,
 {
     fn mul_assign(&mut self, rhs: Self) {
-        self.values = (self.clone() * rhs).values;
+        self.values = (*self * rhs).values;
     }
 }
 

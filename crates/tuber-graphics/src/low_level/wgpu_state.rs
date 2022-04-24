@@ -82,7 +82,7 @@ impl WGPUState {
         let compositor = Compositor::new(&device, surface_configuration.format);
 
         Self {
-            clear_color: Color::BLACK.into(),
+            clear_color: Color::BLACK,
             surface,
             device,
             queue,
@@ -134,7 +134,7 @@ impl WGPUState {
                 device: &self.device,
                 queue: &self.queue,
                 command_buffer: &self.command_buffer,
-                viewport_size: self.size.into(),
+                viewport_size: self.size,
                 textures: &self.textures,
                 clear_color: self.clear_color,
                 projection_matrix: &self.projection_matrix,
@@ -208,7 +208,7 @@ impl WGPUState {
                 &self.device,
                 &self.queue,
                 texture_id,
-                &texture_data,
+                texture_data,
             ),
         );
         texture_id

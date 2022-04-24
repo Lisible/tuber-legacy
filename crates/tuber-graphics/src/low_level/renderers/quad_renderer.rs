@@ -135,8 +135,7 @@ impl QuadRenderer {
         );
 
         self.pending_quad_group_uniforms.push(QuadGroupUniform {
-            view_projection: (projection_matrix.clone() * view_transform.try_inverse().unwrap())
-                .into(),
+            view_projection: (*projection_matrix * view_transform.try_inverse().unwrap()).into(),
             _padding: [0.0; 48],
         });
 
@@ -147,7 +146,7 @@ impl QuadRenderer {
         };
 
         for draw_quad_command in draw_quad_commands {
-            let mut effective_transform = draw_quad_command.world_transform.clone();
+            let mut effective_transform = draw_quad_command.world_transform;
             effective_transform[3][2] = 0.0;
 
             let material = draw_quad_command.material.clone();
@@ -282,7 +281,7 @@ impl QuadRenderer {
         render_pass.set_bind_group(
             0,
             self.quad_group_uniform_buffer.bind_group(),
-            &[((quad_group.global_uniform * self.min_uniform_alignment) as u32).into()],
+            &[((quad_group.global_uniform * self.min_uniform_alignment) as u32)],
         );
 
         for (i, quad_metadata) in self.quad_metadata
@@ -294,7 +293,7 @@ impl QuadRenderer {
             render_pass.set_bind_group(
                 1,
                 self.quad_uniform_buffer.bind_group(),
-                &[quad_metadata.uniform_offset.into()],
+                &[quad_metadata.uniform_offset],
             );
 
             if quad_render_pass_type == QuadRenderPassType::UI {

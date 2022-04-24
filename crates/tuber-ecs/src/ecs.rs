@@ -1,11 +1,12 @@
 //! The ecs module defines the Ecs struct which is the main entry point of tuber-ecs
 
-use crate::bitset::BitSet;
-use crate::query::{ComponentTypeId, Query, QueryIterator, QueryIteratorByIds};
-use crate::EntityIndex;
 use std::any::{Any, TypeId};
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::{HashMap, HashSet};
+
+use crate::bitset::BitSet;
+use crate::query::{ComponentTypeId, Query, QueryIterator, QueryIteratorByIds};
+use crate::EntityIndex;
 
 pub type Components = HashMap<TypeId, ComponentStore>;
 pub type Resources = HashMap<TypeId, RefCell<Box<dyn Any>>>;
@@ -18,13 +19,6 @@ pub struct ComponentStore {
 }
 
 impl ComponentStore {
-    pub fn new() -> Self {
-        Self {
-            component_data: vec![None],
-            entities_bitset: [0u64; 1024],
-        }
-    }
-
     pub fn with_size(size: usize) -> Self {
         let mut component_data = vec![None];
         for _ in 0..size {
@@ -48,7 +42,17 @@ impl ComponentStore {
     }
 }
 
+impl Default for ComponentStore {
+    fn default() -> Self {
+        Self {
+            component_data: vec![None],
+            entities_bitset: [0u64; 1024],
+        }
+    }
+}
+
 /// The Ecs itself, stores entities and runs systems
+#[derive(Default)]
 pub struct Ecs {
     components: Components,
     shared_resources: Resources,
@@ -56,15 +60,6 @@ pub struct Ecs {
 }
 
 impl Ecs {
-    /// Creates a new Ecs.
-    pub fn new() -> Self {
-        Self {
-            components: HashMap::new(),
-            shared_resources: HashMap::new(),
-            next_index: 0,
-        }
-    }
-
     pub fn insert_shared_resource<T: 'static>(&mut self, resource: T) {
         self.shared_resources
             .insert(TypeId::of::<T>(), RefCell::new(Box::new(resource)));
@@ -100,7 +95,7 @@ impl Ecs {
     }
 
     pub fn delete_by_query<Q: for<'a> Query<'a>>(&mut self) {
-        let to_delete = Q::matching_ids(self.entity_count(), &mut self.components);
+        let to_delete = Q::matching_ids(self.entity_count(), &self.components);
         self.delete_by_ids(to_delete.iter().cloned().collect::<Vec<_>>().as_slice());
     }
 
@@ -148,7 +143,7 @@ impl Ecs {
                 .collect();
             let bitsets: Vec<&EntitiesBitsetType> = type_ids
                 .iter()
-                .filter_map(|type_id| Some(&self.components.get(&type_id)?.entities_bitset))
+                .filter_map(|type_id| Some(&self.components.get(type_id)?.entities_bitset))
                 .collect();
             if bitsets.len() != type_ids.len() {
                 return None;
@@ -164,7 +159,7 @@ impl Ecs {
             index?
         };
 
-        Some(Q::fetch(index, &self.components)?)
+        Q::fetch(index, &self.components)
     }
 
     pub fn query_one_by_id<'a, Q: Query<'a>>(&'a self, id: EntityIndex) -> Option<Q::ResultType> {
@@ -213,8 +208,9 @@ impl_entity_definition_tuples!(A => 0, B => 1, C => 2, D => 3, E => 4, F => 5, G
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::query::accessors::*;
+
+    use super::*;
 
     #[derive(Debug, PartialEq)]
     struct Position {
@@ -230,13 +226,13 @@ mod tests {
 
     #[test]
     pub fn ecs_new() {
-        let ecs = Ecs::new();
+        let ecs = Ecs::default();
         assert_eq!(ecs.entity_count(), 0usize);
     }
 
     #[test]
     pub fn ecs_insert() {
-        let mut ecs = Ecs::new();
+        let mut ecs = Ecs::default();
         ecs.insert((Position { x: 0.0, y: 1.0 }, Velocity { x: 2.0, y: 3.0 }));
         assert_eq!(ecs.entity_count(), 1usize);
         ecs.insert((Position { x: 4.0, y: 5.0 }, Velocity { x: 6.0, y: 7.0 }));
@@ -245,7 +241,7 @@ mod tests {
 
     #[test]
     pub fn ecs_query() {
-        let mut ecs = Ecs::new();
+        let mut ecs = Ecs::default();
         ecs.insert((Position { x: 12.0, y: 1.0 }, Velocity { x: 2.0, y: 3.0 }));
         ecs.insert((Position { x: 4.0, y: 5.0 }, Velocity { x: 6.0, y: 7.0 }));
         ecs.insert((Position { x: 4.0, y: 5.0 },));
@@ -267,7 +263,7 @@ mod tests {
 
     #[test]
     pub fn ecs_query_one() {
-        let mut ecs = Ecs::new();
+        let mut ecs = Ecs::default();
         ecs.insert((Position { x: 12.0, y: 1.0 }, Velocity { x: 2.0, y: 3.0 }));
 
         assert_eq!(ecs.query_one::<(R<Position>,)>().unwrap().0, 0);
@@ -279,7 +275,7 @@ mod tests {
 
     #[test]
     pub fn ecs_query_optional() {
-        let mut ecs = Ecs::new();
+        let mut ecs = Ecs::default();
         ecs.insert((Position { x: 12.0, y: 1.0 }, Velocity { x: 2.0, y: 3.0 }));
         ecs.insert((Position { x: 15.0, y: 8.0 },));
 
@@ -288,7 +284,7 @@ mod tests {
 
     #[test]
     pub fn ecs_query_one_optional() {
-        let mut ecs = Ecs::new();
+        let mut ecs = Ecs::default();
         ecs.insert((Position { x: 12.0, y: 1.0 },));
 
         let (_, (position, velocity)) = ecs.query_one::<(R<Position>, Opt<R<Velocity>>)>().unwrap();

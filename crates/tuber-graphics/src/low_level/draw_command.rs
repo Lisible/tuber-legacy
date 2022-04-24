@@ -21,18 +21,18 @@ impl CommandBuffer {
         }
     }
 
-    pub fn add(&mut self, command: Command) {
+    pub fn add(&mut self, command: DrawCommand) {
         match command {
-            Command::DrawMesh(draw_mesh_command) => {
+            DrawCommand::Mesh(draw_mesh_command) => {
                 self.draw_mesh_command_buffer.push(draw_mesh_command)
             }
-            Command::DrawQuad(draw_quad_command) => {
+            DrawCommand::Quad(draw_quad_command) => {
                 self.draw_quad_command_buffer.push(draw_quad_command)
             }
-            Command::DrawUIQuad(draw_quad_command) => {
+            DrawCommand::UIQuad(draw_quad_command) => {
                 self.draw_ui_quad_command_buffer.push(draw_quad_command)
             }
-            Command::DrawLight(draw_light_command) => {
+            DrawCommand::Light(draw_light_command) => {
                 self.draw_light_command_buffer.push(draw_light_command)
             }
         }
@@ -63,11 +63,11 @@ impl CommandBuffer {
 }
 
 #[derive(Debug)]
-pub enum Command {
-    DrawQuad(DrawQuadCommand),
-    DrawMesh(DrawMeshCommand),
-    DrawUIQuad(DrawQuadCommand),
-    DrawLight(DrawLightCommand),
+pub enum DrawCommand {
+    Quad(DrawQuadCommand),
+    Mesh(DrawMeshCommand),
+    UIQuad(DrawQuadCommand),
+    Light(DrawLightCommand),
 }
 
 #[derive(Debug)]

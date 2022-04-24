@@ -1,5 +1,6 @@
-use crate::wgpu_state::RenderContext;
 use wgpu::{SurfaceTexture, TextureViewDescriptor};
+
+use crate::wgpu_state::RenderContext;
 
 pub(crate) fn composition_pass(
     context: &mut RenderContext,
@@ -14,7 +15,7 @@ pub(crate) fn composition_pass(
         .create_view(&TextureViewDescriptor::default());
     context
         .compositor
-        .prepare(&context.device, lit_render, ui_render);
+        .prepare(context.device, lit_render, ui_render);
 
     {
         let mut render_pass = command_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

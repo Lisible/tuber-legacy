@@ -1,7 +1,8 @@
-use crate::{BitmapFont, TextureData};
 use std::str::FromStr;
 
-pub(crate) const DEFAULT_FONT_IDENTIFIER: &'static str = "_default_font";
+use crate::{BitmapFont, TextureData};
+
+pub(crate) const DEFAULT_FONT_IDENTIFIER: &str = "_default_font";
 
 pub(crate) fn create_default_bitmap_font_texture() -> TextureData {
     let bytes = include_bytes!("../textures/default_font.png");

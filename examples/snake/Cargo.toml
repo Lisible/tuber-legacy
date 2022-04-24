@@ -9,5 +9,5 @@ path = "main.rs"
 name = "snake"
 
 [dependencies]
-tuber = { path = "../../" }
+tuber = { path = "../.." }
 rand = "0.8"

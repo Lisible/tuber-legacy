@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::default::Default;
 
 use tuber_core::asset::{AssetStore, GenericLoader};
-use tuber_core::transform::{IntoMatrix4, Transform};
+use tuber_core::transform::{AsMatrix4, Transform};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::query::accessors::Opt;
 use tuber_ecs::query::accessors::R;
@@ -12,7 +12,7 @@ use tuber_math::matrix::{Identity, Matrix4f};
 use tuber_math::vector::Vector3;
 
 use crate::camera::WorldRegion;
-use crate::draw_command::{Command, DrawLightCommand, DrawMeshCommand, DrawQuadCommand};
+use crate::draw_command::{DrawCommand, DrawLightCommand, DrawMeshCommand, DrawQuadCommand};
 use crate::font::DEFAULT_FONT_IDENTIFIER;
 use crate::geometry::Vertex;
 use crate::primitives::Quad;
@@ -35,14 +35,6 @@ pub struct Graphics {
 }
 
 impl Graphics {
-    pub fn new() -> Self {
-        let texture_metadata = HashMap::new();
-        Self {
-            wgpu_state: None,
-            texture_metadata,
-        }
-    }
-
     pub fn initialize(&mut self, window: Window, window_size: WindowSize) {
         self.wgpu_state = Some(WGPUState::new(window, window_size));
         self.load_texture_in_vram(&font::create_default_bitmap_font_texture());
@@ -61,7 +53,7 @@ impl Graphics {
             .as_mut()
             .unwrap()
             .command_buffer_mut()
-            .add(Command::DrawUIQuad(DrawQuadCommand {
+            .add(DrawCommand::UIQuad(DrawQuadCommand {
                 quad: Quad {
                     top_left: Vertex {
                         position: [0.0, 0.0, 0.0],
@@ -98,7 +90,7 @@ impl Graphics {
             .as_mut()
             .unwrap()
             .command_buffer_mut()
-            .add(Command::DrawQuad(DrawQuadCommand {
+            .add(DrawCommand::Quad(DrawQuadCommand {
                 quad: Quad {
                     top_left: Vertex {
                         position: [0.0, 0.0, 0.0],
@@ -135,7 +127,7 @@ impl Graphics {
             .as_mut()
             .unwrap()
             .command_buffer_mut()
-            .add(Command::DrawLight(DrawLightCommand {
+            .add(DrawCommand::Light(DrawLightCommand {
                 light: point_light.clone(),
                 world_transform: transform_matrix,
             }))
@@ -154,7 +146,7 @@ impl Graphics {
             .as_mut()
             .unwrap()
             .command_buffer_mut()
-            .add(Command::DrawMesh(DrawMeshCommand {
+            .add(DrawCommand::Mesh(DrawMeshCommand {
                 mesh: mesh.create_mesh(),
                 world_transform: transform_matrix,
                 material,
@@ -224,7 +216,7 @@ impl Graphics {
             .as_mut()
             .unwrap()
             .command_buffer_mut()
-            .add(Command::DrawQuad(DrawQuadCommand {
+            .add(DrawCommand::Quad(DrawQuadCommand {
                 quad: Quad {
                     top_left: Vertex {
                         position: [0.0, 0.0, 0.0],
@@ -298,7 +290,7 @@ impl Graphics {
             .as_mut()
             .unwrap()
             .command_buffer_mut()
-            .add(Command::DrawQuad(DrawQuadCommand {
+            .add(DrawCommand::Quad(DrawQuadCommand {
                 quad: Quad {
                     top_left: Vertex {
                         position: [0.0, 0.0, 0.0],
@@ -391,7 +383,7 @@ impl Graphics {
                         .as_mut()
                         .unwrap()
                         .command_buffer_mut()
-                        .add(Command::DrawQuad(DrawQuadCommand {
+                        .add(DrawCommand::Quad(DrawQuadCommand {
                             quad: Quad {
                                 top_left: Vertex {
                                     position: [0.0, 0.0, 0.0],
@@ -460,14 +452,11 @@ impl Graphics {
             None => &default_bitmap_font,
         };
 
-        let font_texture_atlas = match font_identifier {
-            Some(_) => Some(
-                asset_store
-                    .stored_asset::<TextureAtlas>(font.font_atlas().unwrap())
-                    .unwrap(),
-            ),
-            None => None,
-        };
+        let font_texture_atlas = font_identifier.as_ref().map(|_| {
+            asset_store
+                .stored_asset::<TextureAtlas>(font.font_atlas().unwrap())
+                .unwrap()
+        });
 
         let font_region = match font_identifier {
             Some(font_identifier) => font_texture_atlas
@@ -522,7 +511,7 @@ impl Graphics {
                 .as_mut()
                 .unwrap()
                 .command_buffer_mut()
-                .add(Command::DrawUIQuad(DrawQuadCommand {
+                .add(DrawCommand::UIQuad(DrawQuadCommand {
                     quad: Quad {
                         top_left: Vertex {
                             position: [0.0, 0.0, 0.0],
@@ -626,7 +615,7 @@ impl Graphics {
         let (camera_id, (camera, _, camera_transform)) = ecs
             .query_one::<(R<OrthographicCamera>, R<Active>, R<Transform>)>()
             .expect("There is no camera");
-        self.update_camera(camera_id, &camera, camera_transform.into_matrix4());
+        self.update_camera(camera_id, &camera, camera_transform.as_matrix4());
 
         for (_, (rectangle_shape, transform, parent)) in
             ecs.query::<(R<RectangleShape>, R<Transform>, Opt<R<Parent>>)>()
@@ -638,14 +627,11 @@ impl Graphics {
                 let (_, (transform, p)) = ecs
                     .query_one_by_id::<(R<Transform>, Opt<R<Parent>>)>(parent_id)
                     .unwrap();
-                parent_transform *= transform.into_matrix4();
+                parent_transform *= transform.as_matrix4();
                 parent = p;
             }
 
-            self.draw_rectangle(
-                &rectangle_shape,
-                parent_transform * transform.into_matrix4(),
-            );
+            self.draw_rectangle(&rectangle_shape, parent_transform * transform.as_matrix4());
         }
         for (_, (sprite, transform, parent)) in
             ecs.query::<(R<Sprite>, R<Transform>, Opt<R<Parent>>)>()
@@ -657,13 +643,13 @@ impl Graphics {
                 let (_, (transform, p)) = ecs
                     .query_one_by_id::<(R<Transform>, Opt<R<Parent>>)>(parent_id)
                     .unwrap();
-                parent_transform *= transform.into_matrix4();
+                parent_transform *= transform.as_matrix4();
                 parent = p;
             }
 
             self.draw_sprite(
                 &sprite,
-                parent_transform * transform.into_matrix4(),
+                parent_transform * transform.as_matrix4(),
                 asset_store,
             )
             .unwrap();
@@ -679,13 +665,13 @@ impl Graphics {
                 let (_, (transform, p)) = ecs
                     .query_one_by_id::<(R<Transform>, Opt<R<Parent>>)>(parent_id)
                     .unwrap();
-                parent_transform *= transform.into_matrix4();
+                parent_transform *= transform.as_matrix4();
                 parent = p;
             }
 
             self.draw_mesh(
                 &mesh,
-                parent_transform * transform.into_matrix4(),
+                parent_transform * transform.as_matrix4(),
                 asset_store,
             )
         }
@@ -700,13 +686,13 @@ impl Graphics {
                 let (_, (transform, p)) = ecs
                     .query_one_by_id::<(R<Transform>, Opt<R<Parent>>)>(parent_id)
                     .unwrap();
-                parent_transform *= transform.into_matrix4();
+                parent_transform *= transform.as_matrix4();
                 parent = p;
             }
 
             self.draw_animated_sprite(
                 &animated_sprite,
-                parent_transform * transform.into_matrix4(),
+                parent_transform * transform.as_matrix4(),
                 asset_store,
             )
             .unwrap();
@@ -722,11 +708,11 @@ impl Graphics {
                 let (_, (transform, p)) = ecs
                     .query_one_by_id::<(R<Transform>, Opt<R<Parent>>)>(parent_id)
                     .unwrap();
-                parent_transform *= transform.into_matrix4();
+                parent_transform *= transform.as_matrix4();
                 parent = p;
             }
 
-            self.draw_point_light(&point_light, parent_transform * transform.into_matrix4())
+            self.draw_point_light(&point_light, parent_transform * transform.as_matrix4())
         }
 
         self.render();
@@ -785,6 +771,16 @@ impl Graphics {
             (TypeId::of::<TextureAtlas>(), Box::new(texture_atlas_loader)),
             (TypeId::of::<BitmapFont>(), Box::new(font_loader)),
         ]
+    }
+}
+
+impl Default for Graphics {
+    fn default() -> Self {
+        let texture_metadata = HashMap::new();
+        Self {
+            wgpu_state: None,
+            texture_metadata,
+        }
     }
 }
 

@@ -35,7 +35,7 @@ pub fn mouse_coordinates_to_world_coordinates(
         0.0,
     );
 
-    let mouse_coordinates = (view_matrix.clone() * projection_matrix.try_inverse().unwrap())
+    let mouse_coordinates = (*view_matrix * projection_matrix.try_inverse().unwrap())
         .transform_vec3(&mouse_coordinates);
 
     (mouse_coordinates.x, mouse_coordinates.y)
@@ -45,7 +45,7 @@ pub fn world_region(projection_matrix: &Matrix4f, view_matrix: &Matrix4f) -> Wor
     let min_coordinates = Vector3f::new(-1.0, -1.0, 0.0);
     let max_coordinates = Vector3f::new(1.0, 1.0, 0.0);
 
-    let view_inv_proj = view_matrix.clone() * projection_matrix.try_inverse().unwrap();
+    let view_inv_proj = *view_matrix * projection_matrix.try_inverse().unwrap();
 
     let min_coordinates = view_inv_proj.transform_vec3(&min_coordinates);
     let max_coordinates = view_inv_proj.transform_vec3(&max_coordinates);

@@ -1,5 +1,6 @@
-use crate::geometry::Vertex;
 use std::ops::Deref;
+
+use crate::geometry::Vertex;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TextureId(pub usize);
@@ -20,20 +21,13 @@ impl Deref for TextureId {
 
 pub type Index = u32;
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Mesh {
     vertices: Vec<Vertex>,
     indices: Vec<Index>,
 }
 
 impl Mesh {
-    pub fn new() -> Self {
-        Self {
-            vertices: vec![],
-            indices: vec![],
-        }
-    }
-
     pub fn append_vertices(&mut self, vertices: &[Vertex]) {
         self.vertices.extend_from_slice(vertices);
     }

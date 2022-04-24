@@ -1,15 +1,14 @@
-use crate::widget::{AsAny, Widget};
 use tuber_core::asset::AssetStore;
 use tuber_graphics::graphics::Graphics;
 
+use crate::widget::{AsAny, Widget};
+
+#[derive(Default)]
 pub struct GUI {
     root: Root,
 }
-impl GUI {
-    pub fn new() -> Self {
-        Self { root: Root::new() }
-    }
 
+impl GUI {
     pub fn root(&mut self) -> &mut Root {
         &mut self.root
     }
@@ -23,15 +22,13 @@ impl GUI {
 }
 
 pub trait GenericWidget: Widget + AsAny {}
+
+#[derive(Default)]
 pub struct Root {
     widgets: Vec<Box<dyn GenericWidget>>,
 }
 
 impl Root {
-    pub fn new() -> Self {
-        Self { widgets: vec![] }
-    }
-
     pub fn add_widget(&mut self, widget: Box<dyn GenericWidget>) {
         self.widgets.push(widget);
     }

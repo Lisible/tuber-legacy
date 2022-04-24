@@ -22,7 +22,7 @@ impl MeshDescriptor {
     }
 
     pub fn create_mesh(&self) -> Mesh {
-        let mut mesh = Mesh::new();
+        let mut mesh = Mesh::default();
         mesh.append_vertices(&self.vertices);
         mesh.append_indices(&self.indices);
         mesh

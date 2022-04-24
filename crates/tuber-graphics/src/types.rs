@@ -53,12 +53,12 @@ impl Color {
     }
 }
 
-impl Into<[f32; 3]> for Color {
-    fn into(self) -> [f32; 3] {
+impl From<Color> for [f32; 3] {
+    fn from(color: Color) -> Self {
         [
-            self.r as f32 / 255.0,
-            self.g as f32 / 255.0,
-            self.b as f32 / 255.0,
+            color.r as f32 / 255.0,
+            color.g as f32 / 255.0,
+            color.b as f32 / 255.0,
         ]
     }
 }
@@ -90,6 +90,7 @@ impl From<Color> for (f32, f32, f32) {
 }
 
 pub struct ColorComponent(u8);
+
 impl From<ColorComponent> for f32 {
     fn from(component: ColorComponent) -> Self {
         component.0 as f32 / 255.0

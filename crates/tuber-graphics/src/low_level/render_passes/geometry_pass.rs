@@ -47,12 +47,7 @@ pub(crate) fn geometry_pass(
     let position_map_view =
         position_map_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-    let mut draw_commands = context
-        .command_buffer
-        .draw_quad_commands()
-        .iter()
-        .cloned()
-        .collect::<Vec<_>>();
+    let mut draw_commands = context.command_buffer.draw_quad_commands().to_vec();
 
     draw_commands.sort_by(|first_draw_command, second_draw_command| {
         (first_draw_command.world_transform[2][3] as f32)
@@ -81,8 +76,8 @@ pub(crate) fn geometry_pass(
                 mesh: command.mesh,
                 material: command.material,
                 transform: command.world_transform,
-                view: context.view_transform.clone(),
-                projection: context.projection_matrix.clone(),
+                view: *context.view_transform,
+                projection: *context.projection_matrix,
             },
         );
     }

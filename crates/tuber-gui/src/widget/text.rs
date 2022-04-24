@@ -1,7 +1,7 @@
 use crate::widget::common::WidgetCommon;
 use crate::widget::Widget;
 use tuber_core::asset::AssetStore;
-use tuber_core::transform::{IntoMatrix4, Transform};
+use tuber_core::transform::{AsMatrix4, Transform};
 use tuber_graphics::graphics::Graphics;
 
 pub struct TextWidget {
@@ -44,7 +44,7 @@ impl Widget for TextWidget {
         graphics.draw_text(
             &self.text,
             &self.font_identifier,
-            transform.into_matrix4(),
+            transform.as_matrix4(),
             asset_store,
         );
     }

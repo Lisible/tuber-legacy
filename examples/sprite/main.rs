@@ -64,7 +64,6 @@ impl State for MainState {
                     normal_map: None,
                     emission_map: None,
                 },
-                ..Default::default()
             },
         ));
 
@@ -81,7 +80,6 @@ impl State for MainState {
                     albedo_map: "sprite".to_string(),
                     ..Default::default()
                 },
-                ..Default::default()
             },
         ));
 
@@ -98,7 +96,6 @@ impl State for MainState {
                     albedo_map: "dfhgfhfh".to_string(),
                     ..Default::default()
                 },
-                ..Default::default()
             },
         ));
 
@@ -115,7 +112,6 @@ impl State for MainState {
                     albedo_map: "dfhgfhfh".to_string(),
                     ..Default::default()
                 },
-                ..Default::default()
             },
         ));
 
@@ -136,7 +132,6 @@ impl State for MainState {
                     albedo_map: "atlas_texture".to_string(),
                     ..Default::default()
                 },
-                ..Default::default()
             },
         ));
 
@@ -153,7 +148,6 @@ impl State for MainState {
                     albedo_map: "atlas_texture".to_string(),
                     ..Default::default()
                 },
-                ..Default::default()
             },
         ));
 

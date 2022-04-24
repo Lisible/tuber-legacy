@@ -1,10 +1,12 @@
-use crate::input::keyboard::Key;
-use crate::{CoreError, CoreResult};
-use serde_derive::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
-use std::path::PathBuf;
+use std::path::Path;
+
+use serde_derive::Deserialize;
+
+use crate::input::keyboard::Key;
+use crate::{CoreError, CoreResult};
 
 pub mod keyboard {
     use serde_derive::Deserialize;
@@ -103,6 +105,7 @@ pub struct InputState {
     mouse_moved: bool,
     keymap: Keymap,
 }
+
 impl InputState {
     pub fn new(keymap: Keymap) -> Self {
         Self {
@@ -150,8 +153,8 @@ impl InputState {
 
     pub fn handle_input(&mut self, input: Input) {
         self.mouse_moved = false;
-        self.previous_key_state = self.key_state.clone();
-        self.previous_mouse_button_state = self.mouse_button_state.clone();
+        self.previous_key_state = self.key_state;
+        self.previous_mouse_button_state = self.mouse_button_state;
         match input {
             Input::KeyDown(key) => self.key_state[key as usize] = true,
             Input::KeyUp(key) => self.key_state[key as usize] = false,
@@ -177,21 +180,21 @@ impl InputState {
 #[derive(Debug, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct Action(String);
 
-#[derive(Debug, Deserialize)]
+#[derive(Default, Debug, Deserialize)]
 pub struct Keymap {
     _keymap: HashMap<Key, Action>,
     reversed_keymap: HashMap<Action, Key>,
 }
 
 impl Keymap {
-    pub fn from_file(file_path: &PathBuf) -> CoreResult<Self> {
-        let file = File::open(file_path).map_err(|e| CoreError::KeymapFileOpenError(e))?;
+    pub fn from_file(file_path: &Path) -> CoreResult<Self> {
+        let file = File::open(file_path).map_err(CoreError::KeymapFileOpenError)?;
         let reader = BufReader::new(file);
         let keymap: HashMap<Key, Action> =
-            serde_json::from_reader(reader).map_err(|e| CoreError::KeymapParseError(e))?;
+            serde_json::from_reader(reader).map_err(CoreError::KeymapParseError)?;
         let reversed_keymap: HashMap<Action, Key> = keymap
             .iter()
-            .map(|(key, value)| (value.clone(), key.clone()))
+            .map(|(key, value)| (value.clone(), *key))
             .collect();
 
         Ok(Self {
@@ -201,19 +204,11 @@ impl Keymap {
     }
 }
 
-impl Default for Keymap {
-    fn default() -> Self {
-        Self {
-            _keymap: Default::default(),
-            reversed_keymap: Default::default(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::HashMap;
+
+    use super::*;
 
     #[test]
     fn deserialize() {

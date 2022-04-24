@@ -21,13 +21,13 @@ impl Default for Transform {
     }
 }
 
-pub trait IntoMatrix4 {
-    fn into_matrix4(&self) -> Matrix4f;
+pub trait AsMatrix4 {
+    fn as_matrix4(&self) -> Matrix4f;
 }
 
-impl IntoMatrix4 for Transform {
-    fn into_matrix4(&self) -> Matrix4f {
-        let translate_to_rotation_center = self.rotation_center.clone();
+impl AsMatrix4 for Transform {
+    fn as_matrix4(&self) -> Matrix4f {
+        let translate_to_rotation_center = self.rotation_center;
 
         Matrix4f::new_scale(&self.scale)
             * Matrix4f::new_translation(&self.translation)

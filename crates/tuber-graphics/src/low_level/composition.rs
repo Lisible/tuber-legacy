@@ -272,7 +272,7 @@ impl Compositor {
 
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
-            layout: &lit_render_bind_group_layout,
+            layout: lit_render_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -296,7 +296,7 @@ impl Compositor {
 
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
-            layout: &ui_render_bind_group_layout,
+            layout: ui_render_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -329,7 +329,7 @@ impl Compositor {
     ) -> wgpu::Buffer {
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("compositor_global_uniform_buffer"),
-            contents: bytemuck::cast_slice(&[global_uniform.clone()]),
+            contents: bytemuck::cast_slice(&[*global_uniform]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         })
     }

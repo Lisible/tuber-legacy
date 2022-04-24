@@ -9,9 +9,9 @@ use wgpu::{
 
 use crate::low_level::utils::create_uniform_buffer;
 
-const BUFFER_SUFFIX: &'static str = "_buffer";
-const BIND_GROUP_SUFFIX: &'static str = "_bind_group";
-const BIND_GROUP_LAYOUT_SUFFIX: &'static str = "_bind_group_layout";
+const BUFFER_SUFFIX: &str = "_buffer";
+const BIND_GROUP_SUFFIX: &str = "_bind_group";
+const BIND_GROUP_LAYOUT_SUFFIX: &str = "_bind_group_layout";
 
 pub struct UniformBuffer<UniformType> {
     label: String,
@@ -52,7 +52,7 @@ where
         });
 
         let bind_group =
-            Self::create_bind_group(device, &label, uniform_offset, &buffer, &bind_group_layout);
+            Self::create_bind_group(device, label, uniform_offset, &buffer, &bind_group_layout);
 
         Self {
             label: label.to_string(),
@@ -75,11 +75,11 @@ where
     ) -> BindGroup {
         device.create_bind_group(&BindGroupDescriptor {
             label: Some(&format!("{}{}", label, BIND_GROUP_SUFFIX)),
-            layout: &bind_group_layout,
+            layout: bind_group_layout,
             entries: &[BindGroupEntry {
                 binding: 0,
                 resource: BindingResource::Buffer(BufferBinding {
-                    buffer: &buffer,
+                    buffer,
                     offset: 0,
                     size: wgpu::BufferSize::new(uniform_offset as BufferAddress),
                 }),
@@ -100,7 +100,7 @@ where
         queue.write_buffer(
             &self.buffer,
             uniform_buffer_offset as BufferAddress,
-            bytemuck::cast_slice(&uniforms),
+            bytemuck::cast_slice(uniforms),
         );
 
         self.uniform_count += uniforms.len();

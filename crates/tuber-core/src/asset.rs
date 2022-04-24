@@ -1,16 +1,19 @@
-use crate::{CoreError, CoreResult};
-use log::info;
-use serde_derive::Deserialize;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::io::BufReader;
 use std::path::PathBuf;
 
-const ASSETS_DIRECTORY: &'static str = "assets";
-const ASSET_DESCRIPTION_FILE: &'static str = "asset.json";
+use log::info;
+use serde_derive::Deserialize;
+
+use crate::{CoreError, CoreResult};
+
+const ASSETS_DIRECTORY: &str = "assets";
+const ASSET_DESCRIPTION_FILE: &str = "asset.json";
 
 pub type GenericLoader = Box<dyn Fn(&AssetMetadata) -> Box<dyn Any>>;
 
+#[derive(Default)]
 pub struct AssetStore {
     assets: HashMap<TypeId, HashMap<String, Box<dyn Any>>>,
     asset_loaders: HashMap<TypeId, GenericLoader>,
@@ -18,14 +21,6 @@ pub struct AssetStore {
 }
 
 impl AssetStore {
-    pub fn new() -> Self {
-        Self {
-            assets: HashMap::new(),
-            asset_loaders: HashMap::new(),
-            assets_metadata: HashMap::new(),
-        }
-    }
-
     pub fn load_assets_metadata(&mut self) -> CoreResult<()> {
         info!("Loading assets metadata");
         let paths = match std::fs::read_dir(AssetStore::asset_directory()?) {
@@ -46,12 +41,11 @@ impl AssetStore {
                 return Err(CoreError::AssetDescriptionFileNotFound);
             }
 
-            let f = std::fs::File::open(path)
-                .map_err(|e| CoreError::AssetDescriptionFileOpenError(e))?;
+            let f = std::fs::File::open(path).map_err(CoreError::AssetDescriptionFileOpenError)?;
             let reader = BufReader::new(f);
             let mut asset_metadata: AssetMetadata = serde_json::from_reader(reader)
-                .map_err(|e| CoreError::AssetDescriptionFileParseError(e))?;
-            asset_metadata.asset_path = asset_directory_path.path().into();
+                .map_err(CoreError::AssetDescriptionFileParseError)?;
+            asset_metadata.asset_path = asset_directory_path.path();
             info!(
                 "Loaded resource metadata identifier={} kind={}",
                 &asset_metadata.identifier, &asset_metadata.kind
@@ -110,7 +104,7 @@ impl AssetStore {
             .get(identifier)
             .ok_or(CoreError::AssetMetadataNotFound)?;
 
-        let asset_storage = self.assets.entry(type_id).or_insert(HashMap::new());
+        let asset_storage = self.assets.entry(type_id).or_insert_with(HashMap::new);
         asset_storage.insert(
             identifier.into(),
             (self
@@ -130,7 +124,7 @@ impl AssetStore {
         AssetType: 'static + Any,
     {
         let type_id = TypeId::of::<AssetType>();
-        let asset_storage = self.assets.entry(type_id).or_insert(HashMap::new());
+        let asset_storage = self.assets.entry(type_id).or_insert_with(HashMap::new);
         asset_storage.insert(asset_metadata.identifier.clone(), Box::new(asset));
         self.assets_metadata
             .insert(asset_metadata.identifier.clone(), asset_metadata);
@@ -141,15 +135,14 @@ impl AssetStore {
     where
         AssetType: 'static + Any,
     {
-        Ok(self
-            .assets
+        self.assets
             .get(&TypeId::of::<AssetType>())
             .ok_or(CoreError::AssetStorageNotFound)?
             .get(identifier)
             .ok_or(CoreError::AssetNotFound)?
             .as_ref()
             .downcast_ref()
-            .ok_or(CoreError::AssetDowncastError)?)
+            .ok_or(CoreError::AssetDowncastError)
     }
 
     pub fn asset<AssetType>(&mut self, identifier: &str) -> CoreResult<&AssetType>

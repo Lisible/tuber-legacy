@@ -14,12 +14,12 @@ pub(crate) fn ui_pass(
     let render_view = render_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
     let quad_group = context.quad_renderer.prepare_quad_group(
-        &context.device,
+        context.device,
         command_encoder,
-        &context.textures,
-        &context.projection_matrix,
+        context.textures,
+        context.projection_matrix,
         &Matrix4::identity(),
-        &context.command_buffer.draw_ui_quad_commands(),
+        context.command_buffer.draw_ui_quad_commands(),
         true,
     );
 

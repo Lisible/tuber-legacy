@@ -3,7 +3,7 @@ use crate::GraphicsError;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::Path;
 use std::str::FromStr;
 use tuber_core::asset::AssetMetadata;
 
@@ -60,10 +60,9 @@ impl BitmapFont {
         self.ignore_case
     }
 
-    pub fn from_file(path: &PathBuf) -> Result<Self, GraphicsError> {
+    pub fn from_file(path: &Path) -> Result<Self, GraphicsError> {
         Self::from_str(
-            &std::fs::read_to_string(path)
-                .map_err(|error| GraphicsError::BitmapFontFileReadError(error))?,
+            &std::fs::read_to_string(path).map_err(GraphicsError::BitmapFontFileReadError)?,
         )
     }
 }
@@ -72,7 +71,7 @@ impl FromStr for BitmapFont {
     type Err = GraphicsError;
 
     fn from_str(json_string: &str) -> Result<Self, Self::Err> {
-        serde_json::from_str(json_string).map_err(|e| GraphicsError::SerdeError(e))
+        serde_json::from_str(json_string).map_err(GraphicsError::SerdeError)
     }
 }
 

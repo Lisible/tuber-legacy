@@ -1,6 +1,7 @@
+use std::path::PathBuf;
+
 use engine_context::EngineContext;
 use state::*;
-use std::path::PathBuf;
 use tuber_core::asset::AssetStore;
 use tuber_core::input::{InputState, Keymap};
 use tuber_core::{input, CoreError};
@@ -14,18 +15,10 @@ pub mod engine_context;
 pub mod state;
 pub mod system_bundle;
 
+#[derive(Default)]
 pub struct EngineSettings {
     pub application_title: Option<String>,
     pub initial_state: Option<Box<dyn State>>,
-}
-
-impl Default for EngineSettings {
-    fn default() -> Self {
-        Self {
-            application_title: None,
-            initial_state: None,
-        }
-    }
 }
 
 pub struct Engine {
@@ -37,24 +30,24 @@ pub struct Engine {
 }
 
 fn create_ecs() -> Ecs {
-    Ecs::new()
+    Ecs::default()
 }
 
 impl Engine {
     pub fn new(settings: EngineSettings) -> Engine {
-        let mut asset_manager = AssetStore::new();
+        let mut asset_manager = AssetStore::default();
         asset_manager.load_assets_metadata().unwrap();
         asset_manager.register_loaders(Graphics::loaders());
 
         let input_state = InputState::new(
-            Keymap::from_file(&Self::keymap_file_path().unwrap()).unwrap_or(Keymap::default()),
+            Keymap::from_file(&Self::keymap_file_path().unwrap()).unwrap_or_default(),
         );
 
         let context = EngineContext {
-            graphics: Some(Graphics::new()),
+            graphics: Some(Graphics::default()),
             asset_store: asset_manager,
             input_state,
-            gui: GUI::new(),
+            gui: GUI::default(),
         };
 
         Self {
@@ -62,7 +55,7 @@ impl Engine {
             ecs: create_ecs(),
             application_title: settings
                 .application_title
-                .unwrap_or("tuber Application".into()),
+                .unwrap_or_else(|| "tuber Application".into()),
             context,
             system_bundles: vec![],
         }

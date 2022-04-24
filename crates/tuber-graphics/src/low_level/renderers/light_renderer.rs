@@ -7,7 +7,7 @@ use crate::Color;
 
 const VERTEX_COUNT: usize = 6;
 const MIN_POINT_LIGHT_CAPACITY: usize = 20;
-const POINT_LIGHT_UNIFORM_BUFFER_LABEL: &'static str = "light_renderer_point_light_uniform_buffer";
+const POINT_LIGHT_UNIFORM_BUFFER_LABEL: &str = "light_renderer_point_light_uniform_buffer";
 const DEFAULT_AMBIENT_LIGHT: [f32; 3] = [1.0, 1.0, 1.0];
 
 pub struct LightRenderer {
@@ -328,7 +328,7 @@ impl LightRenderer {
     ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("light_renderer_point_light_uniform_bind_group"),
-            layout: &point_light_uniform_bind_group_layout,
+            layout: point_light_uniform_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: point_light_uniform_buffer.as_entire_binding(),
@@ -372,7 +372,7 @@ impl LightRenderer {
     ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("light_renderer_global_uniform_bind_group"),
-            layout: &global_uniform_bind_group_layout,
+            layout: global_uniform_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: global_uniform_buffer.as_entire_binding(),
@@ -488,7 +488,7 @@ impl LightRenderer {
 
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
-            layout: &g_buffer_bind_group_layout,
+            layout: g_buffer_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,

@@ -1,11 +1,13 @@
+use std::any::TypeId;
+use std::collections::HashSet;
+use std::marker::PhantomData;
+
+use accessors::Accessor;
+
 use crate::bitset::BitSet;
 use crate::ecs::Components;
 use crate::query::ComponentTypeId::{OptionalComponentTypeId, RequiredComponentTypeId};
 use crate::EntityIndex;
-use accessors::Accessor;
-use std::any::TypeId;
-use std::collections::HashSet;
-use std::marker::PhantomData;
 
 pub trait Query<'a> {
     type ResultType: 'a;
@@ -73,7 +75,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut next = self.inner_iterator.next();
-        while !self.ids.contains(&self.inner_iterator.index) && !next.is_none() {
+        while !self.ids.contains(&self.inner_iterator.index) && next.is_some() {
             next = self.inner_iterator.next();
         }
 
@@ -95,7 +97,7 @@ impl<'a, 'b, Q: Query<'b>> QueryIterator<'a, Q> {
             match type_id {
                 RequiredComponentTypeId(type_id) => {
                     if let Some(component_store) = components.get(&type_id) {
-                        bitsets.push(component_store.entities_bitset.clone());
+                        bitsets.push(component_store.entities_bitset);
                     }
                 }
                 OptionalComponentTypeId(_) => continue,
@@ -131,28 +133,27 @@ where
     type Item = Q::ResultType;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.index = if let Some(index) = self.matching_entities.pop() {
-            index
-        } else {
-            return None;
-        };
-        Some(Q::fetch(self.index, self.components)?)
+        self.index = self.matching_entities.pop()?;
+        Q::fetch(self.index, self.components)
     }
 }
 
 pub mod accessors {
-    use crate::bitset::BitSet;
-    use crate::ecs::Components;
-    use crate::query::ComponentTypeId;
-    use crate::query::ComponentTypeId::{OptionalComponentTypeId, RequiredComponentTypeId};
-    use crate::EntityIndex;
     use std::any::TypeId;
     use std::cell::{Ref, RefMut};
     use std::collections::HashSet;
     use std::marker::PhantomData;
 
+    use crate::bitset::BitSet;
+    use crate::ecs::Components;
+    use crate::query::ComponentTypeId;
+    use crate::query::ComponentTypeId::{OptionalComponentTypeId, RequiredComponentTypeId};
+    use crate::EntityIndex;
+
     pub struct R<T>(PhantomData<T>);
+
     pub struct W<T>(PhantomData<T>);
+
     pub struct Opt<'a, T: Accessor<'a>>(PhantomData<&'a T>);
 
     pub trait Accessor<'a> {
@@ -255,9 +256,6 @@ pub enum ComponentTypeId {
 
 impl ComponentTypeId {
     pub fn is_required(&self) -> bool {
-        match &self {
-            RequiredComponentTypeId(_) => true,
-            _ => false,
-        }
+        matches!(self, RequiredComponentTypeId(_))
     }
 }

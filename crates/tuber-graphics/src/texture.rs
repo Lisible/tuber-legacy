@@ -102,10 +102,10 @@ pub(crate) fn texture_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
     let mut file_path = asset_metadata.asset_path.clone();
     file_path.push(asset_metadata.metadata.get("texture_data").unwrap());
     let image = ImageReader::open(file_path)
-        .map_err(|e| TextureFileOpenError(e))
+        .map_err(TextureFileOpenError)
         .unwrap()
         .decode()
-        .map_err(|e| ImageDecodeError(e))
+        .map_err(ImageDecodeError)
         .unwrap();
     let image = image.as_rgba8().unwrap();
 
@@ -113,7 +113,7 @@ pub(crate) fn texture_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
         .metadata
         .get("usage")
         .cloned()
-        .unwrap_or("albedo".to_string())
+        .unwrap_or_else(|| "albedo".to_string())
         .parse()
         .unwrap();
 
@@ -135,11 +135,11 @@ pub(crate) fn texture_atlas_loader(asset_metadata: &AssetMetadata) -> Box<dyn An
             .unwrap(),
     );
     let atlas_description_file = File::open(texture_atlas_path)
-        .map_err(|e| GraphicsError::AtlasDescriptionFileOpenError(e))
+        .map_err(GraphicsError::AtlasDescriptionFileOpenError)
         .unwrap();
     let reader = BufReader::new(atlas_description_file);
     let texture_atlas: TextureAtlas = serde_json::from_reader(reader)
-        .map_err(|e| GraphicsError::SerdeError(e))
+        .map_err(GraphicsError::SerdeError)
         .unwrap();
 
     Box::new(texture_atlas)
@@ -162,7 +162,7 @@ impl FromStr for TextureUsage {
     }
 }
 
-pub const WHITE_TEXTURE_IDENTIFIER: &'static str = "_white";
+pub const WHITE_TEXTURE_IDENTIFIER: &str = "_white";
 pub const WHITE_TEXTURE_SIZE: (f32, f32) = (1.0, 1.0);
 
 pub(crate) fn create_white_texture() -> TextureData {
@@ -174,7 +174,7 @@ pub(crate) fn create_white_texture() -> TextureData {
     }
 }
 
-pub const BLACK_TEXTURE_IDENTIFIER: &'static str = "_black";
+pub const BLACK_TEXTURE_IDENTIFIER: &str = "_black";
 pub const BLACK_TEXTURE_SIZE: (f32, f32) = (1.0, 1.0);
 
 pub(crate) fn create_black_texture() -> TextureData {
@@ -186,7 +186,7 @@ pub(crate) fn create_black_texture() -> TextureData {
     }
 }
 
-pub const MISSING_TEXTURE_IDENTIFIER: &'static str = "_placeholder";
+pub const MISSING_TEXTURE_IDENTIFIER: &str = "_placeholder";
 pub const MISSING_TEXTURE_REGION: TextureRegion = TextureRegion {
     x: 0.0,
     y: 0.0,
@@ -207,7 +207,7 @@ pub(crate) fn create_placeholder_texture() -> TextureData {
     }
 }
 
-pub const DEFAULT_NORMAL_MAP_IDENTIFIER: &'static str = "_normal_map";
+pub const DEFAULT_NORMAL_MAP_IDENTIFIER: &str = "_normal_map";
 
 pub(crate) fn create_normal_map_texture() -> TextureData {
     TextureData {

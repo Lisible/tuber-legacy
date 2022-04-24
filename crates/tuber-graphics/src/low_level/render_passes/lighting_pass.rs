@@ -14,8 +14,8 @@ pub(crate) fn lighting_pass(
     let render_texture = context.device.create_texture(&render_texture_descriptor);
     let render_view = render_texture.create_view(&wgpu::TextureViewDescriptor::default());
     context.light_renderer.prepare(
-        &context.device,
-        &context.queue,
+        context.device,
+        context.queue,
         command_encoder,
         ambient_light,
         g_buffer,

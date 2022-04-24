@@ -9,5 +9,5 @@ path = "main.rs"
 name = "sprite"
 
 [dependencies]
-tuber = { path = "../../" }
+tuber = { path = "../.." }
 env_logger = "0.9"

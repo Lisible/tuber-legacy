@@ -5,7 +5,7 @@ use rand::Rng;
 
 use tuber::core::input::keyboard::Key;
 use tuber::core::input::Input;
-use tuber::core::transform::IntoMatrix4;
+use tuber::core::transform::AsMatrix4;
 use tuber::core::transform::Transform;
 use tuber::core::DeltaTime;
 use tuber::ecs::ecs::Ecs;
@@ -64,7 +64,7 @@ impl State for GameState {
         create_orc(ecs, &mut engine_context.asset_store);
         system_bundles.push(tuber::engine::system_bundle::graphics::default_system_bundle());
 
-        let mut system_bundle = SystemBundle::<EngineContext>::new();
+        let mut system_bundle = SystemBundle::<EngineContext>::default();
         system_bundle.add_system(move_player);
         system_bundle.add_system(update_score_label);
         system_bundle.add_system(update_character_position);
@@ -93,7 +93,7 @@ impl State for GameState {
             .query_one::<(R<OrthographicCamera>, R<Transform>)>()
             .unwrap();
 
-        let world_region = world_region(&camera.projection_matrix(), &transform.into_matrix4());
+        let world_region = world_region(&camera.projection_matrix(), &transform.as_matrix4());
 
         engine_context.graphics.as_mut().unwrap().draw_tilemap(
             &mut engine_context.asset_store,
@@ -102,7 +102,7 @@ impl State for GameState {
                 translation: (0.0, 0.0, -4.0).into(),
                 ..Default::default()
             }
-            .into_matrix4(),
+            .as_matrix4(),
             world_region,
         );
     }
@@ -309,5 +309,5 @@ fn compute_target_position(initial_position: (i32, i32), movement: Movement) -> 
 }
 
 fn ease_in_out(x: f32) -> f32 {
-    return -((PI * x).cos() - 1f32) / 2f32;
+    -((PI * x).cos() - 1f32) / 2f32
 }

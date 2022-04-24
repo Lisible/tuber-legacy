@@ -1,11 +1,13 @@
-use crate::engine_context::EngineContext;
+use std::default::Default;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::query::accessors::W;
 use tuber_ecs::system::{SystemBundle, SystemResult};
 use tuber_graphics::renderable::sprite::AnimatedSprite;
 
+use crate::engine_context::EngineContext;
+
 pub fn default_system_bundle() -> SystemBundle<EngineContext> {
-    let mut system_bundle = SystemBundle::<EngineContext>::new();
+    let mut system_bundle = SystemBundle::<EngineContext>::default();
     system_bundle.add_system(sprite_animation_step_system);
     system_bundle
 }

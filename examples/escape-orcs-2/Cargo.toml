@@ -9,5 +9,5 @@ path = "main.rs"
 name = "escape-orcs-2"
 
 [dependencies]
-tuber = { path = "../../" }
+tuber = { path = "../.." }
 rand = "0.8"

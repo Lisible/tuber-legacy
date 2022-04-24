@@ -90,7 +90,7 @@ impl State for MainState {
         spawn_snake(ecs);
         spawn_apple(ecs);
 
-        let mut bundle = SystemBundle::new();
+        let mut bundle = SystemBundle::default();
         bundle.add_system(move_head_system);
         bundle.add_system(move_body_parts_system);
         bundle.add_system(eat_apple_system);
@@ -220,7 +220,6 @@ fn spawn_apple(ecs: &mut Ecs) {
                 width: 32.0,
                 height: 32.0,
             },
-            ..Default::default()
         },
         Apple,
     ));
@@ -246,7 +245,6 @@ fn spawn_snake(ecs: &mut Ecs) {
                 width: 32.0,
                 height: 32.0,
             },
-            ..Default::default()
         },
         Velocity {
             x: 0.0,
@@ -276,7 +274,6 @@ fn spawn_snake(ecs: &mut Ecs) {
                 width: 32.0,
                 height: 32.0,
             },
-            ..Default::default()
         },
         Velocity {
             x: 0.0,
@@ -388,7 +385,6 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
                         width: 32.0,
                         height: 32.0,
                     },
-                    ..Default::default()
                 },
                 tail_velocity,
                 SnakeBodyPart {
@@ -439,8 +435,8 @@ fn rectangle_intersects(
     first_rectangle: (f32, f32, f32, f32),
     second_rectangle: (f32, f32, f32, f32),
 ) -> bool {
-    return first_rectangle.0 < second_rectangle.0 + second_rectangle.2
+    first_rectangle.0 < second_rectangle.0 + second_rectangle.2
         && first_rectangle.0 + first_rectangle.2 > second_rectangle.0
         && first_rectangle.1 < second_rectangle.1 + second_rectangle.3
-        && first_rectangle.1 + first_rectangle.3 > second_rectangle.1;
+        && first_rectangle.1 + first_rectangle.3 > second_rectangle.1
 }
