@@ -61,8 +61,8 @@ mod test {
     use super::*;
 
     #[test]
-    fn new_root() {
-        let root = Root::new();
+    fn default_root() {
+        let root = Root::default();
         assert_eq!(root.widgets().len(), 0)
     }
 
@@ -70,7 +70,7 @@ mod test {
     fn add_widget() {
         use crate::widget::text::TextWidget;
 
-        let mut root = Root::new();
+        let mut root = Root::default();
         assert_eq!(root.widgets().len(), 0);
         root.add_widget(Box::new(TextWidget::new("text_widget", "Text", None)));
         assert_eq!(root.widgets().len(), 1);

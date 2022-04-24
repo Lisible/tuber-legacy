@@ -250,6 +250,9 @@ mod tests {
 
         let quaternion = Quaternion::from_euler(&angles);
 
-        dbg!(quaternion);
+        assert_float_absolute_eq!(quaternion.scalar_part, -0.55, 0.01);
+        assert_float_absolute_eq!(quaternion.vector_part.x, -0.48, 0.01);
+        assert_float_absolute_eq!(quaternion.vector_part.y, -0.38, 0.01);
+        assert_float_absolute_eq!(quaternion.vector_part.z, 0.56, 0.01);
     }
 }
