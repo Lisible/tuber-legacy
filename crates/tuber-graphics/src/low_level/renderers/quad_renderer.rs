@@ -106,6 +106,7 @@ impl QuadRenderer {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn prepare_quad_group(
         &mut self,
         device: &wgpu::Device,

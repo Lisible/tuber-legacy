@@ -12,6 +12,7 @@ use winit::{
     window::WindowBuilder,
 };
 
+#[allow(clippy::enum_variant_names)]
 enum TuberWinitError {
     UnknownVirtualKeycode(VirtualKeyCode),
     UnknownKeyboardInput(KeyboardInput),

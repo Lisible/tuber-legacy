@@ -200,7 +200,7 @@ pub(crate) enum Movement {
 fn move_player(ecs: &mut Ecs, engine_context: &mut EngineContext) {
     let player_movement = {
         let input_state = &engine_context.input_state;
-        let player_movement = if input_state.is(Input::ActionDown("move_up".into())) {
+        if input_state.is(Input::ActionDown("move_up".into())) {
             Movement::Up
         } else if input_state.is(Input::ActionDown("move_down".into())) {
             Movement::Down
@@ -210,8 +210,7 @@ fn move_player(ecs: &mut Ecs, engine_context: &mut EngineContext) {
             Movement::Right
         } else {
             return;
-        };
-        player_movement
+        }
     };
 
     move_orcs(ecs);

@@ -1,10 +1,11 @@
-use crate::engine_context::EngineContext;
 use tuber_core::input::Input;
 use tuber_core::transform::Transform;
 use tuber_core::DeltaTime;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
 use tuber_graphics::camera::{Active, OrthographicCamera};
+
+use crate::engine_context::EngineContext;
 
 pub trait State {
     fn initialize(
@@ -73,6 +74,7 @@ impl StateStack {
         self.states.pop();
     }
 
+    #[allow(clippy::borrowed_box)]
     pub fn current_state(&self) -> Option<&Box<dyn State>> {
         self.states.last()
     }
