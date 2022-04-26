@@ -1,3 +1,5 @@
+use tuber_core::transform::Transform;
+
 use crate::camera::OrthographicCamera;
 use crate::low_level::renderer::Renderer;
 use crate::renderable::rectangle_shape::RectangleShape;
@@ -17,8 +19,13 @@ impl Graphics {
     }
 
     /// Draws a rectangle shape
-    pub fn draw_rectangle_shape(&mut self, rectangle_shape: RectangleShape) -> GraphicsResult<()> {
-        self.renderer()?.queue_mesh(rectangle_shape.into());
+    pub fn draw_rectangle_shape(
+        &mut self,
+        rectangle_shape: RectangleShape,
+        world_transform: Transform,
+    ) -> GraphicsResult<()> {
+        self.renderer()?
+            .queue_mesh(rectangle_shape.into(), world_transform);
         Ok(())
     }
 

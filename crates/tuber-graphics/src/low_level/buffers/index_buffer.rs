@@ -1,8 +1,10 @@
-use crate::low_level::primitives::Index;
-use crate::low_level::utils::create_index_buffer;
 use std::cmp::max;
 use std::ops::RangeBounds;
+
 use wgpu::{Buffer, BufferAddress, BufferSlice, CommandEncoder, Device, Queue};
+
+use crate::low_level::primitives::Index;
+use crate::low_level::utils::create_index_buffer;
 
 pub struct IndexBuffer {
     label: String,
@@ -68,14 +70,6 @@ impl IndexBuffer {
 
         self.capacity = new_capacity;
         self.buffer = new_buffer;
-    }
-
-    pub fn count(&self) -> usize {
-        self.count
-    }
-
-    pub fn current_offset(&self) -> usize {
-        self.count() * std::mem::size_of::<Index>()
     }
 
     pub fn clear(&mut self) {

@@ -1,16 +1,20 @@
+use futures::executor::block_on;
+use wgpu::util::BufferInitDescriptor;
+use wgpu::util::DeviceExt;
+use wgpu::*;
+
+use tuber_core::transform::{AsMatrix4, Transform};
+use tuber_math::matrix::Identity;
+use tuber_math::matrix::Matrix4f;
+
 use crate::low_level::buffers::index_buffer::IndexBuffer;
+use crate::low_level::buffers::uniform_buffer::UniformBuffer;
 use crate::low_level::buffers::vertex_buffer::VertexBuffer;
 use crate::low_level::mesh::Mesh;
 use crate::low_level::primitives::{Index, Vertex};
 use crate::GraphicsError;
 use crate::GraphicsResult;
 use crate::Window;
-use futures::executor::block_on;
-use tuber_math::matrix::Identity;
-use tuber_math::matrix::Matrix4f;
-use wgpu::util::BufferInitDescriptor;
-use wgpu::util::DeviceExt;
-use wgpu::*;
 
 pub struct Renderer {
     surface: Surface,
@@ -23,15 +27,20 @@ pub struct Renderer {
 
     vertex_buffer: VertexBuffer,
     index_buffer: IndexBuffer,
-
     diffuse_bind_group: BindGroup,
 
     camera_buffer: Buffer,
     camera_bind_group: BindGroup,
 
+    mesh_uniform_buffer: UniformBuffer<MeshUniform>,
+    mesh_uniform_bind_group: BindGroup,
+    mesh_metadata: Vec<MeshMetadata>,
+
     pending_vertices: Vec<Vertex>,
     pending_indices: Vec<Index>,
+    pending_mesh_uniforms: Vec<MeshUniform>,
 }
+
 impl Renderer {
     /// Creates the renderer
     pub fn new(window: Window, window_size: (u32, u32)) -> Self {
@@ -63,6 +72,10 @@ impl Renderer {
         };
 
         surface.configure(&device, &surface_configuration);
+
+        let vertex_buffer = VertexBuffer::with_capacity(&device, "vertex_buffer", 1000);
+        let index_buffer = IndexBuffer::with_capacity(&device, "index_buffer", 100_000);
+        let mesh_uniform_buffer = UniformBuffer::new(&device, "mesh_uniform_buffer", 100);
 
         let diffuse_bytes = include_bytes!("../../textures/default_texture.png");
         let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
@@ -186,9 +199,43 @@ impl Renderer {
             }],
         });
 
+        let mesh_uniform_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("mesh_uniform_bind_group_layout"),
+                entries: &[BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: true,
+                        min_binding_size: BufferSize::new(
+                            std::mem::size_of::<MeshUniform>() as BufferAddress
+                        ),
+                    },
+                    count: None,
+                }],
+            });
+
+        let mesh_uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("mesh_uniform_bind_group"),
+            layout: &mesh_uniform_bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: BindingResource::Buffer(BufferBinding {
+                    buffer: mesh_uniform_buffer.buffer(),
+                    offset: 0,
+                    size: BufferSize::new(std::mem::size_of::<MeshUniform>() as BufferAddress),
+                }),
+            }],
+        });
+
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("mesh_render_pipeline_layout"),
-            bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
+            bind_group_layouts: &[
+                &texture_bind_group_layout,
+                &camera_bind_group_layout,
+                &mesh_uniform_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
 
@@ -227,9 +274,6 @@ impl Renderer {
             multiview: None,
         });
 
-        let vertex_buffer = VertexBuffer::with_capacity(&device, "vertex_buffer", 1000);
-        let index_buffer = IndexBuffer::with_capacity(&device, "index_buffer", 100_000);
-
         Self {
             surface,
             device,
@@ -247,8 +291,13 @@ impl Renderer {
             camera_buffer,
             camera_bind_group,
 
+            mesh_uniform_buffer,
+            mesh_uniform_bind_group,
+            mesh_metadata: vec![],
+
             pending_vertices: vec![],
             pending_indices: vec![],
+            pending_mesh_uniforms: vec![],
         }
     }
 
@@ -265,7 +314,7 @@ impl Renderer {
             .device
             .create_command_encoder(&CommandEncoderDescriptor::default());
 
-        self.prepare_vertex_and_index_buffer(&mut command_encoder);
+        self.prepare_buffers(&mut command_encoder);
 
         {
             let mut render_pass = command_encoder.begin_render_pass(&RenderPassDescriptor {
@@ -274,7 +323,7 @@ impl Renderer {
                     view: &output_texture_view,
                     resolve_target: None,
                     ops: Operations {
-                        load: LoadOp::Clear(wgpu::Color {
+                        load: LoadOp::Clear(Color {
                             r: 0.0,
                             g: 0.0,
                             b: 0.0,
@@ -287,11 +336,24 @@ impl Renderer {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-            render_pass.draw_indexed(0..self.pending_indices.len() as u32, 0, 0..1);
+            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+
+            for mesh_metadata in &self.mesh_metadata {
+                render_pass.set_bind_group(
+                    2,
+                    &self.mesh_uniform_bind_group,
+                    &[mesh_metadata.uniform_offset],
+                );
+                render_pass.draw_indexed(
+                    mesh_metadata.start_index
+                        ..(mesh_metadata.start_index + mesh_metadata.index_count) as u32,
+                    0,
+                    0..1,
+                );
+            }
         }
 
         self.queue.submit(std::iter::once(command_encoder.finish()));
@@ -300,10 +362,12 @@ impl Renderer {
         self.clear_pending_meshes();
         self.vertex_buffer.clear();
         self.index_buffer.clear();
+        self.mesh_uniform_buffer.clear();
+        self.mesh_metadata.clear();
         Ok(())
     }
 
-    fn prepare_vertex_and_index_buffer(&mut self, command_encoder: &mut CommandEncoder) {
+    fn prepare_buffers(&mut self, command_encoder: &mut CommandEncoder) {
         self.vertex_buffer.append_vertices(
             command_encoder,
             &self.device,
@@ -317,6 +381,9 @@ impl Renderer {
             &self.queue,
             &self.pending_indices,
         );
+
+        self.mesh_uniform_buffer
+            .append_uniforms(&self.queue, &self.pending_mesh_uniforms);
     }
 
     pub fn set_view_projection_matrix(&mut self, view_projection_matrix: Matrix4f) {
@@ -331,13 +398,14 @@ impl Renderer {
         );
     }
 
-    pub fn queue_mesh(&mut self, mesh: Mesh) {
+    pub fn queue_mesh(&mut self, mesh: Mesh, world_transform: Transform) {
         self.pending_vertices.extend_from_slice(&mesh.vertices);
         let mut start_index = *self.pending_indices.last().unwrap_or(&0);
         if start_index != 0 {
             start_index += 1;
         }
 
+        let start = self.pending_indices.len();
         self.pending_indices.extend_from_slice(
             &mesh
                 .indices
@@ -345,12 +413,30 @@ impl Renderer {
                 .map(|index| start_index + index)
                 .collect::<Vec<_>>(),
         );
+
+        self.pending_mesh_uniforms.push(MeshUniform {
+            world_transform: world_transform.as_matrix4().into(),
+            _padding: [0; 24],
+        });
+
+        self.mesh_metadata.push(MeshMetadata {
+            uniform_offset: (self.mesh_metadata.len() * 256) as _,
+            start_index: start as u32,
+            index_count: mesh.indices.len() as u32,
+        });
     }
 
     fn clear_pending_meshes(&mut self) {
         self.pending_vertices.clear();
         self.pending_indices.clear();
+        self.pending_mesh_uniforms.clear();
     }
+}
+
+struct MeshMetadata {
+    pub uniform_offset: DynamicOffset,
+    pub start_index: u32,
+    pub index_count: u32,
 }
 
 #[repr(C)]
@@ -365,4 +451,11 @@ impl Default for CameraUniform {
             view_projection_matrix: Matrix4f::identity().into(),
         }
     }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct MeshUniform {
+    world_transform: [[f32; 4]; 4],
+    _padding: [u64; 24],
 }

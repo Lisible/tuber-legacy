@@ -5,6 +5,13 @@ struct CameraUniform {
 [[group(1), binding(0)]]
 var<uniform> camera: CameraUniform;
 
+struct MeshUniform {
+    world_transform: mat4x4<f32>;
+};
+
+[[group(2), binding(0)]]
+var<uniform> mesh_uniform: MeshUniform;
+
 struct VertexInput {
     [[location(0)]] position: vec3<f32>;
     [[location(1)]] color: vec3<f32>;
@@ -22,7 +29,7 @@ fn vs_main(
 ) -> VertexOutput {
     var out: VertexOutput;
     out.texture_coordinates = model.texture_coordinates;
-    out.clip_position = camera.view_projection_matrix * vec4<f32>(model.position, 1.0);
+    out.clip_position = camera.view_projection_matrix * mesh_uniform.world_transform * vec4<f32>(model.position, 1.0);
     return out;
 }
 

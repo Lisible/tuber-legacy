@@ -1,3 +1,4 @@
+use tuber::core::transform::Transform;
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::system::SystemBundle;
 use tuber::engine::engine_context::EngineContext;
@@ -19,6 +20,7 @@ fn main() {
 }
 
 struct MainState;
+
 impl State for MainState {
     fn initialize(
         &mut self,
@@ -42,15 +44,28 @@ impl State for MainState {
     fn render(&mut self, _ecs: &mut Ecs, engine_context: &mut EngineContext) {
         engine_context
             .graphics
-            .draw_rectangle_shape(RectangleShape::new(100.0, 100.0))
+            .draw_rectangle_shape(
+                RectangleShape::new(100.0, 100.0),
+                Transform {
+                    translation: (100.0, 100.0, 0.0).into(),
+                    ..Default::default()
+                },
+            )
             .unwrap();
         engine_context
             .graphics
-            .draw_rectangle_shape(RectangleShape::new(50.0, 50.0))
+            .draw_rectangle_shape(RectangleShape::new(50.0, 50.0), Transform::default())
             .unwrap();
         engine_context
             .graphics
-            .draw_rectangle_shape(RectangleShape::new(25.0, 25.0))
+            .draw_rectangle_shape(
+                RectangleShape::new(25.0, 25.0),
+                Transform {
+                    translation: (200.0, 200.0, 0.0).into(),
+                    angle: (0.0, 0.0, 0.13).into(),
+                    ..Default::default()
+                },
+            )
             .unwrap();
     }
 }
