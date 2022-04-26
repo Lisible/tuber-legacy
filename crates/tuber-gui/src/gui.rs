@@ -21,12 +21,6 @@ impl GUI {
     }
 }
 
-impl Default for GUI {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 pub trait GenericWidget: Widget + AsAny {}
 
 #[derive(Default)]
@@ -59,12 +53,6 @@ impl Root {
 
     pub fn widgets_mut(&mut self) -> &mut [Box<dyn GenericWidget>] {
         self.widgets.as_mut_slice()
-    }
-}
-
-impl Default for Root {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

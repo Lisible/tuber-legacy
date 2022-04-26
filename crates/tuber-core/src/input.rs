@@ -89,8 +89,8 @@ pub mod mouse {
 pub enum Input {
     ActionDown(String),
     ActionUp(String),
-    KeyDown(keyboard::Key),
-    KeyUp(keyboard::Key),
+    KeyDown(Key),
+    KeyUp(Key),
     MouseMotion((f32, f32)),
     MouseButtonDown(mouse::Button),
     MouseButtonUp(mouse::Button),

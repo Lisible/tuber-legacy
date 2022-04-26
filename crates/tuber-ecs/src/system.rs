@@ -77,18 +77,23 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::query::accessors::{R, W};
     use std::collections::HashSet;
     use std::fmt::{Display, Formatter};
+
+    use crate::query::accessors::{R, W};
+
+    use super::*;
+
     #[derive(Debug)]
     struct AtrociousFailure;
+
     impl Display for AtrociousFailure {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             write!(f, "ATROCIOUS ERROR")
         }
     }
-    impl std::error::Error for AtrociousFailure {}
+
+    impl Error for AtrociousFailure {}
 
     #[test]
     fn failing_system() {

@@ -11,23 +11,6 @@ pub struct Matrix4<T = f32> {
     values: [T; 16],
 }
 
-impl<T> Debug for Matrix4<T>
-where
-    T: Display,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "[")?;
-        for i in 0..Self::ROWS {
-            write!(f, "\t")?;
-            for j in 0..Self::COLS {
-                write!(f, "{}, ", self.values[i * Self::COLS + j])?;
-            }
-            writeln!(f)?;
-        }
-        writeln!(f, "]")
-    }
-}
-
 impl<T> Matrix4<T> {
     const COLS: usize = 4;
     const ROWS: usize = 4;
@@ -87,6 +70,23 @@ impl<T> Matrix4<T> {
                 U::zero(), U::zero(), U::zero(), U::one(),
             ]
         }
+    }
+}
+
+impl<T> Debug for Matrix4<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "[")?;
+        for i in 0..Self::ROWS {
+            write!(f, "\t")?;
+            for j in 0..Self::COLS {
+                write!(f, "{}, ", self.values[i * Self::COLS + j])?;
+            }
+            writeln!(f)?;
+        }
+        writeln!(f, "]")
     }
 }
 

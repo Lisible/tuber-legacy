@@ -172,12 +172,6 @@ impl Ecs {
     }
 }
 
-impl Default for Ecs {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// A type that can be used to define an entity
 pub trait EntityDefinition {
     fn store_components(self, components: &mut Components, index: usize);
