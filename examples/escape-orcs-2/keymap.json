@@ -1,8 +1,0 @@
-{
-  "UpArrow": "move_up",
-  "DownArrow": "move_down",
-  "LeftArrow": "move_left",
-  "RightArrow": "move_right",
-  "Spacebar": "use_item",
-  "Escape": "exit_game"
-}
