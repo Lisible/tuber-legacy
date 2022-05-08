@@ -2,6 +2,7 @@ use image::ImageError;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
 pub mod camera;
+pub mod color;
 pub mod graphics;
 pub mod low_level;
 pub mod renderable;
@@ -18,6 +19,7 @@ pub enum GraphicsError {
     BitmapFontFileReadError(std::io::Error),
     RendererUninitialized,
 }
+
 pub type GraphicsResult<T> = Result<T, GraphicsError>;
 
 pub struct Window<'a>(pub Box<&'a dyn HasRawWindowHandle>);

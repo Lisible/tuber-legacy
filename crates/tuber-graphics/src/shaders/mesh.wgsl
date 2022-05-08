@@ -20,17 +20,19 @@ struct VertexInput {
 
 struct VertexOutput {
     [[builtin(position)]] clip_position: vec4<f32>;
-    [[location(0)]] texture_coordinates: vec2<f32>;
+    [[location(0)]] color: vec3<f32>;
+    [[location(1)]] texture_coordinates: vec2<f32>;
 };
 
 [[stage(vertex)]]
 fn vs_main(
-    model: VertexInput,
+    vertex_input: VertexInput,
 ) -> VertexOutput {
-    var out: VertexOutput;
-    out.texture_coordinates = model.texture_coordinates;
-    out.clip_position = camera.view_projection_matrix * mesh_uniform.world_transform * vec4<f32>(model.position, 1.0);
-    return out;
+    var vertex_output: VertexOutput;
+    vertex_output.texture_coordinates = vertex_input.texture_coordinates;
+    vertex_output.color = vertex_input.color;
+    vertex_output.clip_position = camera.view_projection_matrix * mesh_uniform.world_transform * vec4<f32>(vertex_input.position, 1.0);
+    return vertex_output;
 }
 
 [[group(0), binding(0)]]
@@ -40,6 +42,6 @@ var t_diffuse: texture_2d<f32>;
 var s_diffuse: sampler;
 
 [[stage(fragment)]]
-fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, in.texture_coordinates);
+fn fs_main(vertex_output: VertexOutput) -> [[location(0)]] vec4<f32> {
+    return vec4<f32>(vertex_output.color, 1.0) * textureSample(t_diffuse, s_diffuse, vertex_output.texture_coordinates);
 }

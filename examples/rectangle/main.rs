@@ -7,6 +7,7 @@ use tuber::engine::Engine;
 use tuber::engine::EngineSettings;
 use tuber::engine::TuberRunner;
 use tuber::graphics::camera::OrthographicCamera;
+use tuber::graphics::color::Color;
 use tuber::graphics::renderable::rectangle_shape::RectangleShape;
 use tuber::WinitTuberRunner;
 
@@ -45,7 +46,7 @@ impl State for MainState {
         engine_context
             .graphics
             .draw_rectangle_shape(
-                RectangleShape::new(100.0, 100.0),
+                RectangleShape::new(100.0, 100.0, Color::from_rgb(0.0, 0.0, 1.0)),
                 Transform {
                     translation: (100.0, 100.0, 0.0).into(),
                     ..Default::default()
@@ -54,12 +55,15 @@ impl State for MainState {
             .unwrap();
         engine_context
             .graphics
-            .draw_rectangle_shape(RectangleShape::new(50.0, 50.0), Transform::default())
+            .draw_rectangle_shape(
+                RectangleShape::new(50.0, 50.0, Color::from_rgb(1.0, 0.0, 0.0)),
+                Transform::default(),
+            )
             .unwrap();
         engine_context
             .graphics
             .draw_rectangle_shape(
-                RectangleShape::new(25.0, 25.0),
+                RectangleShape::new(25.0, 25.0, Color::from_rgb(0.0, 1.0, 0.0)),
                 Transform {
                     translation: (200.0, 200.0, 0.0).into(),
                     angle: (0.0, 0.0, 0.13).into(),
