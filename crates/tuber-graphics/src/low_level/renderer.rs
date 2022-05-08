@@ -12,6 +12,7 @@ use crate::low_level::buffers::uniform_buffer::UniformBuffer;
 use crate::low_level::buffers::vertex_buffer::VertexBuffer;
 use crate::low_level::mesh::Mesh;
 use crate::low_level::primitives::{Index, Vertex};
+use crate::low_level::texture_store::TextureStore;
 use crate::GraphicsError;
 use crate::GraphicsResult;
 use crate::Window;
@@ -27,7 +28,6 @@ pub struct Renderer {
 
     vertex_buffer: VertexBuffer,
     index_buffer: IndexBuffer,
-    diffuse_bind_group: BindGroup,
 
     camera_buffer: Buffer,
     camera_bind_group: BindGroup,
@@ -39,6 +39,8 @@ pub struct Renderer {
     pending_vertices: Vec<Vertex>,
     pending_indices: Vec<Index>,
     pending_mesh_uniforms: Vec<MeshUniform>,
+
+    texture_store: TextureStore,
 }
 
 impl Renderer {
@@ -77,92 +79,15 @@ impl Renderer {
         let index_buffer = IndexBuffer::with_capacity(&device, "index_buffer", 100_000);
         let mesh_uniform_buffer = UniformBuffer::new(&device, "mesh_uniform_buffer", 100);
 
-        let diffuse_bytes = include_bytes!("../../textures/default_texture.png");
-        let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
-        let diffuse_rgba = diffuse_image.as_rgba8().unwrap();
-        use image::GenericImageView;
-        let dimensions = diffuse_image.dimensions();
-
-        let texture_size = Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
-            depth_or_array_layers: 1,
-        };
-
-        let diffuse_texture = device.create_texture(&TextureDescriptor {
-            label: Some("diffuse_texture"),
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8UnormSrgb,
-            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
-        });
-
-        queue.write_texture(
-            ImageCopyTexture {
-                texture: &diffuse_texture,
-                mip_level: 0,
-                origin: Origin3d::ZERO,
-                aspect: TextureAspect::All,
-            },
-            diffuse_rgba,
-            ImageDataLayout {
-                offset: 0,
-                bytes_per_row: std::num::NonZeroU32::new(4 * dimensions.0),
-                rows_per_image: std::num::NonZeroU32::new(dimensions.1),
-            },
-            texture_size,
+        let mut texture_store = TextureStore::new(&device);
+        texture_store.load_texture_from_image_data(
+            &device,
+            &queue,
+            "_placeholder",
+            include_bytes!("../../textures/default_texture.png"),
         );
-
-        let diffuse_texture_view = diffuse_texture.create_view(&TextureViewDescriptor::default());
-        let diffuse_texture_sampler = device.create_sampler(&SamplerDescriptor {
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
-            mag_filter: FilterMode::Nearest,
-            min_filter: FilterMode::Nearest,
-            mipmap_filter: FilterMode::Nearest,
-            ..Default::default()
-        });
-
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("texture_bind_group_layout"),
-                entries: &[
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: TextureViewDimension::D2,
-                            sample_type: TextureSampleType::Float { filterable: true },
-                        },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-            });
-
-        let diffuse_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("diffuse_bind_group"),
-            layout: &texture_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&diffuse_texture_view),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::Sampler(&diffuse_texture_sampler),
-                },
-            ],
-        });
+        texture_store.load_texture(&device, &queue, "_white", &[0xff, 0xff, 0xff, 0xff], 1, 1);
+        texture_store.load_texture(&device, &queue, "_black", &[0x0, 0x0, 0x0, 0x0], 1, 1);
 
         let shader = device.create_shader_module(&ShaderModuleDescriptor {
             label: Some("mesh_shader"),
@@ -182,7 +107,7 @@ impl Renderer {
                     binding: 0,
                     visibility: ShaderStages::VERTEX,
                     ty: BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
+                        ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -232,7 +157,7 @@ impl Renderer {
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("mesh_render_pipeline_layout"),
             bind_group_layouts: &[
-                &texture_bind_group_layout,
+                &texture_store.texture_bind_group_layout(),
                 &camera_bind_group_layout,
                 &mesh_uniform_bind_group_layout,
             ],
@@ -286,8 +211,6 @@ impl Renderer {
             vertex_buffer,
             index_buffer,
 
-            diffuse_bind_group,
-
             camera_buffer,
             camera_bind_group,
 
@@ -298,6 +221,7 @@ impl Renderer {
             pending_vertices: vec![],
             pending_indices: vec![],
             pending_mesh_uniforms: vec![],
+            texture_store,
         }
     }
 
@@ -338,10 +262,19 @@ impl Renderer {
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
+            let placeholder_texture_bind_group = self
+                .texture_store
+                .texture_bind_group("_placeholder")
+                .expect("Placeholder texture isn't loaded");
             for mesh_metadata in &self.mesh_metadata {
+                let texture_bind_group = self
+                    .texture_store
+                    .texture_bind_group(&mesh_metadata.texture_identifier)
+                    .unwrap_or(placeholder_texture_bind_group);
+
+                render_pass.set_bind_group(0, texture_bind_group, &[]);
                 render_pass.set_bind_group(
                     2,
                     &self.mesh_uniform_bind_group,
@@ -398,7 +331,7 @@ impl Renderer {
         );
     }
 
-    pub fn queue_mesh(&mut self, mesh: Mesh, world_transform: Transform) {
+    pub fn queue_mesh(&mut self, mesh: Mesh, world_transform: Transform, texture_identifier: &str) {
         self.pending_vertices.extend_from_slice(&mesh.vertices);
         let mut start_index = *self.pending_indices.last().unwrap_or(&0);
         if start_index != 0 {
@@ -423,6 +356,7 @@ impl Renderer {
             uniform_offset: (self.mesh_metadata.len() * 256) as _,
             start_index: start as u32,
             index_count: mesh.indices.len() as u32,
+            texture_identifier: texture_identifier.into(),
         });
     }
 
@@ -437,6 +371,7 @@ struct MeshMetadata {
     pub uniform_offset: DynamicOffset,
     pub start_index: u32,
     pub index_count: u32,
+    pub texture_identifier: String,
 }
 
 #[repr(C)]

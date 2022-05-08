@@ -25,7 +25,7 @@ impl Graphics {
         world_transform: Transform,
     ) -> GraphicsResult<()> {
         self.renderer()?
-            .queue_mesh(rectangle_shape.into(), world_transform);
+            .queue_mesh(rectangle_shape.into(), world_transform, "_white");
         Ok(())
     }
 
