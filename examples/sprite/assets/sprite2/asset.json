@@ -1,8 +1,0 @@
-{
-  "identifier": "sprite2",
-  "kind": "texture",
-  "dependencies": [],
-  "metadata": {
-    "texture_data": "sprite2.png"
-  }
-}

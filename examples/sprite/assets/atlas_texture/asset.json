@@ -1,7 +1,0 @@
-{
-  "identifier": "atlas_texture",
-  "kind": "texture",
-  "metadata": {
-    "texture_data": "texture-atlas.png"
-  }
-}
