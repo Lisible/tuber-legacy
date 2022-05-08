@@ -45,12 +45,12 @@ impl Graphics {
         let cube_mesh = Mesh {
             vertices: vec![
                 Vertex {
-                    position: [-1f32, 1f32, 1f32],
+                    position: [1f32, 1f32, -1f32],
                     color: [1f32, 0f32, 0f32],
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
-                    position: [-1f32, -1f32, 1f32],
+                    position: [1f32, -1f32, -1f32],
                     color: [0f32, 1f32, 0f32],
                     texture_coordinates: [0.0, 0.0],
                 },
@@ -75,19 +75,19 @@ impl Graphics {
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
-                    position: [1f32, 1f32, -1f32],
+                    position: [-1f32, 1f32, 1f32],
                     color: [1f32, 1f32, 1f32],
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
-                    position: [1f32, -1f32, -1f32],
+                    position: [-1f32, -1f32, 1f32],
                     color: [0f32, 0f32, 0f32],
                     texture_coordinates: [0.0, 0.0],
                 },
             ],
             indices: vec![
-                0, 2, 3, 0, 3, 1, 2, 6, 7, 2, 7, 3, 6, 4, 5, 6, 5, 7, 4, 0, 1, 4, 1, 5, 0, 4, 6, 0,
-                6, 2, 1, 7, 5, 1, 3, 7,
+                4, 2, 0, 2, 7, 3, 6, 5, 7, 1, 7, 5, 0, 3, 1, 4, 1, 5, 4, 6, 2, 2, 6, 7, 6, 4, 5, 1,
+                3, 7, 0, 2, 3, 4, 0, 1,
             ],
         };
 
