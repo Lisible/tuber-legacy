@@ -9,4 +9,4 @@ path = "main.rs"
 name = "rectangle"
 
 [dependencies]
-tuber = { path = "../../" }
+tuber = { path = "../.." }
