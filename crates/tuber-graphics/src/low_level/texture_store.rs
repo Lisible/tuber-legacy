@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use image::{GenericImageView, ImageFormat};
+use image::GenericImageView;
 use wgpu::{
     AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Device,
@@ -8,10 +8,6 @@ use wgpu::{
     SamplerDescriptor, ShaderStages, TextureAspect, TextureDescriptor, TextureDimension,
     TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension,
 };
-
-pub enum ImageDataFormat {
-    PNG,
-}
 
 pub struct TextureStore {
     texture_bind_group_layout: BindGroupLayout,
@@ -79,8 +75,6 @@ impl TextureStore {
         texture_height: u32,
     ) {
         let texture_rgba = texture_data;
-        use image::GenericImageView;
-
         let texture_size = Extent3d {
             width: texture_width,
             height: texture_height,

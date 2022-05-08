@@ -1,6 +1,8 @@
 use tuber_core::transform::Transform;
 
-use crate::camera::OrthographicCamera;
+use crate::camera::Camera;
+use crate::low_level::mesh::Mesh;
+use crate::low_level::primitives::Vertex;
 use crate::low_level::renderer::Renderer;
 use crate::renderable::rectangle_shape::RectangleShape;
 use crate::GraphicsError;
@@ -29,8 +31,63 @@ impl Graphics {
         Ok(())
     }
 
+    pub fn draw_cube(&mut self, world_transform: Transform) -> GraphicsResult<()> {
+        let cube_mesh = Mesh {
+            vertices: vec![
+                Vertex {
+                    position: [-1f32, -1f32, 1f32],
+                    color: [1f32, 1f32, 1f32],
+                    texture_coordinates: [0.0, 0.0],
+                },
+                Vertex {
+                    position: [1f32, -1f32, 1f32],
+                    color: [1f32, 1f32, 1f32],
+                    texture_coordinates: [0.0, 0.0],
+                },
+                Vertex {
+                    position: [-1f32, 1f32, 1f32],
+                    color: [1f32, 1f32, 1f32],
+                    texture_coordinates: [0.0, 0.0],
+                },
+                Vertex {
+                    position: [1f32, 1f32, 1f32],
+                    color: [1f32, 1f32, 1f32],
+                    texture_coordinates: [0.0, 0.0],
+                },
+                Vertex {
+                    position: [-1f32, -1f32, -1f32],
+                    color: [1f32, 1f32, 1f32],
+                    texture_coordinates: [0.0, 0.0],
+                },
+                Vertex {
+                    position: [1f32, -1f32, -1f32],
+                    color: [1f32, 1f32, 1f32],
+                    texture_coordinates: [0.0, 0.0],
+                },
+                Vertex {
+                    position: [-1f32, 1f32, -1f32],
+                    color: [1f32, 1f32, 1f32],
+                    texture_coordinates: [0.0, 0.0],
+                },
+                Vertex {
+                    position: [1f32, 1f32, -1f32],
+                    color: [1f32, 1f32, 1f32],
+                    texture_coordinates: [0.0, 0.0],
+                },
+            ],
+            indices: vec![
+                2, 6, 7, 2, 3, 7, 0, 4, 5, 0, 1, 5, 0, 2, 6, 0, 4, 6, 1, 3, 7, 1, 5, 7, 0, 2, 3, 0,
+                1, 3, 4, 6, 7, 4, 5, 7,
+            ],
+        };
+
+        self.renderer()?
+            .queue_mesh(cube_mesh, world_transform, "_white");
+        Ok(())
+    }
+
     /// Set the camera used for rendering
-    pub fn set_camera(&mut self, camera: &OrthographicCamera) -> GraphicsResult<()> {
+    pub fn set_camera(&mut self, camera: &Camera) -> GraphicsResult<()> {
         self.renderer()?
             .set_view_projection_matrix(camera.projection_matrix());
         Ok(())

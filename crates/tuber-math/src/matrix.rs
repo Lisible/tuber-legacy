@@ -40,6 +40,27 @@ impl<T> Matrix4<T> {
         }
     }
 
+    //noinspection RsBorrowChecker
+    #[rustfmt::skip]
+    pub fn new_perspective<U>(
+        left: U,
+        right: U,
+        bottom: U,
+        top: U,
+        near: U,
+        far: U,
+    ) -> Matrix4<U>
+        where U: Copy + Float {
+        Matrix4 {
+            values: [
+                (U::two() * near) / (right - left), U::zero(), U::zero(), -near * (right + left) / (right - left),
+                U::zero(), (U::two() * near) / (top - bottom), U::zero(), -near * (top + bottom) / (top - bottom),
+                U::zero(), U::zero(), -(far + near) / (far - near), U::two() * far * near / (near - far),
+                U::zero(), U::zero(), -U::one(), U::zero()
+            ]
+        }
+    }
+
     #[rustfmt::skip]
     pub fn new_translation<U>(translation: &Vector3<U>) -> Matrix4<U>
         where U: Copy + Zero + One {

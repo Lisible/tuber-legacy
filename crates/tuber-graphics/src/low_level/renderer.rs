@@ -157,7 +157,7 @@ impl Renderer {
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("mesh_render_pipeline_layout"),
             bind_group_layouts: &[
-                &texture_store.texture_bind_group_layout(),
+                texture_store.texture_bind_group_layout(),
                 &camera_bind_group_layout,
                 &mesh_uniform_bind_group_layout,
             ],
