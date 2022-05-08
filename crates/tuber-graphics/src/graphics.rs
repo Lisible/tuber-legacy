@@ -36,32 +36,35 @@ impl Graphics {
             vertices: vec![
                 Vertex {
                     position: [-1f32, 1f32, 1f32],
-                    color: [1f32, 1f32, 1f32],
+                    color: [1f32, 0f32, 0f32],
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
+                    // green
                     position: [-1f32, -1f32, 1f32],
-                    color: [1f32, 1f32, 1f32],
+                    color: [0f32, 1f32, 0f32],
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
                     position: [1f32, 1f32, 1f32],
-                    color: [1f32, 1f32, 1f32],
+                    color: [0f32, 0f32, 1f32],
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
+                    // purple
                     position: [1f32, -1f32, 1f32],
-                    color: [1f32, 1f32, 1f32],
+                    color: [1f32, 0f32, 1f32],
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
                     position: [-1f32, 1f32, -1f32],
-                    color: [1f32, 1f32, 1f32],
+                    color: [0f32, 1f32, 1f32],
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
+                    // yellow
                     position: [-1f32, -1f32, -1f32],
-                    color: [1f32, 1f32, 1f32],
+                    color: [1f32, 1f32, 0f32],
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
@@ -70,14 +73,15 @@ impl Graphics {
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
+                    // black
                     position: [1f32, -1f32, -1f32],
-                    color: [1f32, 1f32, 1f32],
+                    color: [0f32, 0f32, 0f32],
                     texture_coordinates: [0.0, 0.0],
                 },
             ],
             indices: vec![
                 0, 2, 3, 0, 3, 1, 2, 6, 7, 2, 7, 3, 6, 4, 5, 6, 5, 7, 4, 0, 1, 4, 1, 5, 0, 4, 6, 0,
-                6, 2, 1, 5, 7, 1, 7, 3,
+                6, 2, 1, 7, 5, 1, 3, 7,
             ],
         };
 
