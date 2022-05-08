@@ -5,6 +5,7 @@ pub mod camera;
 pub mod color;
 pub mod graphics;
 pub mod low_level;
+pub mod parsers;
 pub mod renderable;
 
 #[derive(Debug)]

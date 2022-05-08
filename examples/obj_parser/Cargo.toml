@@ -1,0 +1,12 @@
+[package]
+name = "obj_parser"
+version = "0.1.0"
+authors = ["Tuber contributors"]
+edition = "2021"
+
+[[bin]]
+path = "main.rs"
+name = "obj_parser"
+
+[dependencies]
+tuber = { path = "../.." }

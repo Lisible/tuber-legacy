@@ -128,19 +128,24 @@ impl NumericOps for f64 {}
 pub trait Float: Display + Copy + Zero + One + Two + Pi + NumericOps {
     fn sin(self) -> Self;
     fn cos(self) -> Self;
+    fn tan(self) -> Self;
     fn half(self) -> Self;
     fn squared(self) -> Self;
     fn sqrt(self) -> Self;
+    fn to_radians(self) -> Self;
 }
 
 impl Float for f32 {
     fn sin(self) -> Self {
         self.sin()
     }
-
     fn cos(self) -> Self {
         self.cos()
     }
+    fn tan(self) -> Self {
+        self.tan()
+    }
+
     fn half(self) -> Self {
         self * 0.5
     }
@@ -151,6 +156,10 @@ impl Float for f32 {
 
     fn sqrt(self) -> Self {
         self.sqrt()
+    }
+
+    fn to_radians(self) -> Self {
+        self.to_radians()
     }
 }
 
@@ -158,10 +167,13 @@ impl Float for f64 {
     fn sin(self) -> Self {
         self.sin()
     }
-
     fn cos(self) -> Self {
         self.cos()
     }
+    fn tan(self) -> Self {
+        self.tan()
+    }
+
     fn half(self) -> Self {
         self * 0.5
     }
@@ -172,5 +184,9 @@ impl Float for f64 {
 
     fn sqrt(self) -> Self {
         self.sqrt()
+    }
+
+    fn to_radians(self) -> Self {
+        self.to_radians()
     }
 }

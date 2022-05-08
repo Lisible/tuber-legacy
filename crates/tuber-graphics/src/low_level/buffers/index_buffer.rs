@@ -31,16 +31,17 @@ impl IndexBuffer {
         device: &Device,
         queue: &Queue,
         indices: &[Index],
+        index_count: usize,
     ) {
         self.ensure_capacity(device, command_encoder, self.count + indices.len());
 
         queue.write_buffer(
             &self.buffer,
             (self.count * std::mem::size_of::<Index>()) as BufferAddress,
-            bytemuck::cast_slice(indices),
+            bytemuck::cast_slice(&indices),
         );
 
-        self.count += indices.len();
+        self.count += index_count;
     }
 
     pub fn slice(&self, range: impl RangeBounds<BufferAddress>) -> BufferSlice {

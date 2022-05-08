@@ -7,11 +7,16 @@ use tuber::engine::Engine;
 use tuber::engine::EngineSettings;
 use tuber::engine::TuberRunner;
 use tuber::graphics::camera::Camera;
+use tuber::graphics::parsers::obj_parser::ObjParser;
+use tuber::graphics::parsers::ModelParser;
 use tuber::WinitTuberRunner;
 
 fn main() {
     let engine = Engine::new(EngineSettings {
-        initial_state: Some(Box::new(MainState { rx: 0.0, ry: 0.0 })),
+        initial_state: Some(Box::new(MainState {
+            angle_y: 0f32,
+            angle_x: 0f32,
+        })),
         ..Default::default()
     });
 
@@ -19,8 +24,8 @@ fn main() {
 }
 
 struct MainState {
-    rx: f32,
-    ry: f32,
+    angle_y: f32,
+    angle_x: f32,
 }
 
 impl State for MainState {
@@ -35,22 +40,27 @@ impl State for MainState {
             .set_camera(&Camera::new_perspective_projection(
                 45f32,
                 800f32 / 600f32,
-                1f32,
-                10f32,
+                1.0,
+                100.0,
             ))
             .unwrap();
     }
 
     fn render(&mut self, _ecs: &mut Ecs, engine_context: &mut EngineContext) {
-        self.rx += 0.009;
-        self.ry += 0.0035;
+        self.angle_y += 0.01;
+        self.angle_x += 0.04;
+        let model = ObjParser::parse_model(include_str!("./model.obj")).unwrap();
+
         engine_context
             .graphics
-            .draw_cube(Transform {
-                translation: (0.0, 0.0, -5.0f32).into(),
-                angle: (self.rx, self.ry, 0.0).into(),
-                ..Default::default()
-            })
+            .draw_model(
+                model,
+                Transform {
+                    angle: (self.angle_x, self.angle_y / 2.0, 0.0).into(),
+                    translation: (0.0, 0.0, -10.0).into(),
+                    ..Default::default()
+                },
+            )
             .unwrap();
     }
 }

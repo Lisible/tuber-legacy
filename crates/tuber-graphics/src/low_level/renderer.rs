@@ -308,11 +308,19 @@ impl Renderer {
             &self.pending_vertices,
         );
 
+        let index_count = self.pending_indices.len();
+
+        // In order to conform to COPY_BUFFER_ALIGNMENT
+        if self.pending_indices.len() % 2 != 0 {
+            self.pending_indices.push(0);
+        }
+
         self.index_buffer.append_indices(
             command_encoder,
             &self.device,
             &self.queue,
             &self.pending_indices,
+            index_count,
         );
 
         self.mesh_uniform_buffer

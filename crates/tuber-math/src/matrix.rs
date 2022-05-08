@@ -40,9 +40,20 @@ impl<T> Matrix4<T> {
         }
     }
 
+    pub fn new_perspective<U>(fov_y: U, aspect: U, near: U, far: U) -> Matrix4<U>
+    where
+        U: Copy + Float,
+    {
+        let top = near * (fov_y.to_radians() / U::two()).tan();
+        let bottom = -top;
+        let right = top * aspect;
+        let left = -right;
+        Self::new_frustum(left, right, bottom, top, near, far)
+    }
+
     //noinspection RsBorrowChecker
     #[rustfmt::skip]
-    pub fn new_perspective<U>(
+    pub fn new_frustum<U>(
         left: U,
         right: U,
         bottom: U,

@@ -2,6 +2,7 @@ use tuber_core::transform::Transform;
 
 use crate::camera::Camera;
 use crate::low_level::mesh::Mesh;
+use crate::low_level::model::Model;
 use crate::low_level::primitives::Vertex;
 use crate::low_level::renderer::Renderer;
 use crate::renderable::rectangle_shape::RectangleShape;
@@ -18,6 +19,15 @@ impl Graphics {
     /// Initializes the renderer
     pub fn initialize(&mut self, window: Window, window_size: (u32, u32)) {
         self.renderer = Some(Renderer::new(window, window_size));
+    }
+
+    /// Draws a model
+    pub fn draw_model(&mut self, model: Model, world_transform: Transform) -> GraphicsResult<()> {
+        for mesh in model.meshes {
+            self.renderer()?.queue_mesh(mesh, world_transform, "_white");
+        }
+
+        Ok(())
     }
 
     /// Draws a rectangle shape
@@ -40,7 +50,6 @@ impl Graphics {
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
-                    // green
                     position: [-1f32, -1f32, 1f32],
                     color: [0f32, 1f32, 0f32],
                     texture_coordinates: [0.0, 0.0],
@@ -51,7 +60,6 @@ impl Graphics {
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
-                    // purple
                     position: [1f32, -1f32, 1f32],
                     color: [1f32, 0f32, 1f32],
                     texture_coordinates: [0.0, 0.0],
@@ -62,7 +70,6 @@ impl Graphics {
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
-                    // yellow
                     position: [-1f32, -1f32, -1f32],
                     color: [1f32, 1f32, 0f32],
                     texture_coordinates: [0.0, 0.0],
@@ -73,7 +80,6 @@ impl Graphics {
                     texture_coordinates: [0.0, 0.0],
                 },
                 Vertex {
-                    // black
                     position: [1f32, -1f32, -1f32],
                     color: [0f32, 0f32, 0f32],
                     texture_coordinates: [0.0, 0.0],
