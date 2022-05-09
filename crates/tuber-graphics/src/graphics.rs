@@ -5,6 +5,7 @@ use crate::low_level::mesh::Mesh;
 use crate::low_level::model::Model;
 use crate::low_level::renderer::Renderer;
 use crate::renderable::rectangle_shape::RectangleShape;
+use crate::renderable::sprite::Sprite;
 use crate::GraphicsError;
 use crate::GraphicsResult;
 use crate::Window;
@@ -20,7 +21,7 @@ impl Graphics {
         self.renderer = Some(Renderer::new(window, window_size));
     }
 
-    /// Draws a model
+    /// Draws a model with the given world transform
     pub fn draw_model(&mut self, model: Model, world_transform: Transform) -> GraphicsResult<()> {
         for mesh in model.meshes {
             self.renderer()?.queue_mesh(mesh, world_transform, "_white");
@@ -29,7 +30,7 @@ impl Graphics {
         Ok(())
     }
 
-    /// Draws a rectangle shape
+    /// Draws a rectangle shape with the given world transform
     pub fn draw_rectangle_shape(
         &mut self,
         rectangle_shape: RectangleShape,
@@ -40,9 +41,24 @@ impl Graphics {
         Ok(())
     }
 
+    /// Draws a cube with the given world transform
     pub fn draw_cube(&mut self, world_transform: Transform) -> GraphicsResult<()> {
         self.renderer()?
             .queue_mesh(Mesh::new_cube_mesh(), world_transform, "_white");
+        Ok(())
+    }
+
+    /// Draws a sprite with the given world transform
+    pub fn draw_sprite(
+        &mut self,
+        sprite: &Sprite,
+        world_transform: Transform,
+    ) -> GraphicsResult<()> {
+        self.renderer()?.queue_mesh(
+            sprite.as_mesh(),
+            world_transform,
+            sprite.texture_identifier(),
+        );
         Ok(())
     }
 
@@ -58,7 +74,7 @@ impl Graphics {
         self.renderer()?.render()
     }
 
-    pub fn renderer(&mut self) -> GraphicsResult<&mut Renderer> {
+    fn renderer(&mut self) -> GraphicsResult<&mut Renderer> {
         self.renderer
             .as_mut()
             .ok_or(GraphicsError::RendererUninitialized)
