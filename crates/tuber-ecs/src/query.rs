@@ -165,7 +165,7 @@ pub mod accessors {
         fn type_id() -> ComponentTypeId;
     }
 
-    impl<'a, T: 'static> Accessor<'a> for R<T> {
+    impl<'a, T: 'static> Accessor<'a> for &T {
         type RawType = T;
         type RefType = Ref<'a, T>;
 
@@ -179,16 +179,7 @@ pub mod accessors {
         }
 
         fn matching_ids(entity_count: usize, components: &'a Components) -> HashSet<EntityIndex> {
-            let mut result = HashSet::new();
-            if let Some(component_store) = components.get(&TypeId::of::<T>()) {
-                for i in 0..entity_count.max(component_store.entities_bitset.bit_count()) {
-                    if component_store.entities_bitset.bit(i) {
-                        result.insert(i);
-                    }
-                }
-            }
-
-            result
+            matching_ids_for_type::<T>(entity_count, components)
         }
 
         fn type_id() -> ComponentTypeId {
@@ -196,7 +187,7 @@ pub mod accessors {
         }
     }
 
-    impl<'a, T: 'static> Accessor<'a> for W<T> {
+    impl<'a, T: 'static> Accessor<'a> for &mut T {
         type RawType = T;
         type RefType = RefMut<'a, T>;
 
@@ -210,21 +201,28 @@ pub mod accessors {
         }
 
         fn matching_ids(entity_count: usize, components: &'a Components) -> HashSet<EntityIndex> {
-            let mut result = HashSet::new();
-            if let Some(component_store) = components.get(&TypeId::of::<T>()) {
-                for i in 0..entity_count.max(component_store.entities_bitset.bit_count()) {
-                    if component_store.entities_bitset.bit(i) {
-                        result.insert(i);
-                    }
-                }
-            }
-
-            result
+            matching_ids_for_type::<T>(entity_count, components)
         }
 
         fn type_id() -> ComponentTypeId {
             RequiredComponentTypeId(TypeId::of::<T>())
         }
+    }
+
+    fn matching_ids_for_type<T: 'static>(
+        entity_count: usize,
+        components: &Components,
+    ) -> HashSet<EntityIndex> {
+        let mut result = HashSet::new();
+        if let Some(component_store) = components.get(&TypeId::of::<T>()) {
+            for i in 0..entity_count.max(component_store.entities_bitset.bit_count()) {
+                if component_store.entities_bitset.bit(i) {
+                    result.insert(i);
+                }
+            }
+        }
+
+        result
     }
 
     impl<'a, T: 'static + Accessor<'a>> Accessor<'a> for Opt<'a, T> {

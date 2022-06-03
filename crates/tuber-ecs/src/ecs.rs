@@ -246,19 +246,19 @@ mod tests {
         ecs.insert((Position { x: 4.0, y: 5.0 }, Velocity { x: 6.0, y: 7.0 }));
         ecs.insert((Position { x: 4.0, y: 5.0 },));
 
-        for (_, (mut velocity,)) in ecs.query::<(W<Velocity>,)>() {
+        for (_, (mut velocity,)) in ecs.query::<(&mut Velocity,)>() {
             velocity.x = 0.0;
         }
 
-        for (_, (position, velocity)) in ecs.query::<(R<Position>, R<Velocity>)>() {
+        for (_, (position, velocity)) in ecs.query::<(&Position, &Velocity)>() {
             assert_ne!(position.x, 0.0);
             assert_ne!(position.y, 0.0);
             assert_eq!(velocity.x, 0.0);
             assert_ne!(velocity.y, 0.0);
         }
 
-        assert_eq!(ecs.query::<(R<Position>,)>().count(), 3);
-        assert_eq!(ecs.query::<(R<Velocity>,)>().count(), 2);
+        assert_eq!(ecs.query::<(&Position,)>().count(), 3);
+        assert_eq!(ecs.query::<(&Velocity,)>().count(), 2);
     }
 
     #[test]
@@ -266,9 +266,9 @@ mod tests {
         let mut ecs = Ecs::default();
         ecs.insert((Position { x: 12.0, y: 1.0 }, Velocity { x: 2.0, y: 3.0 }));
 
-        assert_eq!(ecs.query_one::<(R<Position>,)>().unwrap().0, 0);
+        assert_eq!(ecs.query_one::<(&Position,)>().unwrap().0, 0);
         assert_eq!(
-            (*(ecs.query_one::<(R<Position>,)>().unwrap().1).0),
+            (*(ecs.query_one::<(&Position,)>().unwrap().1).0),
             Position { x: 12.0, y: 1.0 }
         );
     }
@@ -279,7 +279,7 @@ mod tests {
         ecs.insert((Position { x: 12.0, y: 1.0 }, Velocity { x: 2.0, y: 3.0 }));
         ecs.insert((Position { x: 15.0, y: 8.0 },));
 
-        assert_eq!(ecs.query::<(R<Position>, Opt<R<Velocity>>)>().count(), 2);
+        assert_eq!(ecs.query::<(&Position, Opt<&Velocity>)>().count(), 2);
     }
 
     #[test]
@@ -287,9 +287,19 @@ mod tests {
         let mut ecs = Ecs::default();
         ecs.insert((Position { x: 12.0, y: 1.0 },));
 
-        let (_, (position, velocity)) = ecs.query_one::<(R<Position>, Opt<R<Velocity>>)>().unwrap();
+        let (_, (position, velocity)) = ecs.query_one::<(&Position, Opt<&Velocity>)>().unwrap();
 
         assert_eq!(*position, Position { x: 12.0, y: 1.0 });
         assert!(velocity.is_none());
+    }
+
+    #[test]
+    pub fn ecs_query_one_implicit_read_accessor() {
+        let mut ecs = Ecs::default();
+        ecs.insert((Position { x: 12.0, y: 1.0 },));
+
+        let (_, (position,)) = ecs.query_one::<(&Position,)>().unwrap();
+
+        assert_eq!(*position, Position { x: 12.0, y: 1.0 });
     }
 }

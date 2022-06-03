@@ -1,6 +1,5 @@
 use tuber_core::transform::{AsMatrix4, LocalTransform, Transform};
 use tuber_ecs::ecs::Ecs;
-use tuber_ecs::query::accessors::R;
 
 use crate::camera::{ActiveCamera, Camera};
 use crate::low_level::mesh::Mesh;
@@ -96,7 +95,7 @@ impl Graphics {
     pub fn render_scene(&mut self, ecs: &Ecs) -> GraphicsResult<()> {
         // Use the active camera's projection matrix
         let (_, (camera, _, camera_local_transform, camera_transform)) = ecs
-            .query_one::<(R<Camera>, R<ActiveCamera>, R<LocalTransform>, R<Transform>)>()
+            .query_one::<(&Camera, &ActiveCamera, &LocalTransform, &Transform)>()
             .expect("There is no active camera in the scene");
 
         let view_projection_matrix = camera.projection_matrix()
