@@ -52,3 +52,6 @@ impl Camera {
         self.projection_matrix
     }
 }
+
+/// Component to define a camera as the active one
+pub struct ActiveCamera;

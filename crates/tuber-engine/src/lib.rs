@@ -104,7 +104,7 @@ impl Engine {
             .gui
             .render(&mut self.context.graphics, &mut self.context.asset_store);
 
-        self.context.graphics.render_scene()
+        self.context.graphics.render_scene(&self.ecs)
     }
 
     /// Returns true if the engine should exit

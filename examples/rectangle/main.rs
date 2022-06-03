@@ -46,6 +46,7 @@ impl State for MainState {
                     translation: (100.0, 100.0, 0.0).into(),
                     ..Default::default()
                 },
+                Transform::default(),
             )
             .unwrap();
     }

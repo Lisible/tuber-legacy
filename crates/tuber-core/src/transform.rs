@@ -10,6 +10,9 @@ pub struct Transform {
     pub scale: Vector3<f32>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct LocalTransform(pub Transform);
+
 impl Default for Transform {
     fn default() -> Self {
         Self {

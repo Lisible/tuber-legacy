@@ -339,7 +339,13 @@ impl Renderer {
         );
     }
 
-    pub fn queue_mesh(&mut self, mesh: Mesh, world_transform: Transform, texture_identifier: &str) {
+    pub fn queue_mesh(
+        &mut self,
+        mesh: Mesh,
+        world_transform: Transform,
+        local_transform: Transform,
+        texture_identifier: &str,
+    ) {
         self.pending_vertices.extend_from_slice(&mesh.vertices);
         let mut start_index = *self.pending_indices.last().unwrap_or(&0);
         if start_index != 0 {
@@ -356,7 +362,7 @@ impl Renderer {
         );
 
         self.pending_mesh_uniforms.push(MeshUniform {
-            world_transform: world_transform.as_matrix4().into(),
+            world_transform: (world_transform.as_matrix4() * local_transform.as_matrix4()).into(),
             _padding: [0; 24],
         });
 

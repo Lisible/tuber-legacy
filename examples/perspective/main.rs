@@ -1,4 +1,4 @@
-use tuber::core::transform::Transform;
+use tuber::core::transform::{LocalTransform, Transform};
 use tuber::ecs::ecs::Ecs;
 use tuber::ecs::system::SystemBundle;
 use tuber::engine::engine_context::EngineContext;
@@ -6,7 +6,7 @@ use tuber::engine::state::State;
 use tuber::engine::Engine;
 use tuber::engine::EngineSettings;
 use tuber::engine::TuberRunner;
-use tuber::graphics::camera::Camera;
+use tuber::graphics::camera::{ActiveCamera, Camera};
 use tuber::WinitTuberRunner;
 
 fn main() {
@@ -26,19 +26,16 @@ struct MainState {
 impl State for MainState {
     fn initialize(
         &mut self,
-        _ecs: &mut Ecs,
+        ecs: &mut Ecs,
         _system_bundles: &mut Vec<SystemBundle<EngineContext>>,
-        engine_context: &mut EngineContext,
+        _engine_context: &mut EngineContext,
     ) {
-        engine_context
-            .graphics
-            .set_camera(&Camera::new_perspective_projection(
-                45f32,
-                800f32 / 600f32,
-                1f32,
-                10f32,
-            ))
-            .unwrap();
+        ecs.insert((
+            Camera::new_perspective_projection(45f32, 800f32 / 600f32, 1f32, 10f32),
+            ActiveCamera,
+            Transform::default(),
+            LocalTransform::default(),
+        ));
     }
 
     fn render(&mut self, _ecs: &mut Ecs, engine_context: &mut EngineContext) {
@@ -46,11 +43,16 @@ impl State for MainState {
         self.ry += 0.0035;
         engine_context
             .graphics
-            .draw_cube(Transform {
-                translation: (0.0, 0.0, -5.0f32).into(),
-                angle: (self.rx, self.ry, 0.0).into(),
-                ..Default::default()
-            })
+            .draw_cube(
+                Transform {
+                    translation: (0.0, 0.0, -20.0f32).into(),
+                    ..Default::default()
+                },
+                Transform {
+                    angle: (self.rx, self.ry, 0.0).into(),
+                    ..Default::default()
+                },
+            )
             .unwrap();
     }
 }
