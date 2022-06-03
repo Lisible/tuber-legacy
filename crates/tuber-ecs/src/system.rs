@@ -80,8 +80,6 @@ mod tests {
     use std::collections::HashSet;
     use std::fmt::{Display, Formatter};
 
-    use crate::query::accessors::{R, W};
-
     use super::*;
 
     #[derive(Debug)]
@@ -132,20 +130,20 @@ mod tests {
 
         let mut system_bundle = SystemBundle::default();
         system_bundle.add_system(|ecs: &mut Ecs| {
-            for (_, (mut v,)) in ecs.query::<(W<Value>,)>() {
+            for (_, (mut v,)) in ecs.query::<(&mut Value,)>() {
                 v.0 += 35;
             }
             Ok(())
         });
         system_bundle.add_system(|ecs: &mut Ecs| {
-            for (_, (mut v,)) in ecs.query::<(W<Value>,)>() {
+            for (_, (mut v,)) in ecs.query::<(&mut Value,)>() {
                 v.0 -= 6;
             }
             Ok(())
         });
 
         let _ = system_bundle.step(&mut ecs, &mut ());
-        let query_result = ecs.query::<(R<Value>,)>();
+        let query_result = ecs.query::<(&Value,)>();
         let result_set: HashSet<Value> = query_result.map(|result| *result.1 .0).collect();
         assert!(result_set.contains(&Value(41)));
         assert!(result_set.contains(&Value(47)));

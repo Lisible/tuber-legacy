@@ -5,7 +5,6 @@ use rand::{thread_rng, Rng};
 use tuber::core::input::Input::ActionDown;
 use tuber::core::transform::Transform;
 use tuber::ecs::ecs::Ecs;
-use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::{SystemBundle, SystemResult};
 use tuber::ecs::EntityIndex;
 use tuber::engine::engine_context::EngineContext;
@@ -104,11 +103,10 @@ fn check_collision_with_body_system(ecs: &mut Ecs, _: &mut EngineContext) -> Sys
     let mut is_game_over = false;
     {
         let (head_id, (_, head_body_part, head_transform)) = ecs
-            .query_one::<(R<SnakeHead>, R<SnakeBodyPart>, R<Transform>)>()
+            .query_one::<(&SnakeHead, &SnakeBodyPart, &Transform)>()
             .unwrap();
         let next_id = head_body_part.next_body_part.unwrap();
-        for (body_part_id, (_, body_part_transform)) in
-            ecs.query::<(R<SnakeBodyPart>, R<Transform>)>()
+        for (body_part_id, (_, body_part_transform)) in ecs.query::<(&SnakeBodyPart, &Transform)>()
         {
             if head_id == body_part_id || next_id == body_part_id {
                 continue;
@@ -144,7 +142,7 @@ fn move_head_system(ecs: &mut Ecs, engine_context: &mut EngineContext) -> System
     let is_game_over = {
         let input_state = &engine_context.input_state;
         let (_, (_, mut velocity, mut transform)) = ecs
-            .query_one::<(R<SnakeHead>, W<Velocity>, W<Transform>)>()
+            .query_one::<(&SnakeHead, &mut Velocity, &mut Transform)>()
             .unwrap();
 
         let mut pivot_list = ecs.shared_resource_mut::<PivotList>().unwrap();
@@ -191,7 +189,7 @@ fn reset_score(ecs: &mut Ecs) {
 }
 
 fn respawn_snake(ecs: &mut Ecs) {
-    ecs.delete_by_query::<(R<SnakeBodyPart>,)>();
+    ecs.delete_by_query::<(&SnakeBodyPart,)>();
     spawn_snake(ecs);
 }
 
@@ -287,11 +285,12 @@ fn spawn_snake(ecs: &mut Ecs) {
 }
 
 fn move_body_parts_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
-    let (head_id, _) = ecs.query_one::<(R<SnakeHead>,)>().unwrap();
-    let (tail_id, _) = ecs.query_one::<(R<SnakeTail>,)>().unwrap();
+    let (head_id, _) = ecs.query_one::<(&SnakeHead,)>().unwrap();
+    let (tail_id, _) = ecs.query_one::<(&SnakeTail,)>().unwrap();
     let mut pivots = ecs.shared_resource_mut::<PivotList>().unwrap();
     let mut pivots_to_delete = vec![];
-    for (body_part_id, (mut transform, mut velocity)) in ecs.query::<(W<Transform>, W<Velocity>)>()
+    for (body_part_id, (mut transform, mut velocity)) in
+        ecs.query::<(&mut Transform, &mut Velocity)>()
     {
         if body_part_id == head_id {
             continue;
@@ -322,7 +321,7 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     let mut grow_snake = false;
     {
         let (_, (_, head_transform, head_sprite)) = ecs
-            .query_one::<(R<SnakeHead>, R<Transform>, R<Sprite>)>()
+            .query_one::<(&SnakeHead, &Transform, &Sprite)>()
             .unwrap();
         let mut score = ecs.shared_resource_mut::<Score>().unwrap();
         let head_rectangle = (
@@ -334,7 +333,7 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
 
         let mut rng = thread_rng();
         for (_, (_, mut apple_transform, apple_sprite)) in
-            ecs.query::<(R<Apple>, W<Transform>, R<Sprite>)>()
+            ecs.query::<(&Apple, &mut Transform, &Sprite)>()
         {
             let apple_rectangle = (
                 apple_transform.translation.x,
@@ -356,7 +355,7 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     if grow_snake {
         let (old_tail_id, tail_transform, tail_velocity) = {
             let (tail_id, (_, tail_transform, tail_velocity)) = ecs
-                .query_one::<(R<SnakeTail>, R<Transform>, R<Velocity>)>()
+                .query_one::<(&SnakeTail, &Transform, &Velocity)>()
                 .unwrap();
             (tail_id, *tail_transform, *tail_velocity)
         };
@@ -397,7 +396,7 @@ fn eat_apple_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
         {
             {
                 let (_, (mut old_tail_body_part, mut sprite)) = ecs
-                    .query_one_by_id::<(W<SnakeBodyPart>, W<Sprite>)>(old_tail_id)
+                    .query_one_by_id::<(&mut SnakeBodyPart, &mut Sprite)>(old_tail_id)
                     .unwrap();
                 old_tail_body_part.next_body_part = Some(new_tail_id);
                 sprite.material = MaterialDescriptor {

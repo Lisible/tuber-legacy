@@ -2,7 +2,6 @@ use tuber::core::input::keyboard::Key;
 use tuber::core::input::Input;
 use tuber::core::transform::Transform;
 use tuber::ecs::ecs::Ecs;
-use tuber::ecs::query::accessors::{R, W};
 use tuber::ecs::system::{SystemBundle, SystemResult};
 use tuber::engine::engine_context::EngineContext;
 use tuber::engine::state::State;
@@ -131,7 +130,7 @@ impl State for MainState {
 
 fn move_paddle_system(ecs: &mut Ecs, engine_context: &mut EngineContext) -> SystemResult {
     let input_state = &engine_context.input_state;
-    for (_id, (mut transform, _)) in ecs.query::<(W<Transform>, R<Player>)>() {
+    for (_id, (mut transform, _)) in ecs.query::<(&mut Transform, &Player)>() {
         if input_state.is(Input::KeyDown(Key::Z)) {
             transform.translation.y -= 5.0;
         } else if input_state.is(Input::KeyDown(Key::S)) {
@@ -144,7 +143,7 @@ fn move_paddle_system(ecs: &mut Ecs, engine_context: &mut EngineContext) -> Syst
 
 fn move_ball_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     for (_id, (rectangle_shape, mut transform, mut velocity)) in
-        ecs.query::<(R<RectangleShape>, W<Transform>, W<Velocity>)>()
+        ecs.query::<(&RectangleShape, &mut Transform, &mut Velocity)>()
     {
         if (transform.translation.x + rectangle_shape.width >= 800.0)
             || (transform.translation.x <= 0.0)
@@ -169,11 +168,11 @@ fn move_ball_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
 fn collision_system(ecs: &mut Ecs, _: &mut EngineContext) -> SystemResult {
     {
         for (_paddle_id, (paddle_transform, paddle_shape, _)) in
-            ecs.query::<(R<Transform>, R<RectangleShape>, R<Paddle>)>()
+            ecs.query::<(&Transform, &RectangleShape, &Paddle)>()
         {
             let paddle_position = paddle_transform.translation;
             for (_ball_id, (mut ball_transform, mut velocity, _)) in
-                ecs.query::<(W<Transform>, W<Velocity>, R<Ball>)>()
+                ecs.query::<(&mut Transform, &mut Velocity, &Ball)>()
             {
                 let ball_position = ball_transform.translation;
 
