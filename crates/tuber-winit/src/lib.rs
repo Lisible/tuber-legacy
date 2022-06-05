@@ -1,16 +1,19 @@
 use std::convert::{TryFrom, TryInto};
 use std::time::Instant;
-use tuber_core::input::keyboard::Key;
-use tuber_core::input::mouse::Button;
-use tuber_core::input::Input;
-use tuber_engine::{Engine, Result as TuberResult, TuberRunner};
-use tuber_graphics::Window;
+
+use log::info;
 use winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
+
+use tuber_core::input::keyboard::Key;
+use tuber_core::input::mouse::Button;
+use tuber_core::input::Input;
+use tuber_engine::{Engine, Result as TuberResult, TuberRunner};
+use tuber_graphics::Window;
 
 #[allow(clippy::enum_variant_names)]
 enum TuberWinitError {
@@ -20,6 +23,7 @@ enum TuberWinitError {
 }
 
 pub struct WinitTuberRunner;
+
 impl TuberRunner for WinitTuberRunner {
     fn run(&mut self, mut engine: Engine) -> TuberResult<()> {
         const UPDATE_TARGET_FPS: u32 = 100;
@@ -111,24 +115,25 @@ impl TuberRunner for WinitTuberRunner {
 }
 
 struct KeyboardInputWrapper(KeyboardInput);
+
 impl TryFrom<KeyboardInputWrapper> for Input {
     type Error = TuberWinitError;
 
     fn try_from(input: KeyboardInputWrapper) -> Result<Self, Self::Error> {
         match input.0 {
             KeyboardInput {
-                virtual_keycode,
+                virtual_keycode: Some(virtual_keycode),
                 state,
                 ..
-            } if state == ElementState::Pressed && virtual_keycode.is_some() => Ok(Input::KeyDown(
-                VirtualKeyCodeWrapper(virtual_keycode.unwrap()).try_into()?,
+            } if state == ElementState::Pressed => Ok(Input::KeyDown(
+                VirtualKeyCodeWrapper(virtual_keycode).try_into()?,
             )),
             KeyboardInput {
-                virtual_keycode,
+                virtual_keycode: Some(virtual_keycode),
                 state,
                 ..
-            } if state == ElementState::Released && virtual_keycode.is_some() => Ok(Input::KeyUp(
-                VirtualKeyCodeWrapper(virtual_keycode.unwrap()).try_into()?,
+            } if state == ElementState::Released => Ok(Input::KeyUp(
+                VirtualKeyCodeWrapper(virtual_keycode).try_into()?,
             )),
             input => Err(TuberWinitError::UnknownKeyboardInput(input)),
         }
@@ -136,6 +141,7 @@ impl TryFrom<KeyboardInputWrapper> for Input {
 }
 
 struct MouseInputWrapper(MouseButton, ElementState);
+
 impl TryFrom<MouseInputWrapper> for Input {
     type Error = TuberWinitError;
 
@@ -155,6 +161,7 @@ impl TryFrom<MouseInputWrapper> for Input {
 }
 
 struct VirtualKeyCodeWrapper(VirtualKeyCode);
+
 impl TryFrom<VirtualKeyCodeWrapper> for Key {
     type Error = TuberWinitError;
 
