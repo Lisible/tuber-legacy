@@ -12,6 +12,7 @@ use tuber::graphics::renderable::rectangle_shape::RectangleShape;
 use tuber::WinitTuberRunner;
 
 fn main() {
+    env_logger::init();
     let engine = Engine::new(EngineSettings {
         initial_state: Some(Box::new(MainState)),
         ..Default::default()

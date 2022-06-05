@@ -12,6 +12,7 @@ use tuber::graphics::parsers::ModelParser;
 use tuber::WinitTuberRunner;
 
 fn main() {
+    env_logger::init();
     let engine = Engine::new(EngineSettings {
         initial_state: Some(Box::new(MainState {
             angle_y: 0f32,

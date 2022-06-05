@@ -10,3 +10,4 @@ name = "obj_parser"
 
 [dependencies]
 tuber = { path = "../.." }
+env_logger = "0.9.0"

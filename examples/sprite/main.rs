@@ -11,6 +11,7 @@ use tuber::graphics::renderable::sprite::Sprite;
 use tuber::WinitTuberRunner;
 
 fn main() {
+    env_logger::init();
     let engine = Engine::new(EngineSettings {
         initial_state: Some(Box::new(MainState)),
         ..Default::default()
@@ -45,7 +46,7 @@ impl State for MainState {
                     translation: (100.0, 100.0, 0.0).into(),
                     ..Default::default()
                 },
-                Transform::default()
+                Transform::default(),
             )
             .unwrap();
     }

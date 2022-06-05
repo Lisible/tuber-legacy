@@ -10,6 +10,7 @@ use tuber::graphics::camera::{ActiveCamera, Camera};
 use tuber::WinitTuberRunner;
 
 fn main() {
+    env_logger::init();
     let engine = Engine::new(EngineSettings {
         initial_state: Some(Box::new(MainState { rx: 0.0, ry: 0.0 })),
         ..Default::default()
