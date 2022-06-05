@@ -1,3 +1,4 @@
+use log::info;
 use std::convert::{TryFrom, TryInto};
 use std::time::Instant;
 use tuber_core::input::keyboard::Key;
@@ -32,15 +33,23 @@ impl TuberRunner for WinitTuberRunner {
         let mut last_render_time = Instant::now();
 
         let event_loop = EventLoop::new();
+
+        info!(
+            "Creating window with title \"{}\"",
+            engine.application_title()
+        );
         let window = WindowBuilder::new()
             .with_title(engine.application_title())
             .build(&event_loop)
             .unwrap();
+
+        info!("Initializing graphics engine");
         engine.initialize_graphics(
             Window(Box::new(&window)),
             (window.inner_size().width, window.inner_size().height),
         );
 
+        info!("Pushing initial game state on the state stack");
         engine.push_initial_state();
 
         event_loop.run(move |event, _, control_flow| {
@@ -50,7 +59,10 @@ impl TuberRunner for WinitTuberRunner {
                 Event::WindowEvent {
                     event: WindowEvent::CloseRequested,
                     window_id,
-                } if window_id == window.id() => *control_flow = ControlFlow::Exit,
+                } if window_id == window.id() => {
+                    *control_flow = ControlFlow::Exit;
+                    info!("Close requested, exiting");
+                }
                 Event::WindowEvent {
                     event: WindowEvent::KeyboardInput { input, .. },
                     window_id,

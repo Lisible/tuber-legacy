@@ -1,3 +1,4 @@
+use log::info;
 use tuber_core::transform::{AsMatrix4, LocalTransform, Transform};
 use tuber_ecs::ecs::Ecs;
 
@@ -19,6 +20,7 @@ pub struct Graphics {
 impl Graphics {
     /// Initializes the renderer
     pub fn initialize(&mut self, window: Window, window_size: (u32, u32)) {
+        info!("Initializing renderer");
         self.renderer = Some(Renderer::new(window, window_size));
     }
 

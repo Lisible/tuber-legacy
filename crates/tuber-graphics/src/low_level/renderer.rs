@@ -1,4 +1,5 @@
 use futures::executor::block_on;
+use log::info;
 use wgpu::util::BufferInitDescriptor;
 use wgpu::util::DeviceExt;
 use wgpu::*;
@@ -47,7 +48,10 @@ impl Renderer {
     /// Creates the renderer
     pub fn new(window: Window, window_size: (u32, u32)) -> Self {
         let instance = Instance::new(Backends::all());
+
+        info!("Creating render surface");
         let surface = unsafe { instance.create_surface(&window) };
+        info!("Requesting adapter");
         let adapter = block_on(instance.request_adapter(&RequestAdapterOptions {
             power_preference: PowerPreference::default(),
             force_fallback_adapter: false,
@@ -55,6 +59,7 @@ impl Renderer {
         }))
         .unwrap();
 
+        info!("Requesting device");
         let (device, queue) = block_on(adapter.request_device(
             &DeviceDescriptor {
                 label: None,
@@ -73,6 +78,7 @@ impl Renderer {
             present_mode: PresentMode::Fifo,
         };
 
+        info!("Configuring render surface");
         surface.configure(&device, &surface_configuration);
 
         let vertex_buffer = VertexBuffer::with_capacity(&device, "vertex_buffer", 1000);

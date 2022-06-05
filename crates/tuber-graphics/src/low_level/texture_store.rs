@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use image::GenericImageView;
+use log::info;
 use wgpu::{
     AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Device,
@@ -74,6 +75,10 @@ impl TextureStore {
         texture_width: u32,
         texture_height: u32,
     ) {
+        info!(
+            "Loading texture \"{}\" from RGBA8 data into V-RAM",
+            texture_identifier
+        );
         let texture_rgba = texture_data;
         let texture_size = Extent3d {
             width: texture_width,
