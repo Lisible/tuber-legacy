@@ -86,13 +86,6 @@ impl Graphics {
         Ok(())
     }
 
-    /// Set the camera used for rendering
-    pub fn set_camera(&mut self, camera: &Camera) -> GraphicsResult<()> {
-        self.renderer()?
-            .set_view_projection_matrix(camera.projection_matrix());
-        Ok(())
-    }
-
     /// Renders the scene
     pub fn render_scene(&mut self, ecs: &Ecs) -> GraphicsResult<()> {
         // Use the active camera's projection matrix
