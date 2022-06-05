@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
+use log::{info, trace};
 use serde_derive::Deserialize;
 
 use crate::input::keyboard::Key;
@@ -86,6 +87,7 @@ pub mod mouse {
     }
 }
 
+#[derive(Debug)]
 pub enum Input {
     ActionDown(String),
     ActionUp(String),
@@ -155,6 +157,7 @@ impl InputState {
         self.mouse_moved = false;
         self.previous_key_state = self.key_state;
         self.previous_mouse_button_state = self.mouse_button_state;
+        trace!("Handling input {:?}", input);
         match input {
             Input::KeyDown(key) => self.key_state[key as usize] = true,
             Input::KeyUp(key) => self.key_state[key as usize] = false,
@@ -188,6 +191,10 @@ pub struct Keymap {
 
 impl Keymap {
     pub fn from_file(file_path: &Path) -> CoreResult<Self> {
+        info!(
+            "Loading keymap from file \"{}\"",
+            file_path.to_str().unwrap()
+        );
         let file = File::open(file_path).map_err(CoreError::KeymapFileOpenError)?;
         let reader = BufReader::new(file);
         let keymap: HashMap<Key, Action> =

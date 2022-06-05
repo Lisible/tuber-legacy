@@ -1,3 +1,4 @@
+use log::info;
 use std::path::PathBuf;
 
 use engine_context::EngineContext;
@@ -35,6 +36,7 @@ fn create_ecs() -> Ecs {
 
 impl Engine {
     pub fn new(settings: EngineSettings) -> Engine {
+        info!("Creating tuber instance");
         let mut asset_manager = AssetStore::default();
         asset_manager.load_assets_metadata().unwrap();
         asset_manager.register_loaders(Graphics::loaders());
