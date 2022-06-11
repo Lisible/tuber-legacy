@@ -139,8 +139,8 @@ impl MeshRenderer {
 
     fn create_texture_bind_group(
         &mut self,
-        device: &wgpu::Device,
-        textures: &HashMap<TextureId, wgpu::Texture>,
+        device: &Device,
+        textures: &HashMap<TextureId, Texture>,
         material: &Material,
     ) -> wgpu::BindGroup {
         let albedo_map_texture = &textures[&material.albedo_map_id];
@@ -253,11 +253,11 @@ impl MeshRenderer {
     }
 
     fn create_render_pipeline(
-        device: &wgpu::Device,
-        surface_texture_format: wgpu::TextureFormat,
-        texture_bind_group_layout: &wgpu::BindGroupLayout,
-        mesh_uniform_bind_group_layout: &wgpu::BindGroupLayout,
-    ) -> wgpu::RenderPipeline {
+        device: &Device,
+        surface_texture_format: TextureFormat,
+        texture_bind_group_layout: &BindGroupLayout,
+        mesh_uniform_bind_group_layout: &BindGroupLayout,
+    ) -> RenderPipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("mesh_renderer_shader_module"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../../shaders/mesh.wgsl").into()),
@@ -295,7 +295,7 @@ impl MeshRenderer {
                         write_mask: wgpu::ColorWrites::ALL,
                     },
                     wgpu::ColorTargetState {
-                        format: wgpu::TextureFormat::Rgba8Unorm,
+                        format: TextureFormat::Rgba8Unorm,
                         blend: Some(wgpu::BlendState {
                             color: wgpu::BlendComponent {
                                 src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -307,7 +307,7 @@ impl MeshRenderer {
                         write_mask: wgpu::ColorWrites::ALL,
                     },
                     wgpu::ColorTargetState {
-                        format: wgpu::TextureFormat::Rgba8Unorm,
+                        format: TextureFormat::Rgba8Unorm,
                         blend: Some(wgpu::BlendState {
                             color: wgpu::BlendComponent {
                                 src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -319,7 +319,7 @@ impl MeshRenderer {
                         write_mask: wgpu::ColorWrites::ALL,
                     },
                     wgpu::ColorTargetState {
-                        format: wgpu::TextureFormat::Rgba16Float,
+                        format: TextureFormat::Rgba16Float,
                         blend: None,
                         write_mask: wgpu::ColorWrites::ALL,
                     },

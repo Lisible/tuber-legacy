@@ -91,7 +91,7 @@ mod tests {
         }
     }
 
-    impl std::error::Error for AtrociousFailure {}
+    impl Error for AtrociousFailure {}
 
     #[test]
     fn failing_system() {

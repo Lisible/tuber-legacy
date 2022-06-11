@@ -1,9 +1,10 @@
-use crate::geometry::Vertex;
-use crate::primitives::Index;
 use wgpu::{Buffer, BufferAddress, BufferDescriptor, BufferUsages, Device, Label};
 
+use crate::geometry::Vertex;
+use crate::primitives::Index;
+
 pub fn create_uniform_buffer(device: &Device, label: &str, size: BufferAddress) -> Buffer {
-    create_copyable_buffer(device, label, size, wgpu::BufferUsages::UNIFORM)
+    create_copyable_buffer(device, label, size, BufferUsages::UNIFORM)
 }
 
 pub fn create_vertex_buffer(device: &Device, label: &str, capacity: usize) -> Buffer {

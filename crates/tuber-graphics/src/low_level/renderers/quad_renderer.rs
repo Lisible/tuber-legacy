@@ -45,7 +45,7 @@ pub(crate) struct QuadRenderer {
 }
 
 impl QuadRenderer {
-    pub fn new(device: &wgpu::Device, surface_texture_format: wgpu::TextureFormat) -> Self {
+    pub fn new(device: &Device, surface_texture_format: wgpu::TextureFormat) -> Self {
         let vertex_buffer = VertexBuffer::with_capacity(
             device,
             "quad_renderer_vertex_buffer",
@@ -109,8 +109,8 @@ impl QuadRenderer {
     #[allow(clippy::too_many_arguments)]
     pub fn prepare_quad_group(
         &mut self,
-        device: &wgpu::Device,
-        command_encoder: &mut wgpu::CommandEncoder,
+        device: &Device,
+        command_encoder: &mut CommandEncoder,
         textures: &HashMap<TextureId, wgpu::Texture>,
         projection_matrix: &Matrix4f,
         view_transform: &Matrix4f,
@@ -192,7 +192,7 @@ impl QuadRenderer {
 
     pub fn create_texture_bind_group(
         &mut self,
-        device: &wgpu::Device,
+        device: &Device,
         textures: &HashMap<TextureId, wgpu::Texture>,
         material: &Material,
     ) -> wgpu::BindGroup {
@@ -328,7 +328,7 @@ impl QuadRenderer {
         self.vertex_buffer.clear();
     }
 
-    pub fn set_polygon_mode(&mut self, device: &wgpu::Device, polygon_mode: PolygonMode) {
+    pub fn set_polygon_mode(&mut self, device: &Device, polygon_mode: PolygonMode) {
         self.polygon_mode = polygon_mode;
         self.render_pipeline = Self::create_render_pipeline(
             device,
@@ -349,7 +349,7 @@ impl QuadRenderer {
     }
 
     fn create_render_pipeline(
-        device: &wgpu::Device,
+        device: &Device,
         surface_texture_format: wgpu::TextureFormat,
         texture_bind_group_layout: &wgpu::BindGroupLayout,
         global_bind_group_layout: &wgpu::BindGroupLayout,
@@ -446,7 +446,7 @@ impl QuadRenderer {
     }
 
     fn create_ui_render_pipeline(
-        device: &wgpu::Device,
+        device: &Device,
         surface_texture_format: wgpu::TextureFormat,
         texture_bind_group_layout: &wgpu::BindGroupLayout,
         global_bind_group_layout: &wgpu::BindGroupLayout,
@@ -511,7 +511,7 @@ impl QuadRenderer {
         })
     }
 
-    pub fn create_texture_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    pub fn create_texture_bind_group_layout(device: &Device) -> wgpu::BindGroupLayout {
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("quad_renderer_texture_bind_group_layout"),
             entries: &[
@@ -576,7 +576,7 @@ impl QuadRenderer {
         })
     }
 
-    pub fn create_ui_texture_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    pub fn create_ui_texture_bind_group_layout(device: &Device) -> wgpu::BindGroupLayout {
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("quad_renderer_ui_texture_bind_group_layout"),
             entries: &[
@@ -605,7 +605,7 @@ impl QuadRenderer {
 
     pub fn create_ui_texture_bind_group(
         &self,
-        device: &wgpu::Device,
+        device: &Device,
         textures: &HashMap<TextureId, wgpu::Texture>,
         material: &Material,
     ) -> wgpu::BindGroup {

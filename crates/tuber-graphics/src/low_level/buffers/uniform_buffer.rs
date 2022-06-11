@@ -81,7 +81,7 @@ where
                 resource: BindingResource::Buffer(BufferBinding {
                     buffer,
                     offset: 0,
-                    size: wgpu::BufferSize::new(uniform_offset as BufferAddress),
+                    size: BufferSize::new(uniform_offset as BufferAddress),
                 }),
             }],
         })

@@ -1,12 +1,13 @@
+use wgpu::{AddressMode, Device, FilterMode, Sampler};
+
 use crate::low_level::primitives::TextureId;
 use crate::texture::{TextureData, TextureSize};
 use crate::types::Size2;
-use wgpu::{AddressMode, Device, FilterMode, Sampler};
 
 const BYTES_PER_PIXEL: usize = 4;
 
 pub(crate) fn create_texture_from_data(
-    device: &wgpu::Device,
+    device: &Device,
     queue: &wgpu::Queue,
     texture_id: TextureId,
     texture_data: &TextureData,
@@ -22,7 +23,7 @@ pub(crate) fn create_texture_from_data(
 }
 
 fn create_texture(
-    device: &wgpu::Device,
+    device: &Device,
     queue: &wgpu::Queue,
     texture_id: TextureId,
     size: TextureSize,
