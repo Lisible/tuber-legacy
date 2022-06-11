@@ -1,5 +1,6 @@
-use log::info;
 use std::path::PathBuf;
+
+use log::info;
 
 use engine_context::EngineContext;
 use state::*;
@@ -8,13 +9,9 @@ use tuber_core::input::{InputState, Keymap};
 use tuber_core::{input, CoreError};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
-use tuber_graphics::types::Size2;
-use tuber_graphics::{graphics::Graphics, Window};
-use tuber_gui::gui::GUI;
 
 pub mod engine_context;
 pub mod state;
-pub mod system_bundle;
 
 #[derive(Default)]
 pub struct EngineSettings {
@@ -39,17 +36,15 @@ impl Engine {
         info!("Creating tuber instance");
         let mut asset_manager = AssetStore::default();
         asset_manager.load_assets_metadata().unwrap();
-        asset_manager.register_loaders(Graphics::loaders());
 
         let input_state = InputState::new(
             Keymap::from_file(&Self::keymap_file_path().unwrap()).unwrap_or_default(),
         );
 
         let context = EngineContext {
-            graphics: Some(Graphics::default()),
+            graphics: None,
             asset_store: asset_manager,
             input_state,
-            gui: GUI::default(),
         };
 
         Self {
@@ -65,12 +60,6 @@ impl Engine {
 
     pub fn should_exit(&self) -> bool {
         self.state_stack.current_state().is_none()
-    }
-
-    pub fn initialize_graphics(&mut self, window: Window, window_size: (u32, u32)) {
-        if let Some(graphics) = &mut self.context.graphics {
-            graphics.initialize(Window(Box::new(&window)), Size2::from(window_size));
-        }
     }
 
     pub fn application_title(&self) -> &str {
@@ -98,26 +87,13 @@ impl Engine {
         self.state_stack.handle_input(input, &mut self.context);
     }
 
-    pub fn on_window_resized(&mut self, width: u32, height: u32) {
-        self.context
-            .graphics
-            .as_mut()
-            .expect("No graphics")
-            .on_window_resized(width, height);
+    pub fn on_window_resized(&mut self, _width: u32, _height: u32) {
+        unimplemented!()
     }
 
     pub fn render(&mut self) {
         self.state_stack
             .render_current_state(&mut self.ecs, &mut self.context);
-
-        self.context.gui.render(
-            self.context.graphics.as_mut().unwrap(),
-            &mut self.context.asset_store,
-        );
-
-        if let Some(graphics) = self.context.graphics.as_mut() {
-            graphics.render_scene(&self.ecs, &mut self.context.asset_store);
-        }
     }
 
     fn keymap_file_path() -> Result<PathBuf> {

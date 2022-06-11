@@ -1,31 +1,17 @@
 use tuber_core::input::Input;
-use tuber_core::transform::Transform;
 use tuber_core::DeltaTime;
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
-use tuber_graphics::camera::{Active, OrthographicCamera};
 
 use crate::engine_context::EngineContext;
 
 pub trait State {
     fn initialize(
         &mut self,
-        ecs: &mut Ecs,
+        _ecs: &mut Ecs,
         _system_bundles: &mut Vec<SystemBundle<EngineContext>>,
         _engine_context: &mut EngineContext,
     ) {
-        ecs.insert((
-            OrthographicCamera {
-                left: 0.0,
-                right: 800.0,
-                top: 0.0,
-                bottom: 600.0,
-                near: -100.0,
-                far: 100.0,
-            },
-            Active,
-            Transform::default(),
-        ));
     }
     fn update(&mut self, _ecs: &mut Ecs, _engine_context: &mut EngineContext) {}
     fn render(&mut self, _ecs: &mut Ecs, _engine_context: &mut EngineContext) {}

@@ -13,7 +13,6 @@ use tuber_core::input::keyboard::Key;
 use tuber_core::input::mouse::Button;
 use tuber_core::input::Input;
 use tuber_engine::{Engine, Result as TuberResult, TuberRunner};
-use tuber_graphics::Window;
 
 #[allow(clippy::enum_variant_names)]
 enum TuberWinitError {
@@ -45,12 +44,6 @@ impl TuberRunner for WinitTuberRunner {
             .with_title(engine.application_title())
             .build(&event_loop)
             .unwrap();
-
-        info!("Initializing graphics engine");
-        engine.initialize_graphics(
-            Window(Box::new(&window)),
-            (window.inner_size().width, window.inner_size().height),
-        );
 
         info!("Pushing initial game state on the state stack");
         engine.push_initial_state();
