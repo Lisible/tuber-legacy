@@ -1,9 +1,17 @@
 use futures::executor::block_on;
 use log::*;
 use raw_window_handle::HasRawWindowHandle;
+use wgpu::BindingResource::TextureView;
 use wgpu::*;
 
 use tuber_ecs::ecs::Ecs;
+
+pub type GraphicsResult<T> = Result<T, GraphicsError>;
+
+#[derive(Debug, Clone)]
+pub enum GraphicsError {
+    SurfaceError(SurfaceError),
+}
 
 pub struct WindowSize {
     pub width: u32,
@@ -11,7 +19,7 @@ pub struct WindowSize {
 }
 
 pub trait GraphicsAPI {
-    fn render_scene(ecs: &Ecs);
+    fn render_scene(&mut self, _ecs: &Ecs) -> GraphicsResult<()>;
 }
 
 pub struct Graphics {
@@ -32,8 +40,8 @@ impl Graphics {
         let adapter = Self::request_adapter(&instance, &surface);
         Self::log_adapter_details(&adapter);
         let (device, queue) = Self::request_device(&adapter);
-
         Self::configure_surface(&window_size, &surface, &adapter, &device);
+        info!("Graphics API has been initialized successfully");
 
         Self {
             device,
@@ -107,5 +115,49 @@ impl Graphics {
         info!("Adapter name: {}", adapter_details.name);
         info!("Adapter backend: {:?}", adapter_details.backend);
         info!("Adapter type: {:?}", adapter_details.device_type);
+    }
+}
+
+impl GraphicsAPI for Graphics {
+    fn render_scene(&mut self, _ecs: &Ecs) -> GraphicsResult<()> {
+        info!("Starting scene render");
+        let output = self
+            .surface
+            .get_current_texture()
+            .map_err(GraphicsError::SurfaceError)?;
+        let view = output
+            .texture
+            .create_view(&TextureViewDescriptor::default());
+
+        let mut command_encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("command_encoder"),
+            });
+
+        {
+            let _render_pass = command_encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("render_pass"),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Clear(Color {
+                            r: 1.0,
+                            g: 1.0,
+                            b: 1.0,
+                            a: 1.0,
+                        }),
+                        store: true,
+                    },
+                })],
+                depth_stencil_attachment: None,
+            });
+        }
+
+        self.queue.submit(std::iter::once(command_encoder.finish()));
+        output.present();
+
+        Ok(())
     }
 }

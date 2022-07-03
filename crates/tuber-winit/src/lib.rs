@@ -57,7 +57,7 @@ impl TuberRunner for WinitTuberRunner {
             .build(&event_loop)
             .unwrap();
 
-        let graphics = Graphics::new(&window, window_size);
+        engine.set_graphics(Graphics::new(&window, window_size));
 
         info!("Pushing initial game state on the state stack");
         engine.push_initial_state();

@@ -9,6 +9,7 @@ use tuber_core::input::{InputState, Keymap};
 use tuber_core::{input, CoreError};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
+use tuber_graphics::{Graphics, GraphicsAPI};
 
 pub mod engine_context;
 pub mod state;
@@ -58,6 +59,10 @@ impl Engine {
         }
     }
 
+    pub fn set_graphics(&mut self, graphics: Graphics) {
+        self.context.graphics = Some(graphics);
+    }
+
     pub fn should_exit(&self) -> bool {
         self.state_stack.current_state().is_none()
     }
@@ -92,6 +97,9 @@ impl Engine {
     pub fn render(&mut self) {
         self.state_stack
             .render_current_state(&mut self.ecs, &mut self.context);
+        if let Some(graphics) = &mut self.context.graphics {
+            graphics.render_scene(&self.ecs).unwrap();
+        }
     }
 
     fn keymap_file_path() -> Result<PathBuf> {
