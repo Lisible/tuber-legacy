@@ -1,0 +1,13 @@
+[package]
+name = "window"
+version = "0.1.0"
+authors = ["Tuber contributors"]
+edition = "2021"
+
+[[bin]]
+path = "main.rs"
+name = "window"
+
+[dependencies]
+tuber = { path = "../.." }
+env_logger = "0.9.0"

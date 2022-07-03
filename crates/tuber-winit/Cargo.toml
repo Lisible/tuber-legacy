@@ -8,8 +8,8 @@ edition = "2018"
 
 [dependencies]
 log = "0.4.17"
-winit = "0.24.0"
+winit = "0.26.1"
 tuber-core = { path = "../tuber-core", version = "0.1.0" }
 tuber-graphics = { path = "../tuber-graphics", version = "0.1.0" }
 tuber-engine = { path = "../tuber-engine", version = "0.1.0" }
-raw-window-handle = "0.3.3"
+raw-window-handle = "0.4.2"

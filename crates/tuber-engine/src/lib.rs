@@ -87,9 +87,7 @@ impl Engine {
         self.state_stack.handle_input(input, &mut self.context);
     }
 
-    pub fn on_window_resized(&mut self, _width: u32, _height: u32) {
-        unimplemented!()
-    }
+    pub fn on_window_resized(&mut self, _width: u32, _height: u32) {}
 
     pub fn render(&mut self) {
         self.state_stack
