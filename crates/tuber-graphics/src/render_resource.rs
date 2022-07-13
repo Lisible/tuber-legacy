@@ -25,6 +25,14 @@ impl RenderResourceStore {
     }
 }
 
+pub type PassHandle = usize;
+
+#[derive(Copy, Clone, Debug)]
+pub enum RenderResourceSource {
+    RenderResource(RenderResourceHandle),
+    PassOutput(PassHandle, usize),
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct RenderResourceHandle {
     kind: RenderResourceKind,

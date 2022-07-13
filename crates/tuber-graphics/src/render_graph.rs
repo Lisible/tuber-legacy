@@ -1,3 +1,5 @@
+use std::thread::current;
+
 use log::trace;
 use wgpu::{
     Color as WGPUColor, CommandEncoder as WGPUCommandEncoder, Device as WGPUDevice,
@@ -6,7 +8,7 @@ use wgpu::{
     RenderPassDescriptor as WGPURenderPassDescriptor, RenderPipeline as WGPURenderPipeline,
 };
 
-use crate::render_resource::RenderResourceHandle;
+use crate::render_resource::{PassHandle, RenderResourceHandle, RenderResourceSource};
 use crate::RenderResourceStore;
 
 pub struct RenderGraph<'g> {
@@ -34,7 +36,10 @@ impl<'g> RenderGraph<'g> {
         }
     }
 
-    pub fn add_render_pass(&mut self, render_pass_descriptor: RenderPassDescriptor<'g>) {
+    pub fn add_render_pass(
+        &mut self,
+        render_pass_descriptor: RenderPassDescriptor<'g>,
+    ) -> PassHandle {
         trace!("Adding render pass \"{}\"", render_pass_descriptor.label);
         if render_pass_descriptor.fragment_shader.is_none()
             && render_pass_descriptor.vertex_shader.is_none()
@@ -45,6 +50,7 @@ impl<'g> RenderGraph<'g> {
                 .push(Some(self.generate_pipeline(&render_pass_descriptor)));
         }
         self.passes.push(render_pass_descriptor);
+        self.passes.len() - 1
     }
 
     /// Generates an appropriate execution order for the render pass
@@ -54,8 +60,9 @@ impl<'g> RenderGraph<'g> {
                 let render_targets = pass
                     .outputs
                     .iter()
+                    .map(|output| self.resource_handle_from_source(output))
                     .filter(|output| output.is_a_texture_view())
-                    .cloned()
+                    .to_owned()
                     .collect::<Vec<_>>();
                 self.color_attachments
                     .push(Self::generate_color_attachments(
@@ -71,6 +78,7 @@ impl<'g> RenderGraph<'g> {
     pub fn dispatch(&mut self, execution_order: &[usize]) {
         for &pass_index in execution_order.iter() {
             let current_pass = &mut self.passes[pass_index];
+            trace!("Dispatching pass \"{}\"", current_pass.label);
             let mut rpass = self
                 .command_encoder
                 .begin_render_pass(&WGPURenderPassDescriptor {
@@ -115,10 +123,10 @@ impl<'g> RenderGraph<'g> {
             })*/
     }
 
-    fn generate_color_attachments<'rs: 't, 't>(
-        render_resource_store: &'rs RenderResourceStore,
+    fn generate_color_attachments<'a>(
+        render_resource_store: &'a RenderResourceStore,
         render_targets: &[RenderResourceHandle],
-    ) -> Vec<Option<WGPURenderPassColorAttachment<'t>>> {
+    ) -> Vec<Option<WGPURenderPassColorAttachment<'a>>> {
         render_targets
             .iter()
             .map(|&render_target| {
@@ -147,6 +155,23 @@ impl<'g> RenderGraph<'g> {
         })
     }
 
+    fn resource_handle_from_source(&self, source: &RenderResourceSource) -> RenderResourceHandle {
+        match source {
+            &RenderResourceSource::RenderResource(handle) => handle,
+            &RenderResourceSource::PassOutput(pass_handle, output_index) => {
+                let mut output = self.passes[pass_handle].outputs[output_index];
+                while let RenderResourceSource::PassOutput(pass_handle, output_index) = output {
+                    output = self.passes[pass_handle].outputs[output_index];
+                }
+
+                match output {
+                    RenderResourceSource::RenderResource(handle) => handle,
+                    _ => panic!("Cannot find initial resource handle from resource source"),
+                }
+            }
+        }
+    }
+
     /*fn pipeline_layout_label(render_pass_label: &'a str) -> WGPULabel {
         Some(&format!("{}_pipeline_layout", render_pass_label))
     }
@@ -158,8 +183,8 @@ impl<'g> RenderGraph<'g> {
 
 pub struct RenderPassDescriptor<'a> {
     pub label: &'a str,
-    pub inputs: Vec<RenderResourceHandle>,
-    pub outputs: Vec<RenderResourceHandle>,
+    pub inputs: Vec<RenderResourceSource>,
+    pub outputs: Vec<RenderResourceSource>,
     pub vertex_shader: Option<String>,
     pub fragment_shader: Option<String>,
     pub dispatch: Box<dyn Fn(&mut wgpu::RenderPass<'_>)>,

@@ -14,7 +14,7 @@ use wgpu::{
 use tuber_ecs::ecs::Ecs;
 
 use crate::render_graph::{RenderGraph, RenderPassDescriptor};
-use crate::render_resource::RenderResourceStore;
+use crate::render_resource::{RenderResourceSource, RenderResourceStore};
 
 mod render_graph;
 mod render_resource;
@@ -151,21 +151,36 @@ impl GraphicsAPI for Graphics {
                 .create_command_encoder(&WGPUCommandEncoderDescriptor {
                     label: Some("command_encoder"),
                 });
+
         let mut render_graph = RenderGraph::new(
             &self.device,
             &mut command_encoder,
             &self.render_resource_store,
         );
-        render_graph.add_render_pass(RenderPassDescriptor {
-            label: "Clear render target",
+
+        let _pass_handle0 = render_graph.add_render_pass(RenderPassDescriptor {
+            label: "do_nothing",
             inputs: vec![],
-            outputs: vec![current_surface_texture_view_handle],
+            outputs: vec![RenderResourceSource::RenderResource(
+                current_surface_texture_view_handle,
+            )],
             vertex_shader: None,
             fragment_shader: None,
             dispatch: Box::new(|_rpass| {}),
         });
+
+        let _pass_handle = render_graph.add_render_pass(RenderPassDescriptor {
+            label: "clear_render_target",
+            inputs: vec![],
+            outputs: vec![RenderResourceSource::PassOutput(_pass_handle0, 0)],
+            vertex_shader: None,
+            fragment_shader: None,
+            dispatch: Box::new(|_rpass| {}),
+        });
+
         let execution_order = render_graph.compile();
         render_graph.dispatch(&execution_order);
+
         self.queue.submit(std::iter::once(command_encoder.finish()));
         output.present();
         trace!("Render finished");
