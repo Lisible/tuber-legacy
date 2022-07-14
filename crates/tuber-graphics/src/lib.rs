@@ -1,23 +1,10 @@
 use futures::executor::block_on;
 use log::*;
 use raw_window_handle::HasRawWindowHandle;
-use wgpu::{
-    Adapter as WGPUAdapter, Backends as WGPUBackends,
-    CommandEncoderDescriptor as WGPUCommandEncoderDescriptor, Device as WGPUDevice,
-    DeviceDescriptor as WGPUDeviceDescriptor, Instance as WGPUInstance, Limits as WGPULimits,
-    PowerPreference as WGPUPowerPreference, PresentMode as WGPUPresentMode, Queue as WGPUQueue,
-    RequestAdapterOptions as WGPURequestAdapterOptions, Surface as WGPUSurface,
-    SurfaceConfiguration as WGPUSurfaceConfiguration, SurfaceError as WGPUSurfaceError,
-    TextureUsages as WGPUTextureUsages, TextureViewDescriptor as WGPUTextureViewDescriptor,
-};
-
+use crate::wgpu::*;
 use tuber_ecs::ecs::Ecs;
 
-use crate::render_graph::{RenderGraph, RenderPassDescriptor};
-use crate::render_resource::{RenderResourceSource, RenderResourceStore};
-
-mod render_graph;
-mod render_resource;
+mod wgpu;
 
 pub type GraphicsResult<T> = Result<T, GraphicsError>;
 
@@ -40,7 +27,6 @@ pub struct Graphics {
     queue: WGPUQueue,
     surface: WGPUSurface,
     _window_size: WindowSize,
-    render_resource_store: RenderResourceStore,
 }
 
 impl Graphics {
@@ -62,7 +48,6 @@ impl Graphics {
             queue,
             surface,
             _window_size: window_size,
-            render_resource_store: RenderResourceStore::default(),
         }
     }
 
@@ -140,46 +125,14 @@ impl GraphicsAPI for Graphics {
             .surface
             .get_current_texture()
             .map_err(GraphicsError::SurfaceError)?;
-        let view = output
+        let _view = output
             .texture
             .create_view(&WGPUTextureViewDescriptor::default());
-        let current_surface_texture_view_handle = self
-            .render_resource_store
-            .store_current_surface_texture_view(view);
-        let mut command_encoder =
+        let command_encoder =
             self.device
                 .create_command_encoder(&WGPUCommandEncoderDescriptor {
                     label: Some("command_encoder"),
                 });
-
-        let mut render_graph = RenderGraph::new(
-            &self.device,
-            &mut command_encoder,
-            &self.render_resource_store,
-        );
-
-        let _pass_handle0 = render_graph.add_render_pass(RenderPassDescriptor {
-            label: "do_nothing",
-            inputs: vec![],
-            outputs: vec![RenderResourceSource::RenderResource(
-                current_surface_texture_view_handle,
-            )],
-            vertex_shader: None,
-            fragment_shader: None,
-            dispatch: Box::new(|_rpass| {}),
-        });
-
-        let _pass_handle = render_graph.add_render_pass(RenderPassDescriptor {
-            label: "clear_render_target",
-            inputs: vec![],
-            outputs: vec![RenderResourceSource::PassOutput(_pass_handle0, 0)],
-            vertex_shader: None,
-            fragment_shader: None,
-            dispatch: Box::new(|_rpass| {}),
-        });
-
-        let execution_order = render_graph.compile();
-        render_graph.dispatch(&execution_order);
 
         self.queue.submit(std::iter::once(command_encoder.finish()));
         output.present();
