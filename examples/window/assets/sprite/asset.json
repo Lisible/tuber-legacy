@@ -1,0 +1,7 @@
+{
+  "identifier": "sprite",
+  "kind": "texture",
+  "metadata": {
+    "texture_data": "sprite.png"
+  }
+}

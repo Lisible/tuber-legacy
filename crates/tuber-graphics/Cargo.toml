@@ -11,5 +11,6 @@ tuber-core = { path = "../tuber-core" }
 tuber-ecs = { path = "../tuber-ecs" }
 raw-window-handle = "0.4.2"
 wgpu = "0.13.1"
+image = "0.24.2"
 futures = "0.3.21"
 log = "0.4.17"

@@ -1,16 +1,29 @@
+use std::any::TypeId;
+
 use futures::executor::block_on;
+use futures::io;
 use log::*;
 use raw_window_handle::HasRawWindowHandle;
-use crate::wgpu::*;
+
+use tuber_core::asset::GenericLoader;
 use tuber_ecs::ecs::Ecs;
 
+use crate::resources::Resources;
+use crate::textures::{texture_loader, TextureAsset};
+use crate::wgpu::*;
+
 mod wgpu;
+mod resources;
+mod textures;
+mod shaders;
 
 pub type GraphicsResult<T> = Result<T, GraphicsError>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum GraphicsError {
     SurfaceError(WGPUSurfaceError),
+    TextureFileOpenError(io::Error),
+    ImageDecodeError(image::ImageError),
 }
 
 pub struct WindowSize {
@@ -20,6 +33,7 @@ pub struct WindowSize {
 
 pub trait GraphicsAPI {
     fn render_scene(&mut self, _ecs: &Ecs) -> GraphicsResult<()>;
+    fn loaders() -> Vec<(TypeId, GenericLoader)>;
 }
 
 pub struct Graphics {
@@ -27,12 +41,13 @@ pub struct Graphics {
     queue: WGPUQueue,
     surface: WGPUSurface,
     _window_size: WindowSize,
+    _resources: Resources,
 }
 
 impl Graphics {
     pub fn new<Window>(window: &Window, window_size: WindowSize) -> Self
-    where
-        Window: HasRawWindowHandle,
+        where
+            Window: HasRawWindowHandle,
     {
         info!("Initializing graphics API");
         let instance = Self::create_wgpu_instance();
@@ -41,6 +56,7 @@ impl Graphics {
         Self::log_adapter_details(&adapter);
         let (device, queue) = Self::request_device(&adapter);
         Self::configure_surface(&window_size, &surface, &adapter, &device);
+        let resources = Self::create_resources();
         info!("Graphics API has been initialized successfully");
 
         Self {
@@ -48,7 +64,12 @@ impl Graphics {
             queue,
             surface,
             _window_size: window_size,
+            _resources: resources,
         }
+    }
+
+    pub fn create_resources() -> Resources {
+        Resources::default()
     }
 
     fn create_wgpu_instance() -> WGPUInstance {
@@ -57,8 +78,8 @@ impl Graphics {
     }
 
     fn create_render_surface<Window>(instance: &WGPUInstance, window: &Window) -> WGPUSurface
-    where
-        Window: HasRawWindowHandle,
+        where
+            Window: HasRawWindowHandle,
     {
         info!("Creating render surface");
         // Safety: The window is created by the engine and is valid
@@ -73,7 +94,7 @@ impl Graphics {
             force_fallback_adapter: false,
             compatible_surface: Some(surface),
         }))
-        .unwrap()
+            .unwrap()
     }
 
     fn request_device(adapter: &WGPUAdapter) -> (WGPUDevice, WGPUQueue) {
@@ -90,7 +111,7 @@ impl Graphics {
             },
             None,
         ))
-        .unwrap()
+            .unwrap()
     }
 
     fn configure_surface(
@@ -139,5 +160,9 @@ impl GraphicsAPI for Graphics {
         trace!("Render finished");
 
         Ok(())
+    }
+
+    fn loaders() -> Vec<(TypeId, GenericLoader)> {
+        vec!((TypeId::of::<TextureAsset>(), Box::new(texture_loader)))
     }
 }
