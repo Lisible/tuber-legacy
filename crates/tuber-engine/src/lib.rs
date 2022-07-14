@@ -4,9 +4,9 @@ use log::info;
 
 use engine_context::EngineContext;
 use state::*;
+use tuber_core::{CoreError, input};
 use tuber_core::asset::AssetStore;
 use tuber_core::input::{InputState, Keymap};
-use tuber_core::{input, CoreError};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
 use tuber_graphics::{Graphics, GraphicsAPI};
@@ -37,6 +37,7 @@ impl Engine {
         info!("Creating tuber instance");
         let mut asset_manager = AssetStore::default();
         asset_manager.load_assets_metadata().unwrap();
+        asset_manager.register_loaders(Graphics::loaders());
 
         let input_state = InputState::new(
             Keymap::from_file(&Self::keymap_file_path().unwrap()).unwrap_or_default(),

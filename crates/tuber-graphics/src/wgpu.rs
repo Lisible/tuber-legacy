@@ -8,8 +8,9 @@ pub use wgpu::{
     Operations as WGPUOperations, PowerPreference as WGPUPowerPreference, PresentMode as WGPUPresentMode,
     Queue as WGPUQueue, RenderPassColorAttachment as WGPURenderPassColorAttachment, RenderPassDescriptor as WGPURenderPassDescriptor,
     RenderPipeline as WGPURenderPipeline, RequestAdapterOptions as WGPURequestAdapterOptions,
+    ShaderModule as WGPUShaderModule, ShaderModuleDescriptor as WGPUShaderModuleDescriptor,
     Surface as WGPUSurface, SurfaceConfiguration as WGPUSurfaceConfiguration,
-    SurfaceError as WGPUSurfaceError, Texture as WGPUTexture,
-    TextureDescriptor as WGPUTextureDescriptor, TextureDimension as WGPUTextureDimension, TextureFormat as WGPUTextureFormat, TextureUsages as WGPUTextureUsages, TextureViewDescriptor as WGPUTextureViewDescriptor,
+    SurfaceError as WGPUSurfaceError, Texture as WGPUTexture, TextureDescriptor as WGPUTextureDescriptor, TextureDimension as WGPUTextureDimension, TextureFormat as WGPUTextureFormat,
+    TextureUsages as WGPUTextureUsages, TextureViewDescriptor as WGPUTextureViewDescriptor,
 };
 

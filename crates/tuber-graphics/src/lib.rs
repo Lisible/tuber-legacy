@@ -9,6 +9,7 @@ use tuber_core::asset::GenericLoader;
 use tuber_ecs::ecs::Ecs;
 
 use crate::resources::Resources;
+use crate::shaders::{shader_loader, ShaderAsset};
 use crate::textures::{texture_loader, TextureAsset};
 use crate::wgpu::*;
 
@@ -163,6 +164,6 @@ impl GraphicsAPI for Graphics {
     }
 
     fn loaders() -> Vec<(TypeId, GenericLoader)> {
-        vec!((TypeId::of::<TextureAsset>(), Box::new(texture_loader)))
+        vec!((TypeId::of::<TextureAsset>(), Box::new(texture_loader)), (TypeId::of::<ShaderAsset>(), Box::new(shader_loader)))
     }
 }

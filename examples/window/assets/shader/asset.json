@@ -1,0 +1,7 @@
+{
+  "identifier": "shader",
+  "kind": "shader",
+  "metadata": {
+    "source_file": "shader.wgsl"
+  }
+}

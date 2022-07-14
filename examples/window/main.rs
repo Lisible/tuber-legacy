@@ -15,4 +15,6 @@ fn main() -> Result<()> {
 }
 
 struct MainState;
-impl State for MainState {}
+impl State for MainState {
+
+}
