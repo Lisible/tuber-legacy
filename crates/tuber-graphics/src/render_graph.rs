@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Index;
+use std::thread::current;
 
 use crate::{GraphicsResult, WGPURenderPass};
 
@@ -15,15 +16,23 @@ enum RenderGraphError<'a> {
 }
 
 pub struct RenderGraph<'a> {
+    pass_handles: Vec<PassHandle>,
     passes: Vec<RenderPass<'a>>,
+    pass_dependencies: HashMap<PassHandle, HashSet<PassHandle>>,
+    reversed_pass_dependencies: HashMap<PassHandle, HashSet<PassHandle>>,
     edges: HashMap<EdgeEnd<'a>, EdgeEnd<'a>>,
+    reversed_edges: HashMap<EdgeEnd<'a>, EdgeEnd<'a>>,
 }
 
 impl<'a> RenderGraph<'a> {
     pub fn new() -> Self {
         Self {
+            pass_handles: vec![],
             passes: vec![],
+            pass_dependencies: HashMap::new(),
+            reversed_pass_dependencies: HashMap::new(),
             edges: HashMap::new(),
+            reversed_edges: HashMap::new(),
         }
     }
 
@@ -64,7 +73,49 @@ impl<'a> RenderGraph<'a> {
             EdgeEnd(src_pass_handle, src_slot_identifier),
             EdgeEnd(dst_pass_handle, dst_slot_identifier),
         );
+
+        self.reversed_edges.insert(
+            EdgeEnd(dst_pass_handle, dst_slot_identifier),
+            EdgeEnd(src_pass_handle, src_slot_identifier),
+        );
+
+        let dst_pass_dependencies = self.pass_dependencies.entry(dst_pass_handle).or_default();
+        dst_pass_dependencies.insert(src_pass_handle);
+        let reversed_src_pass_dependencies = self
+            .reversed_pass_dependencies
+            .entry(src_pass_handle)
+            .or_default();
+        reversed_src_pass_dependencies.insert(dst_pass_handle);
+
         Ok(())
+    }
+
+    pub fn generate_pass_ordering(&mut self) -> Vec<PassHandle> {
+        let mut pass_ordering = self
+            .pass_handles
+            .iter()
+            .filter(|handle| self.reversed_pass_dependencies[handle].is_empty())
+            .cloned()
+            .collect::<Vec<_>>();
+
+        dbg!(&pass_ordering);
+
+        let mut visited = HashSet::new();
+        let mut pass_stack = pass_ordering.iter().cloned().collect::<Vec<_>>();
+        while let Some(pass_handle) = pass_stack.pop() {
+            visited.insert(pass_handle);
+            for dependency in &self.pass_dependencies[&pass_handle] {
+                if visited.contains(&dependency) {
+                    continue;
+                }
+
+                pass_ordering.push(*dependency);
+                pass_stack.push(*dependency);
+            }
+        }
+
+        pass_ordering.reverse();
+        pass_ordering
     }
 }
 
@@ -97,12 +148,26 @@ impl<'a, 'g> PassBuilder<'a, 'g> {
             dispatch_fn: Box::new(dispatch_fn),
         });
 
-        PassHandle(self.render_graph.passes.len() - 1)
+        let handle = PassHandle(self.render_graph.passes.len() - 1);
+        self.render_graph.pass_handles.push(handle);
+        self.render_graph
+            .pass_dependencies
+            .insert(handle, HashSet::new());
+        self.render_graph
+            .reversed_pass_dependencies
+            .insert(handle, HashSet::new());
+        handle
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PassHandle(usize);
+
+impl From<usize> for PassHandle {
+    fn from(id: usize) -> Self {
+        PassHandle(id)
+    }
+}
 
 struct RenderPass<'a> {
     identifier: &'a str,
@@ -160,6 +225,79 @@ mod tests {
 
         let add_edge_result = render_graph.add_edge(pass_0, "write_slot_0", pass_1, "read_slot_0");
         assert!(add_edge_result.is_ok());
+    }
+
+    #[test]
+    fn render_graph_generate_pass_ordering() {
+        let mut render_graph = RenderGraph::new();
+
+        let pass_0 = render_graph
+            .add_pass("pass0")
+            .with_read_slot("read_slot_0")
+            .with_write_slot("write_slot_0")
+            .dispatch(|_| {});
+
+        let pass_1 = render_graph
+            .add_pass("pass1")
+            .with_read_slot("read_slot_0")
+            .with_write_slot("write_slot_0")
+            .dispatch(|_| {});
+
+        render_graph
+            .add_edge(pass_0, "write_slot_0", pass_1, "read_slot_0")
+            .unwrap();
+        let pass_ordering = render_graph.generate_pass_ordering();
+        assert_eq!(pass_ordering.len(), 2);
+        assert_eq!(pass_ordering[0], pass_0);
+        assert_eq!(pass_ordering[1], pass_1);
+    }
+
+    #[test]
+    fn render_graph_generate_pass_ordering_2() {
+        let mut render_graph = RenderGraph::new();
+
+        let pass_a = render_graph
+            .add_pass("A")
+            .with_read_slot("read_slot_0")
+            .with_write_slot("write_slot_0")
+            .with_write_slot("write_slot_1")
+            .dispatch(|_| {});
+
+        let pass_b = render_graph
+            .add_pass("B")
+            .with_read_slot("read_slot_0")
+            .with_write_slot("write_slot_0")
+            .dispatch(|_| {});
+
+        let pass_c = render_graph
+            .add_pass("C")
+            .with_read_slot("read_slot_0")
+            .with_read_slot("read_slot_1")
+            .with_read_slot("read_slot_2")
+            .with_write_slot("write_slot_0")
+            .dispatch(|_| {});
+
+        let pass_d = render_graph
+            .add_pass("D")
+            .with_read_slot("read_slot_0")
+            .with_write_slot("write_slot_0")
+            .dispatch(|_| {});
+
+        render_graph
+            .add_edge(pass_a, "write_slot_0", pass_c, "read_slot_0")
+            .unwrap();
+        render_graph
+            .add_edge(pass_a, "write_slot_1", pass_c, "read_slot_1")
+            .unwrap();
+        render_graph
+            .add_edge(pass_b, "write_slot_0", pass_c, "read_slot_2")
+            .unwrap();
+        render_graph
+            .add_edge(pass_b, "write_slot_0", pass_d, "read_slot_0")
+            .unwrap();
+
+        let pass_ordering = render_graph.generate_pass_ordering();
+        dbg!(pass_ordering);
     }
 
     #[test]

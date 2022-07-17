@@ -13,10 +13,11 @@ use crate::shaders::{shader_loader, ShaderAsset};
 use crate::textures::{texture_loader, TextureAsset};
 use crate::wgpu::*;
 
-mod wgpu;
+mod render_graph;
 mod resources;
-mod textures;
 mod shaders;
+mod textures;
+mod wgpu;
 
 pub type GraphicsResult<T> = Result<T, GraphicsError>;
 
@@ -47,8 +48,8 @@ pub struct Graphics {
 
 impl Graphics {
     pub fn new<Window>(window: &Window, window_size: WindowSize) -> Self
-        where
-            Window: HasRawWindowHandle,
+    where
+        Window: HasRawWindowHandle,
     {
         info!("Initializing graphics API");
         let instance = Self::create_wgpu_instance();
@@ -79,8 +80,8 @@ impl Graphics {
     }
 
     fn create_render_surface<Window>(instance: &WGPUInstance, window: &Window) -> WGPUSurface
-        where
-            Window: HasRawWindowHandle,
+    where
+        Window: HasRawWindowHandle,
     {
         info!("Creating render surface");
         // Safety: The window is created by the engine and is valid
@@ -95,7 +96,7 @@ impl Graphics {
             force_fallback_adapter: false,
             compatible_surface: Some(surface),
         }))
-            .unwrap()
+        .unwrap()
     }
 
     fn request_device(adapter: &WGPUAdapter) -> (WGPUDevice, WGPUQueue) {
@@ -112,7 +113,7 @@ impl Graphics {
             },
             None,
         ))
-            .unwrap()
+        .unwrap()
     }
 
     fn configure_surface(
@@ -150,11 +151,11 @@ impl GraphicsAPI for Graphics {
         let _view = output
             .texture
             .create_view(&WGPUTextureViewDescriptor::default());
-        let command_encoder =
-            self.device
-                .create_command_encoder(&WGPUCommandEncoderDescriptor {
-                    label: Some("command_encoder"),
-                });
+        let command_encoder = self
+            .device
+            .create_command_encoder(&WGPUCommandEncoderDescriptor {
+                label: Some("command_encoder"),
+            });
 
         self.queue.submit(std::iter::once(command_encoder.finish()));
         output.present();
@@ -164,6 +165,9 @@ impl GraphicsAPI for Graphics {
     }
 
     fn loaders() -> Vec<(TypeId, GenericLoader)> {
-        vec!((TypeId::of::<TextureAsset>(), Box::new(texture_loader)), (TypeId::of::<ShaderAsset>(), Box::new(shader_loader)))
+        vec![
+            (TypeId::of::<TextureAsset>(), Box::new(texture_loader)),
+            (TypeId::of::<ShaderAsset>(), Box::new(shader_loader)),
+        ]
     }
 }
