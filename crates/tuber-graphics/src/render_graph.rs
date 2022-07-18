@@ -2,6 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::ops::Index;
 use std::thread::current;
 
+use crate::resources::Handle;
+use crate::shaders::Shader;
 use crate::{GraphicsResult, WGPURenderPass};
 
 type RenderGraphResult<'a, T> = Result<T, RenderGraphError<'a>>;
@@ -39,10 +41,22 @@ impl<'a> RenderGraph<'a> {
     pub fn add_pass(&mut self, pass_identifier: &'a str) -> PassBuilder<'a, '_> {
         PassBuilder {
             render_graph: self,
+            shader_handle: None,
             identifier: pass_identifier,
             read_slots: HashSet::new(),
             write_slots: HashSet::new(),
         }
+    }
+
+    pub(crate) fn generate_pass(&mut self, render_pass: RenderPass<'a>) -> PassHandle {
+        self.passes.push(render_pass);
+        let handle = PassHandle(self.passes.len() - 1);
+        self.pass_handles.push(handle);
+        self.pass_dependencies.insert(handle, HashSet::new());
+        self.reversed_pass_dependencies
+            .insert(handle, HashSet::new());
+
+        handle
     }
 
     pub fn add_edge(
@@ -98,8 +112,6 @@ impl<'a> RenderGraph<'a> {
             .cloned()
             .collect::<Vec<_>>();
 
-        dbg!(&pass_ordering);
-
         let mut visited = HashSet::new();
         let mut pass_stack = pass_ordering.iter().cloned().collect::<Vec<_>>();
         while let Some(pass_handle) = pass_stack.pop() {
@@ -122,11 +134,17 @@ impl<'a> RenderGraph<'a> {
 pub struct PassBuilder<'a, 'g> {
     render_graph: &'g mut RenderGraph<'a>,
     identifier: &'a str,
+    shader_handle: Option<Handle<Shader>>,
     read_slots: HashSet<&'a str>,
     write_slots: HashSet<&'a str>,
 }
 
 impl<'a, 'g> PassBuilder<'a, 'g> {
+    pub fn using_shader(mut self, shader_handle: Handle<Shader>) -> Self {
+        self.shader_handle = Some(shader_handle);
+        self
+    }
+
     pub fn with_read_slot(mut self, slot_identifier: &'a str) -> Self {
         self.read_slots.insert(slot_identifier);
         self
@@ -141,22 +159,13 @@ impl<'a, 'g> PassBuilder<'a, 'g> {
     where
         F: for<'p> Fn(WGPURenderPass<'p>) + 'static,
     {
-        self.render_graph.passes.push(RenderPass {
+        self.render_graph.generate_pass(RenderPass {
             identifier: self.identifier,
+            shader_handle: self.shader_handle,
             read_slots: self.read_slots,
             write_slots: self.write_slots,
             dispatch_fn: Box::new(dispatch_fn),
-        });
-
-        let handle = PassHandle(self.render_graph.passes.len() - 1);
-        self.render_graph.pass_handles.push(handle);
-        self.render_graph
-            .pass_dependencies
-            .insert(handle, HashSet::new());
-        self.render_graph
-            .reversed_pass_dependencies
-            .insert(handle, HashSet::new());
-        handle
+        })
     }
 }
 
@@ -171,6 +180,7 @@ impl From<usize> for PassHandle {
 
 struct RenderPass<'a> {
     identifier: &'a str,
+    shader_handle: Option<Handle<Shader>>,
     read_slots: HashSet<&'a str>,
     write_slots: HashSet<&'a str>,
     dispatch_fn: Box<dyn Fn(WGPURenderPass<'_>)>,
@@ -186,25 +196,64 @@ impl<'a> Index<PassHandle> for Vec<RenderPass<'a>> {
 
 #[cfg(test)]
 mod tests {
+    use std::marker::PhantomData;
+
+    use crate::Resources;
+
     use super::*;
 
     #[test]
-    fn render_graph_add_pass() {
+    fn render_pass_builder_initial() {
         let mut render_graph = RenderGraph::new();
 
-        let pass_0 = render_graph
-            .add_pass("pass0")
-            .with_read_slot("read_slot_0")
-            .with_write_slot("write_slot_0")
-            .dispatch(|_| {});
-        assert_eq!(pass_0, PassHandle(0));
+        let pass_builder = render_graph.add_pass("pass0");
 
-        let pass_1 = render_graph
-            .add_pass("pass1")
-            .with_read_slot("read_slot_0")
-            .with_write_slot("write_slot_0")
-            .dispatch(|_| {});
-        assert_eq!(pass_1, PassHandle(1));
+        assert_eq!(pass_builder.identifier, "pass0");
+        assert!(matches!(pass_builder.shader_handle, None));
+        assert!(pass_builder.write_slots.is_empty());
+        assert!(pass_builder.read_slots.is_empty());
+    }
+
+    #[test]
+    fn render_pass_builder_with_read_slot() {
+        let mut render_graph = RenderGraph::new();
+
+        let pass_builder = render_graph.add_pass("pass0").with_read_slot("read_slot");
+
+        assert_eq!(pass_builder.identifier, "pass0");
+        assert!(matches!(pass_builder.shader_handle, None));
+        assert!(pass_builder.write_slots.is_empty());
+        assert!(!pass_builder.read_slots.is_empty());
+        assert_eq!(pass_builder.read_slots.iter().next().unwrap(), &"read_slot");
+    }
+
+    #[test]
+    fn render_pass_builder_with_write_slot() {
+        let mut render_graph = RenderGraph::new();
+
+        let pass_builder = render_graph.add_pass("pass0").with_write_slot("write_slot");
+
+        assert_eq!(pass_builder.identifier, "pass0");
+        assert!(matches!(pass_builder.shader_handle, None));
+        assert!(!pass_builder.write_slots.is_empty());
+        assert_eq!(
+            pass_builder.write_slots.iter().next().unwrap(),
+            &"write_slot"
+        );
+        assert!(pass_builder.read_slots.is_empty());
+    }
+
+    #[test]
+    fn render_pass_builder_with_using_shader() {
+        let mut render_graph = RenderGraph::new();
+        let shader_handle = Handle::<Shader>::dummy();
+
+        let pass_builder = render_graph.add_pass("pass0").using_shader(shader_handle);
+
+        assert_eq!(pass_builder.identifier, "pass0");
+        assert!(matches!(pass_builder.shader_handle, Some(shader_handle)));
+        assert!(pass_builder.write_slots.is_empty());
+        assert!(pass_builder.read_slots.is_empty());
     }
 
     #[test]
@@ -229,31 +278,6 @@ mod tests {
 
     #[test]
     fn render_graph_generate_pass_ordering() {
-        let mut render_graph = RenderGraph::new();
-
-        let pass_0 = render_graph
-            .add_pass("pass0")
-            .with_read_slot("read_slot_0")
-            .with_write_slot("write_slot_0")
-            .dispatch(|_| {});
-
-        let pass_1 = render_graph
-            .add_pass("pass1")
-            .with_read_slot("read_slot_0")
-            .with_write_slot("write_slot_0")
-            .dispatch(|_| {});
-
-        render_graph
-            .add_edge(pass_0, "write_slot_0", pass_1, "read_slot_0")
-            .unwrap();
-        let pass_ordering = render_graph.generate_pass_ordering();
-        assert_eq!(pass_ordering.len(), 2);
-        assert_eq!(pass_ordering[0], pass_0);
-        assert_eq!(pass_ordering[1], pass_1);
-    }
-
-    #[test]
-    fn render_graph_generate_pass_ordering_2() {
         let mut render_graph = RenderGraph::new();
 
         let pass_a = render_graph
@@ -297,7 +321,10 @@ mod tests {
             .unwrap();
 
         let pass_ordering = render_graph.generate_pass_ordering();
-        dbg!(pass_ordering);
+        assert_eq!(pass_ordering[0], pass_a);
+        assert_eq!(pass_ordering[1], pass_b);
+        assert_eq!(pass_ordering[2], pass_d);
+        assert_eq!(pass_ordering[3], pass_c);
     }
 
     #[test]
@@ -326,37 +353,4 @@ mod tests {
             add_edge_result
         ))
     }
-
-    /*#[test]
-    fn render_graph_new() {
-        let render_graph = RenderGraph::new();
-        let texture = render_graph.import_texture(&texture);
-        let pass_1 = render_graph
-            .add_pass("some_first_pass")
-            .using_shader(&shader)
-            .with_read_slot("in_texture")
-            .with_write_slot("out_texture")
-            .dispatch(|rpass| {});
-
-        let pass_1_2 = render_graph
-            .add_pass("some_other_first_pass")
-            .using_shader(&shader)
-            .with_read_slot("in_texture")
-            .with_write_slot("out_texture")
-            .dispatch(|rpass| {});
-
-        let pass_2 = render_graph
-            .add_pass("some_second_pass")
-            .using_shader(&shader2)
-            .read(&texture2)
-            .with_read_slot("in_texture_1")
-            .with_read_slot("in_texture_2")
-            .with_write_slot("out_texture")
-            .dispatch(|rpass| {});
-
-        render_graph.add_edge(pass1, "out_texture", pass_2, "in_texture_1");
-        render_graph.add_edge(pass1_2, "out_texture", pass_2, "in_texture_2");
-        render_graph.set_input_for_read_slot(pass_1, "in_texture", texture);
-        render_graph.set_input_for_read_slot(pass_1_2, "in_texture", texture);
-    }*/
 }

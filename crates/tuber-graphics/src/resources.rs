@@ -1,18 +1,23 @@
 use std::marker::PhantomData;
 
-use crate::GraphicsResult;
 use crate::shaders::Shader;
 use crate::textures::*;
 use crate::wgpu::*;
+use crate::GraphicsResult;
 
 #[derive(Default)]
 pub struct Resources {
     textures: Vec<Texture>,
-    shaders: Vec<Shader>
+    shaders: Vec<Shader>,
 }
 
 impl Resources {
-    pub fn create_texture(&mut self, device: &WGPUDevice, size: TextureSize, format: TextureFormat) -> GraphicsResult<Handle<Texture>> {
+    pub fn create_texture(
+        &mut self,
+        device: &WGPUDevice,
+        size: TextureSize,
+        format: TextureFormat,
+    ) -> GraphicsResult<Handle<Texture>> {
         let wgpu_texture = device.create_texture(&WGPUTextureDescriptor {
             label: None,
             size: size.into(),
@@ -28,10 +33,15 @@ impl Resources {
         Ok(Handle::<Texture>::new(self.textures.len() - 1))
     }
 
-    pub fn create_shader(&mut self, device: &WGPUDevice, shader_identifier: &str, shader_source: &str) -> GraphicsResult<Handle<Shader>> {
+    pub fn create_shader(
+        &mut self,
+        device: &WGPUDevice,
+        shader_identifier: &str,
+        shader_source: &str,
+    ) -> GraphicsResult<Handle<Shader>> {
         let wgpu_shader_module = device.create_shader_module(WGPUShaderModuleDescriptor {
             label: Some(shader_identifier),
-            source: wgpu::ShaderSource::Wgsl(shader_source.into())
+            source: wgpu::ShaderSource::Wgsl(shader_source.into()),
         });
 
         self.shaders.push(Shader::new(wgpu_shader_module));
@@ -40,7 +50,7 @@ impl Resources {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Handle<T> {
     id: usize,
     marker: PhantomData<T>,
@@ -50,6 +60,14 @@ impl<T> Handle<T> {
     pub fn new(id: usize) -> Self {
         Self {
             id,
+            marker: PhantomData,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn dummy() -> Handle<T> {
+        Handle {
+            id: 0,
             marker: PhantomData,
         }
     }
