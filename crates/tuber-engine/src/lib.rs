@@ -4,9 +4,9 @@ use log::info;
 
 use engine_context::EngineContext;
 use state::*;
-use tuber_core::{CoreError, input};
 use tuber_core::asset::AssetStore;
 use tuber_core::input::{InputState, Keymap};
+use tuber_core::{input, CoreError};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
 use tuber_graphics::{Graphics, GraphicsAPI};
@@ -99,7 +99,9 @@ impl Engine {
         self.state_stack
             .render_current_state(&mut self.ecs, &mut self.context);
         if let Some(graphics) = &mut self.context.graphics {
-            graphics.render_scene(&self.ecs).unwrap();
+            graphics
+                .render_scene(&self.ecs, &mut self.context.asset_store)
+                .unwrap();
         }
     }
 

@@ -5,16 +5,15 @@ use futures::io;
 use log::*;
 use raw_window_handle::HasRawWindowHandle;
 
-use tuber_core::asset::GenericLoader;
+use tuber_core::asset::{AssetStore, GenericLoader};
 use tuber_ecs::ecs::Ecs;
 
-use crate::resources::Resources;
-use crate::shaders::{shader_loader, ShaderAsset};
+use crate::render_graph::{RenderGraph, RenderGraphResources};
+use crate::shaders::{shader_loader, Shader, ShaderAsset};
 use crate::textures::{texture_loader, TextureAsset};
 use crate::wgpu::*;
 
 mod render_graph;
-mod resources;
 mod shaders;
 mod textures;
 mod wgpu;
@@ -34,7 +33,7 @@ pub struct WindowSize {
 }
 
 pub trait GraphicsAPI {
-    fn render_scene(&mut self, _ecs: &Ecs) -> GraphicsResult<()>;
+    fn render_scene(&mut self, _ecs: &Ecs, asset_store: &mut AssetStore) -> GraphicsResult<()>;
     fn loaders() -> Vec<(TypeId, GenericLoader)>;
 }
 
@@ -43,7 +42,6 @@ pub struct Graphics {
     queue: WGPUQueue,
     surface: WGPUSurface,
     _window_size: WindowSize,
-    _resources: Resources,
 }
 
 impl Graphics {
@@ -58,7 +56,6 @@ impl Graphics {
         Self::log_adapter_details(&adapter);
         let (device, queue) = Self::request_device(&adapter);
         Self::configure_surface(&window_size, &surface, &adapter, &device);
-        let resources = Self::create_resources();
         info!("Graphics API has been initialized successfully");
 
         Self {
@@ -66,12 +63,7 @@ impl Graphics {
             queue,
             surface,
             _window_size: window_size,
-            _resources: resources,
         }
-    }
-
-    pub fn create_resources() -> Resources {
-        Resources::default()
     }
 
     fn create_wgpu_instance() -> WGPUInstance {
@@ -142,20 +134,32 @@ impl Graphics {
 }
 
 impl GraphicsAPI for Graphics {
-    fn render_scene(&mut self, _ecs: &Ecs) -> GraphicsResult<()> {
+    fn render_scene(&mut self, _ecs: &Ecs, asset_store: &mut AssetStore) -> GraphicsResult<()> {
         trace!("Starting scene render");
         let output = self
             .surface
             .get_current_texture()
             .map_err(GraphicsError::SurfaceError)?;
-        let _view = output
+        let view = output
             .texture
             .create_view(&WGPUTextureViewDescriptor::default());
-        let command_encoder = self
-            .device
-            .create_command_encoder(&WGPUCommandEncoderDescriptor {
-                label: Some("command_encoder"),
-            });
+
+        let mut render_graph_resources = RenderGraphResources::new();
+        let view = render_graph_resources.import_texture_view(view);
+        let mut render_graph = RenderGraph::new(&render_graph_resources, &self.device);
+
+        render_graph
+            .add_pass("draw_test_triangle")
+            .with_color_attachment(view, ClearColor::from_rgba(1.0, 0.0, 0.0, 0.0))
+            .dispatch(|_rpass| {});
+        render_graph.compile();
+
+        let mut command_encoder =
+            self.device
+                .create_command_encoder(&WGPUCommandEncoderDescriptor {
+                    label: Some("command_encoder"),
+                });
+        render_graph.execute(&mut command_encoder);
 
         self.queue.submit(std::iter::once(command_encoder.finish()));
         output.present();
@@ -169,5 +173,18 @@ impl GraphicsAPI for Graphics {
             (TypeId::of::<TextureAsset>(), Box::new(texture_loader)),
             (TypeId::of::<ShaderAsset>(), Box::new(shader_loader)),
         ]
+    }
+}
+
+pub struct ClearColor {
+    r: f64,
+    g: f64,
+    b: f64,
+    a: f64,
+}
+
+impl ClearColor {
+    pub fn from_rgba(r: f64, g: f64, b: f64, a: f64) -> Self {
+        Self { r, g, b, a }
     }
 }

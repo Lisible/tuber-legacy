@@ -18,7 +18,18 @@ impl Shader {
 }
 
 pub struct ShaderAsset {
+    identifier: String,
     source: String,
+}
+
+impl ShaderAsset {
+    pub fn identifier(&self) -> &str {
+        &self.identifier
+    }
+
+    pub fn source(&self) -> &str {
+        &self.source
+    }
 }
 
 pub(crate) fn shader_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
@@ -30,5 +41,8 @@ pub(crate) fn shader_loader(asset_metadata: &AssetMetadata) -> Box<dyn Any> {
         asset_metadata.identifier
     ));
 
-    Box::new(ShaderAsset { source })
+    Box::new(ShaderAsset {
+        identifier: asset_metadata.identifier.clone(),
+        source,
+    })
 }
