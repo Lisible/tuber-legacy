@@ -15,7 +15,6 @@ use tuber_core::input::{Keymap, State as InputState};
 use tuber_core::{input, CoreError};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
-use tuber_graphics::{Graphics, GraphicsAPI};
 
 pub mod engine_context;
 pub mod state;
@@ -50,7 +49,6 @@ impl Engine {
         );
 
         let context = EngineContext {
-            graphics: None,
             asset_store: asset_manager,
             input_state,
         };
@@ -64,10 +62,6 @@ impl Engine {
             context,
             system_bundles: vec![],
         }
-    }
-
-    pub fn set_graphics(&mut self, graphics: Graphics) {
-        self.context.graphics = Some(graphics);
     }
 
     pub fn should_exit(&self) -> bool {
@@ -102,13 +96,7 @@ impl Engine {
     #[allow(clippy::unused_self)]
     pub fn on_window_resized(&mut self, _width: u32, _height: u32) {}
 
-    pub fn render(&mut self) {
-        self.state_stack
-            .render_current_state(&mut self.ecs, &mut self.context);
-        if let Some(graphics) = &mut self.context.graphics {
-            graphics.render_scene(&self.ecs).unwrap();
-        }
-    }
+    pub fn render(&mut self) {}
 
     fn keymap_file_path() -> Result<PathBuf> {
         let mut path = tuber_core::application_directory()?;
