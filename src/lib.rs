@@ -1,5 +1,5 @@
 #![deny(clippy::all)]
-#![deny(clippy::pedantic)]
+#![warn(clippy::pedantic)]
 
 pub use tuber_core as core;
 pub use tuber_ecs as ecs;
