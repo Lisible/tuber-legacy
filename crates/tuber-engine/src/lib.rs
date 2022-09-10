@@ -1,11 +1,17 @@
+#![deny(clippy::all)]
+#![warn(clippy::pedantic)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::module_name_repetitions)]
+
 use std::path::PathBuf;
 
 use log::info;
 
 use engine_context::EngineContext;
-use state::*;
-use tuber_core::asset::AssetStore;
-use tuber_core::input::{InputState, Keymap};
+use state::{State, StateStack};
+use tuber_core::asset::Store;
+use tuber_core::input::{Keymap, State as InputState};
 use tuber_core::{input, CoreError};
 use tuber_ecs::ecs::Ecs;
 use tuber_ecs::system::SystemBundle;
@@ -33,9 +39,10 @@ fn create_ecs() -> Ecs {
 }
 
 impl Engine {
+    #[must_use]
     pub fn new(settings: EngineSettings) -> Engine {
         info!("Creating tuber instance");
-        let mut asset_manager = AssetStore::default();
+        let mut asset_manager = Store::default();
         asset_manager.load_assets_metadata().unwrap();
 
         let input_state = InputState::new(
@@ -88,10 +95,11 @@ impl Engine {
         );
     }
 
-    pub fn handle_input(&mut self, input: input::Input) {
+    pub fn handle_input(&mut self, input: &input::Input) {
         self.state_stack.handle_input(input, &mut self.context);
     }
 
+    #[allow(clippy::unused_self)]
     pub fn on_window_resized(&mut self, _width: u32, _height: u32) {}
 
     pub fn render(&mut self) {

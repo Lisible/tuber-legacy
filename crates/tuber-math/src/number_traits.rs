@@ -79,13 +79,13 @@ impl IsZero for i32 {
 
 impl IsZero for f32 {
     fn is_zero(&self) -> bool {
-        self.abs() < 0.00000001
+        self.abs() < 0.000_000_01
     }
 }
 
 impl IsZero for f64 {
     fn is_zero(&self) -> bool {
-        self.abs() < 0.00000001
+        self.abs() < 0.000_000_01
     }
 }
 

@@ -19,6 +19,7 @@ pub struct ComponentStore {
 }
 
 impl ComponentStore {
+    #[must_use]
     pub fn with_size(size: usize) -> Self {
         let mut component_data = vec![None];
         for _ in 0..size {
@@ -65,6 +66,7 @@ impl Ecs {
             .insert(TypeId::of::<T>(), RefCell::new(Box::new(resource)));
     }
 
+    #[must_use]
     pub fn shared_resource<T: 'static>(&self) -> Option<Ref<T>> {
         Some(Ref::map(
             self.shared_resources.get(&TypeId::of::<T>())?.borrow(),
@@ -72,6 +74,7 @@ impl Ecs {
         ))
     }
 
+    #[must_use]
     pub fn shared_resource_mut<T: 'static>(&self) -> Option<RefMut<T>> {
         Some(RefMut::map(
             self.shared_resources
@@ -96,7 +99,7 @@ impl Ecs {
 
     pub fn delete_by_query<Q: for<'a> Query<'a>>(&mut self) {
         let to_delete = Q::matching_ids(self.entity_count(), &self.components);
-        self.delete_by_ids(to_delete.iter().cloned().collect::<Vec<_>>().as_slice());
+        self.delete_by_ids(to_delete.iter().copied().collect::<Vec<_>>().as_slice());
     }
 
     pub fn delete_by_ids(&mut self, to_delete: &[usize]) {
@@ -120,14 +123,17 @@ impl Ecs {
         }
     }
 
+    #[must_use]
     pub fn query<'a, Q: Query<'a>>(&self) -> QueryIterator<Q> {
         QueryIterator::new(self.entity_count(), &self.components)
     }
 
+    #[must_use]
     pub fn query_by_ids<'a, Q: Query<'a>>(&self, ids: &HashSet<usize>) -> QueryIteratorByIds<Q> {
         QueryIteratorByIds::new(self.entity_count(), &self.components, ids)
     }
 
+    #[must_use]
     pub fn query_one<'a, Q: Query<'a>>(&'a self) -> Option<Q::ResultType> {
         let index = {
             let type_ids = Q::type_ids();
@@ -162,11 +168,13 @@ impl Ecs {
         Q::fetch(index, &self.components)
     }
 
+    #[must_use]
     pub fn query_one_by_id<'a, Q: Query<'a>>(&'a self, id: EntityIndex) -> Option<Q::ResultType> {
         Q::fetch(id, &self.components)
     }
 
     /// Returns the entity count of the Ecs.
+    #[must_use]
     pub fn entity_count(&self) -> usize {
         self.next_index
     }
@@ -208,7 +216,7 @@ impl_entity_definition_tuples!(A => 0, B => 1, C => 2, D => 3, E => 4, F => 5, G
 
 #[cfg(test)]
 mod tests {
-    use crate::query::accessors::*;
+    use crate::query::accessors::Opt;
 
     use super::*;
 
@@ -250,11 +258,8 @@ mod tests {
             velocity.x = 0.0;
         }
 
-        for (_, (position, velocity)) in ecs.query::<(&Position, &Velocity)>() {
-            assert_ne!(position.x, 0.0);
-            assert_ne!(position.y, 0.0);
-            assert_eq!(velocity.x, 0.0);
-            assert_ne!(velocity.y, 0.0);
+        for (_, (velocity,)) in ecs.query::<(&Velocity,)>() {
+            assert_float_absolute_eq!(velocity.x, 0.0, 0.01);
         }
 
         assert_eq!(ecs.query::<(&Position,)>().count(), 3);

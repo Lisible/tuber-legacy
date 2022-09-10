@@ -26,6 +26,7 @@ pub struct StateStack {
 }
 
 impl StateStack {
+    #[must_use]
     pub fn new(initial_state: Option<Box<dyn State>>) -> Self {
         Self {
             initial_state,
@@ -61,6 +62,7 @@ impl StateStack {
     }
 
     #[allow(clippy::borrowed_box)]
+    #[must_use]
     pub fn current_state(&self) -> Option<&Box<dyn State>> {
         self.states.last()
     }
@@ -100,7 +102,8 @@ impl StateStack {
         state.render(ecs, engine_context);
     }
 
-    pub fn handle_input(&mut self, input: Input, engine_context: &mut EngineContext) {
+    #[allow(clippy::unused_self)]
+    pub fn handle_input(&mut self, input: &Input, engine_context: &mut EngineContext) {
         engine_context.input_state.handle_input(input);
     }
 
@@ -114,7 +117,7 @@ impl StateStack {
         match request {
             StateStackRequest::Pop => self.pop_state(),
             StateStackRequest::Push(state) => {
-                self.push_state(state, ecs, system_bundles, engine_context)
+                self.push_state(state, ecs, system_bundles, engine_context);
             }
         }
     }

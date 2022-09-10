@@ -59,6 +59,7 @@ where
     }
 
     #[rustfmt::skip]
+    #[allow(clippy::similar_names)]
     pub fn rotation_matrix(&self) -> Matrix4<T> {
         let (w, x, y, z) = (
             self.scalar_part,
@@ -94,6 +95,7 @@ where
         self.scalar_part /= norm;
     }
 
+    #[must_use]
     pub fn normalized(&self) -> Self {
         let mut normalized_quaternion = self.clone();
         normalized_quaternion.normalize();

@@ -13,7 +13,6 @@ tuber-graphics = { path = "crates/tuber-graphics", version = "0.1.0" }
 tuber-winit = { path = "crates/tuber-winit", version = "0.1.0" }
 tuber-engine = { path = "crates/tuber-engine", version = "0.1.0" }
 tuber-ecs = { path = "crates/tuber-ecs", version = "0.1.0" }
-tuber-proc-macros = { path = "crates/tuber-proc-macros", version = "0.1.0" }
 tuber-math = { path = "crates/tuber-math", version = "0.1.0" }
 
 [dev-dependencies]

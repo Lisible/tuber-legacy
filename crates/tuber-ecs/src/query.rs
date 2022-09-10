@@ -59,10 +59,11 @@ pub struct QueryIteratorByIds<'a, Q> {
 }
 
 impl<'a, 'b, Q: Query<'b>> QueryIteratorByIds<'a, Q> {
+    #[must_use]
     pub fn new(entity_count: usize, components: &'a Components, ids: &HashSet<usize>) -> Self {
         Self {
             inner_iterator: QueryIterator::new(entity_count, components),
-            ids: ids.iter().cloned().collect(),
+            ids: ids.iter().copied().collect(),
         }
     }
 }
@@ -91,6 +92,7 @@ pub struct QueryIterator<'a, Q> {
 }
 
 impl<'a, 'b, Q: Query<'b>> QueryIterator<'a, Q> {
+    #[must_use]
     pub fn new(entity_count: usize, components: &'a Components) -> Self {
         let mut bitsets = vec![];
         for type_id in Q::type_ids() {
@@ -107,7 +109,7 @@ impl<'a, 'b, Q: Query<'b>> QueryIterator<'a, Q> {
         let mut matching_entities = vec![];
         if bitsets.len() == Q::type_ids().iter().filter(|t| t.is_required()).count() {
             'outer: for i in 0..entity_count {
-                for bitset in bitsets.iter() {
+                for bitset in &bitsets {
                     if !bitset.bit(i) {
                         continue 'outer;
                     }
@@ -249,6 +251,7 @@ pub enum ComponentTypeId {
 }
 
 impl ComponentTypeId {
+    #[must_use]
     pub fn is_required(&self) -> bool {
         matches!(self, RequiredComponentTypeId(_))
     }

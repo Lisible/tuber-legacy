@@ -98,7 +98,7 @@ pub enum Input {
     MouseButtonUp(mouse::Button),
 }
 
-pub struct InputState {
+pub struct State {
     key_state: [bool; KEY_COUNT],
     previous_key_state: [bool; KEY_COUNT],
     mouse_button_state: [bool; 3],
@@ -108,7 +108,8 @@ pub struct InputState {
     keymap: Keymap,
 }
 
-impl InputState {
+impl State {
+    #[must_use]
     pub fn new(keymap: Keymap) -> Self {
         Self {
             key_state: [false; KEY_COUNT],
@@ -121,6 +122,7 @@ impl InputState {
         }
     }
 
+    #[must_use]
     pub fn is(&self, input: Input) -> bool {
         match input {
             Input::KeyDown(key) => self.key_state[key as usize],
@@ -137,6 +139,7 @@ impl InputState {
         }
     }
 
+    #[must_use]
     pub fn was(&self, input: Input) -> bool {
         match input {
             Input::KeyDown(key) => self.previous_key_state[key as usize],
@@ -153,12 +156,12 @@ impl InputState {
         }
     }
 
-    pub fn handle_input(&mut self, input: Input) {
+    pub fn handle_input(&mut self, input: &Input) {
         self.mouse_moved = false;
         self.previous_key_state = self.key_state;
         self.previous_mouse_button_state = self.mouse_button_state;
         trace!("Handling input {:?}", input);
-        match input {
+        match *input {
             Input::KeyDown(key) => self.key_state[key as usize] = true,
             Input::KeyUp(key) => self.key_state[key as usize] = false,
             Input::MouseButtonDown(button) => {
@@ -175,6 +178,7 @@ impl InputState {
         }
     }
 
+    #[must_use]
     pub fn mouse_position(&self) -> (f32, f32) {
         self.last_mouse_position
     }

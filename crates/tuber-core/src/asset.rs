@@ -11,25 +11,25 @@ use crate::{CoreError, CoreResult};
 const ASSETS_DIRECTORY: &str = "assets";
 const ASSET_DESCRIPTION_FILE: &str = "asset.json";
 
-pub type GenericLoader = Box<dyn Fn(&AssetMetadata) -> Box<dyn Any>>;
+pub type GenericLoader = Box<dyn Fn(&Metadata) -> Box<dyn Any>>;
 
 #[derive(Default)]
-pub struct AssetStore {
+pub struct Store {
     assets: HashMap<TypeId, HashMap<String, Box<dyn Any>>>,
     asset_loaders: HashMap<TypeId, GenericLoader>,
-    assets_metadata: HashMap<String, AssetMetadata>,
+    assets_metadata: HashMap<String, Metadata>,
 }
 
-impl AssetStore {
+impl Store {
     pub fn load_assets_metadata(&mut self) -> CoreResult<()> {
         info!("Loading assets metadata");
-        let paths = match std::fs::read_dir(AssetStore::asset_directory()?) {
+        let paths = match std::fs::read_dir(Store::asset_directory()?) {
             Ok(paths) => paths,
             Err(_) => return Ok(()),
         };
 
         let asset_directory_paths: Vec<_> = paths
-            .filter_map(|p| p.ok())
+            .filter_map(Result::ok)
             .filter(|p| p.path().is_dir())
             .collect();
 
@@ -43,7 +43,7 @@ impl AssetStore {
 
             let f = std::fs::File::open(path).map_err(CoreError::AssetDescriptionFileOpenError)?;
             let reader = BufReader::new(f);
-            let mut asset_metadata: AssetMetadata = serde_json::from_reader(reader)
+            let mut asset_metadata: Metadata = serde_json::from_reader(reader)
                 .map_err(CoreError::AssetDescriptionFileParseError)?;
             asset_metadata.asset_path = asset_directory_path.path();
             info!(
@@ -60,12 +60,12 @@ impl AssetStore {
 
     pub fn register_loaders<Loader>(&mut self, loaders: Vec<(TypeId, Loader)>)
     where
-        Loader: 'static + Fn(&AssetMetadata) -> Box<dyn Any>,
+        Loader: 'static + Fn(&Metadata) -> Box<dyn Any>,
     {
         for (type_id, loader) in loaders {
             self.asset_loaders.insert(
                 type_id,
-                Box::new(move |asset_metadata: &AssetMetadata| ((loader)(asset_metadata))),
+                Box::new(move |asset_metadata: &Metadata| ((loader)(asset_metadata))),
             );
         }
     }
@@ -73,14 +73,15 @@ impl AssetStore {
     pub fn register_loader<AssetType, Loader>(&mut self, loader: Loader)
     where
         AssetType: 'static + Any,
-        Loader: 'static + Fn(&AssetMetadata) -> Box<AssetType>,
+        Loader: 'static + Fn(&Metadata) -> Box<AssetType>,
     {
         self.asset_loaders.insert(
             TypeId::of::<AssetType>(),
-            Box::new(move |asset_metadata: &AssetMetadata| ((loader)(asset_metadata))),
+            Box::new(move |asset_metadata: &Metadata| ((loader)(asset_metadata))),
         );
     }
 
+    #[must_use]
     pub fn has_asset<AssetType>(&self, identifier: &str) -> bool
     where
         AssetType: 'static + Any,
@@ -117,7 +118,7 @@ impl AssetStore {
 
     pub fn insert_asset<AssetType>(
         &mut self,
-        asset_metadata: AssetMetadata,
+        asset_metadata: Metadata,
         asset: AssetType,
     ) -> CoreResult<()>
     where
@@ -172,7 +173,7 @@ pub trait IntoLoader<F> {
 
 impl<F> IntoLoader<F> for F
 where
-    F: 'static + Fn(&AssetMetadata) -> Box<dyn Any>,
+    F: 'static + Fn(&Metadata) -> Box<dyn Any>,
 {
     fn into_loader(self) -> GenericLoader {
         Box::new(self)
@@ -180,7 +181,7 @@ where
 }
 
 #[derive(Deserialize)]
-pub struct AssetMetadata {
+pub struct Metadata {
     pub identifier: String,
     pub kind: String,
     pub metadata: HashMap<String, String>,

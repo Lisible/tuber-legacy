@@ -1,3 +1,10 @@
+#![deny(clippy::all)]
+#![warn(clippy::pedantic)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::cast_possible_truncation)]
+
 use std::convert::{TryFrom, TryInto};
 use std::time::Instant;
 
@@ -77,7 +84,7 @@ impl TuberRunner for WinitTuberRunner {
                     event: WindowEvent::KeyboardInput { input, .. },
                     window_id,
                 } if window_id == window.id() => {
-                    if let Ok(input) = KeyboardInputWrapper(input).try_into() {
+                    if let Ok(input) = &KeyboardInputWrapper(input).try_into() {
                         engine.handle_input(input);
                     }
                 }
@@ -85,7 +92,7 @@ impl TuberRunner for WinitTuberRunner {
                     event: WindowEvent::MouseInput { button, state, .. },
                     window_id,
                 } if window_id == window.id() => {
-                    if let Ok(input) = MouseInputWrapper(button, state).try_into() {
+                    if let Ok(input) = &MouseInputWrapper(button, state).try_into() {
                         engine.handle_input(input);
                     }
                 }
@@ -93,7 +100,8 @@ impl TuberRunner for WinitTuberRunner {
                     event: WindowEvent::CursorMoved { position, .. },
                     window_id,
                 } if window_id == window.id() => {
-                    engine.handle_input(Input::MouseMotion((position.x as f32, position.y as f32)));
+                    engine
+                        .handle_input(&Input::MouseMotion((position.x as f32, position.y as f32)));
                 }
                 Event::WindowEvent {
                     event: WindowEvent::Resized(new_size),
@@ -168,7 +176,9 @@ impl TryFrom<MouseInputWrapper> for Input {
             MouseButton::Left => Button::Left,
             MouseButton::Right => Button::Right,
             MouseButton::Middle => Button::Middle,
-            button => return Err(TuberWinitError::UnknownMouseButton(button)),
+            button @ MouseButton::Other(_) => {
+                return Err(TuberWinitError::UnknownMouseButton(button))
+            }
         };
 
         Ok(match input.1 {

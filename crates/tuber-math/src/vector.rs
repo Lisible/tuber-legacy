@@ -8,7 +8,8 @@ pub type Vector4f = Vector4<f32>;
 
 macro_rules! struct_vec {
     ($name:ident : $display_fmt:literal, ($($dim:ident : $TY:ty => $idx:tt,)*)) => {
-        #[derive(Clone, Copy, PartialEq, Debug)]
+        #[must_use]
+        #[derive(Clone, Copy, PartialEq, Eq, Debug)]
         pub struct $name<T = f32> {
             $(pub $dim: T,)*
         }

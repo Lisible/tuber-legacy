@@ -148,6 +148,7 @@ where
         })
     }
 
+    #[must_use]
     pub fn add_translation(&self, translation: &Vector3<T>) -> Self {
         *self * Matrix4f::new_translation(translation)
     }
