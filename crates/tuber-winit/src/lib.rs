@@ -11,6 +11,7 @@ use std::time::Instant;
 use log::info;
 use winit::dpi::{LogicalSize, Size};
 use winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
+use winit::platform::unix::WindowBuilderExtUnix;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -21,7 +22,6 @@ use tuber_core::input::keyboard::Key;
 use tuber_core::input::mouse::Button;
 use tuber_core::input::Input;
 use tuber_engine::{Engine, Result as TuberResult, TuberRunner};
-use tuber_graphics::{Graphics, WindowSize};
 
 #[allow(clippy::enum_variant_names)]
 enum TuberWinitError {
@@ -50,21 +50,15 @@ impl TuberRunner for WinitTuberRunner {
             engine.application_title()
         );
 
-        let window_size = WindowSize {
-            width: 800,
-            height: 600,
-        };
-
         let window = WindowBuilder::new()
+            .with_class(
+                engine.application_title().to_string(),
+                String::from("tuber-application"),
+            )
             .with_title(engine.application_title())
-            .with_inner_size(Size::new(LogicalSize::new(
-                window_size.width,
-                window_size.height,
-            )))
+            .with_inner_size(Size::new(LogicalSize::new(800, 600)))
             .build(&event_loop)
             .unwrap();
-
-        engine.set_graphics(Graphics::new(&window, window_size));
 
         info!("Pushing initial game state on the state stack");
         engine.push_initial_state();

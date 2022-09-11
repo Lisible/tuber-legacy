@@ -7,8 +7,3 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tuber-ecs = { path = "../tuber-ecs" }
-raw-window-handle = "0.4.2"
-wgpu = "0.13.1"
-futures = "0.3.21"
-log = "0.4.17"
