@@ -7,15 +7,6 @@
 use futures::executor::block_on;
 use log::{info, trace};
 use raw_window_handle::HasRawWindowHandle;
-use wgpu::{
-    Adapter as WGPUAdapter, Backends as WGPUBackends,
-    CommandEncoderDescriptor as WGPUCommandEncoderDescriptor, Device as WGPUDevice,
-    DeviceDescriptor as WGPUDeviceDescriptor, Instance as WGPUInstance, Limits as WGPULimits,
-    PowerPreference as WGPUPowerPreference, PresentMode as WGPUPresentMode, Queue as WGPUQueue,
-    RequestAdapterOptions as WGPURequestAdapterOptions, Surface as WGPUSurface,
-    SurfaceConfiguration as WGPUSurfaceConfiguration, SurfaceError as WGPUSurfaceError,
-    TextureUsages as WGPUTextureUsages, TextureViewDescriptor as WGPUTextureViewDescriptor,
-};
 
 use tuber_ecs::ecs::Ecs;
 
@@ -23,7 +14,7 @@ pub type GraphicsResult<T> = Result<T, GraphicsError>;
 
 #[derive(Debug, Clone)]
 pub enum GraphicsError {
-    SurfaceError(WGPUSurfaceError),
+    SurfaceError(wgpu::SurfaceError),
 }
 
 pub struct WindowSize {
@@ -36,9 +27,9 @@ pub trait GraphicsAPI {
 }
 
 pub struct Graphics {
-    device: WGPUDevice,
-    queue: WGPUQueue,
-    surface: WGPUSurface,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    surface: wgpu::Surface,
     _window_size: WindowSize,
 }
 
@@ -64,12 +55,12 @@ impl Graphics {
         }
     }
 
-    fn create_wgpu_instance() -> WGPUInstance {
-        info!("Creating WGPU instance");
-        WGPUInstance::new(WGPUBackends::all())
+    fn create_wgpu_instance() -> wgpu::Instance {
+        info!("Creating wgpu:: instance");
+        wgpu::Instance::new(wgpu::Backends::all())
     }
 
-    fn create_render_surface<Window>(instance: &WGPUInstance, window: &Window) -> WGPUSurface
+    fn create_render_surface<Window>(instance: &wgpu::Instance, window: &Window) -> wgpu::Surface
     where
         Window: HasRawWindowHandle,
     {
@@ -79,25 +70,25 @@ impl Graphics {
         unsafe { instance.create_surface(&window) }
     }
 
-    fn request_adapter(instance: &WGPUInstance, surface: &WGPUSurface) -> WGPUAdapter {
+    fn request_adapter(instance: &wgpu::Instance, surface: &wgpu::Surface) -> wgpu::Adapter {
         info!("Requesting video adapter");
-        block_on(instance.request_adapter(&WGPURequestAdapterOptions {
-            power_preference: WGPUPowerPreference::default(),
+        block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::default(),
             force_fallback_adapter: false,
             compatible_surface: Some(surface),
         }))
         .unwrap()
     }
 
-    fn request_device(adapter: &WGPUAdapter) -> (WGPUDevice, WGPUQueue) {
+    fn request_device(adapter: &wgpu::Adapter) -> (wgpu::Device, wgpu::Queue) {
         info!("Requesting device");
         block_on(adapter.request_device(
-            &WGPUDeviceDescriptor {
+            &wgpu::DeviceDescriptor {
                 label: None,
                 limits: if cfg!(target_arch = "wasm32") {
-                    WGPULimits::downlevel_webgl2_defaults()
+                    wgpu::Limits::downlevel_webgl2_defaults()
                 } else {
-                    WGPULimits::default()
+                    wgpu::Limits::default()
                 },
                 ..Default::default()
             },
@@ -108,22 +99,22 @@ impl Graphics {
 
     fn configure_surface(
         window_size: &WindowSize,
-        surface: &WGPUSurface,
-        adapter: &WGPUAdapter,
-        device: &WGPUDevice,
+        surface: &wgpu::Surface,
+        adapter: &wgpu::Adapter,
+        device: &wgpu::Device,
     ) {
         info!("Configuring render surface");
-        let surface_configuration = WGPUSurfaceConfiguration {
-            usage: WGPUTextureUsages::RENDER_ATTACHMENT,
+        let surface_configuration = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface.get_supported_formats(adapter)[0],
             width: window_size.width,
             height: window_size.height,
-            present_mode: WGPUPresentMode::Fifo,
+            present_mode: wgpu::PresentMode::Fifo,
         };
         surface.configure(device, &surface_configuration);
     }
 
-    fn log_adapter_details(adapter: &WGPUAdapter) {
+    fn log_adapter_details(adapter: &wgpu::Adapter) {
         let adapter_details = adapter.get_info();
         info!("Adapter name: {}", adapter_details.name);
         info!("Adapter backend: {:?}", adapter_details.backend);
@@ -140,10 +131,10 @@ impl GraphicsAPI for Graphics {
             .map_err(GraphicsError::SurfaceError)?;
         let _view = output
             .texture
-            .create_view(&WGPUTextureViewDescriptor::default());
+            .create_view(&wgpu::TextureViewDescriptor::default());
         let command_encoder = self
             .device
-            .create_command_encoder(&WGPUCommandEncoderDescriptor {
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("command_encoder"),
             });
 
