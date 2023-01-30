@@ -6,7 +6,7 @@ use crate::number_traits::Float;
 use crate::vector::Vector3;
 
 #[derive(Debug, Clone)]
-pub struct Quaternion<T>
+pub struct Quaternion<T = f32>
 where
     T: Debug,
 {
