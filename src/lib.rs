@@ -4,6 +4,7 @@ use butter_ecs::{system, Ecs};
 
 pub use butter_ecs as ecs;
 pub use butter_graphics as graphics;
+use log::info;
 pub mod window;
 pub mod winit;
 
@@ -26,6 +27,7 @@ impl ButterEngine {
     }
 
     pub(crate) fn init(&mut self) {
+        info!("Running init systems");
         self.ecs.run_systems(&mut self.init_systems);
     }
 

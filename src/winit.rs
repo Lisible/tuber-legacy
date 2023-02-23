@@ -1,3 +1,4 @@
+use log::info;
 use pollster;
 use winit::{
     dpi::{PhysicalSize, Size},
@@ -18,7 +19,6 @@ impl ButterRunner {
     pub fn run(mut engine: ButterEngine) {
         #[cfg(target_arch = "wasm32")]
         use winit::platform::web::WindowBuilderExtWebSys;
-
         let event_loop = EventLoop::new();
 
         let window_settings = &engine.settings().window_settings;
@@ -49,6 +49,7 @@ impl ButterRunner {
             window_builder = window_builder.with_canvas(canvas);
         }
 
+        info!("Creating window");
         let window = window_builder.build(&event_loop).unwrap();
         let window_size = window.inner_size();
         engine.set_graphic_state(pollster::block_on(crate::graphics::State::new(
@@ -57,6 +58,7 @@ impl ButterRunner {
         )));
         engine.init();
 
+        info!("Starting the event loop");
         event_loop.run(move |event, _, control_flow| {
             control_flow.set_poll();
 
