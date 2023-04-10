@@ -2,7 +2,12 @@
 use commands::CommandQueue;
 
 use crate::bitset::Bitset;
-use std::{alloc::Layout, any::TypeId, collections::HashMap, ptr::NonNull};
+use std::{
+    alloc::Layout,
+    any::{Any, TypeId},
+    collections::HashMap,
+    ptr::NonNull,
+};
 
 use self::system::System;
 
@@ -15,6 +20,7 @@ pub struct Ecs {
     next_index: usize,
     deleted_entities_indices: Vec<EntityIndex>,
     component_stores: HashMap<TypeId, ComponentStore>,
+    resources: HashMap<TypeId, Box<dyn Any>>,
 }
 
 impl Ecs {
@@ -24,7 +30,34 @@ impl Ecs {
             next_index: 0,
             deleted_entities_indices: vec![],
             component_stores: HashMap::new(),
+            resources: HashMap::new(),
         }
+    }
+
+    pub fn insert_resource<R>(&mut self, resource: R)
+    where
+        R: 'static,
+    {
+        self.resources.insert(TypeId::of::<R>(), Box::new(resource));
+    }
+
+    #[must_use]
+    pub fn resource<R>(&self) -> Option<&R>
+    where
+        R: 'static,
+    {
+        self.resources
+            .get(&TypeId::of::<R>())
+            .map(|r| r.downcast_ref())?
+    }
+
+    pub fn resource_mut<R>(&mut self) -> Option<&mut R>
+    where
+        R: 'static,
+    {
+        self.resources
+            .get_mut(&TypeId::of::<R>())
+            .map(|r| r.downcast_mut())?
     }
 
     #[must_use]
@@ -488,5 +521,30 @@ mod tests {
         assert_eq!(health_iter.next(), Some(&Health(0)));
         assert_eq!(health_iter.next(), Some(&Health(0)));
         assert_eq!(health_iter.next(), None);
+    }
+
+    #[test]
+    fn ecs_insert_resource() {
+        #[derive(PartialEq, Eq, Debug)]
+        struct DeltaTime(u32);
+        let mut ecs = Ecs::new();
+        ecs.insert_resource(DeltaTime(25));
+
+        {
+            let fetched_delta_time = ecs.resource::<DeltaTime>().unwrap();
+            assert_eq!(fetched_delta_time, &DeltaTime(25));
+        }
+
+        {
+            let mutably_fetched_deltatime = ecs.resource_mut::<DeltaTime>().unwrap();
+            assert_eq!(mutably_fetched_deltatime, &mut DeltaTime(25));
+            mutably_fetched_deltatime.0 = 10;
+            assert_eq!(mutably_fetched_deltatime, &mut DeltaTime(10));
+        }
+
+        {
+            let fetched_delta_time = ecs.resource::<DeltaTime>().unwrap();
+            assert_eq!(fetched_delta_time, &DeltaTime(10));
+        }
     }
 }
